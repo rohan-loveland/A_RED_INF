@@ -60,7 +60,8 @@ class FiniteBuffer:
             self._build_new_tree()
 
         self.max_abs_idx += 1
-        self.min_abs_idx += 1
+        if self.max_abs_idx + 1 > self.buffer_size:
+            self.min_abs_idx += 1
 
         return forgotten_pt_info # (id, relevance, abs_index)
 
