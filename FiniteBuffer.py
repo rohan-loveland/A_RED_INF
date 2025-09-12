@@ -6,8 +6,8 @@ import heapq
 import numpy as np
 
 class BallTreeWithIndexes(BallTree):
-    def __init__(self, X, min_index, max_index, leaf_size = 40, metric: str = "minkowski" | DistanceMetric):
-        super().__init__(X, leaf_size, metric)
+    def __init__(self, X, min_index, max_index, leaf_size = 40, metric: str | DistanceMetric = "minkowski"):
+        super().__init__(X, leaf_size=leaf_size, metric=metric)
         self.max_index = max_index
         self.min_index = min_index
 
@@ -26,8 +26,6 @@ class FiniteBuffer:
 
         self.max_abs_idx = 0
         self.min_abs_idx = 0
-
-        self.dist = DistanceMetric.get_metric('minkowski')
 
         # --- threading-related attributes ---
         self._tree_build_lock = threading.Lock()
@@ -56,10 +54,9 @@ class FiniteBuffer:
             build_ball_tree = True
 
         # if ball tree is invalid, forget it and start building new tree
-        if build_ball_tree and self._building_tree == False:
-            # start building new ball tree on separate thread
+        if build_ball_tree and not self._building_tree:
             self._building_tree = True
-            self._build_new_tree()
+            threading.Thread(target=self._build_new_tree, daemon=True).start()
 
         return forgotten_pt_info # (id, relevance, abs_index)
 
@@ -83,7 +80,7 @@ class FiniteBuffer:
             # brute force tail end
             for i in range (min_idx_covered_by_btree - self.min_abs_idx):
                 cluster_id = self.cluster_id_circular_buffer.get(i)
-                dist = self.dist(X, self.data_circular_buffer.get(i))
+                dist = np.linalg.norm(X - self.data_circular_buffer.get(i))
 
                 if cluster_id not in closest_pt_in_clusters or dist < closest_pt_in_clusters[cluster_id][0]:
                     closest_pt_in_clusters[cluster_id] = (dist, i + self.min_abs_idx)
@@ -92,16 +89,16 @@ class FiniteBuffer:
             for ball_tree in self.ball_trees:
 
                 dist, idx = ball_tree.query(X) # returned value is dist, index
-                cluster_id = self.cluster_id_circular_buffer.get(self.min_index + idx)
+                cluster_id = self.cluster_id_circular_buffer.get(self.min_abs_idx + idx)
 
                 if cluster_id not in closest_pt_in_clusters or dist < closest_pt_in_clusters[cluster_id][0]:
-                    closest_pt_in_clusters[cluster_id] = (dist, i + ball_tree.min_index)
+                    closest_pt_in_clusters[cluster_id] = (dist, idx + ball_tree.min_index)
 
 
             # brute force head end
             for i in range(self.max_abs_idx - max_idx_covered_by_btree):
                 cluster_id = self.cluster_id_circular_buffer.get(i)
-                dist = self.dist(X, self.data_circular_buffer.get(i))
+                dist = np.linalg.norm(X - self.data_circular_buffer.get(i))
 
                 if cluster_id not in closest_pt_in_clusters or dist < closest_pt_in_clusters[cluster_id][0]:
                     closest_pt_in_clusters[cluster_id] = (dist, i + self.ball_trees[-1].min_index)
@@ -110,12 +107,12 @@ class FiniteBuffer:
             # brute force all points
             for i in range(self.max_abs_idx - self.min_abs_idx + 1):
                 cluster_id = self.cluster_id_circular_buffer.get(i)
-                dist = self.dist(X, self.data_circular_buffer.get(i))
+                dist = np.linalg.norm(X - self.data_circular_buffer.get(i))
 
                 if cluster_id not in closest_pt_in_clusters or dist < closest_pt_in_clusters[cluster_id][0]:
                     closest_pt_in_clusters[cluster_id] = (dist, i + self.min_abs_idx)
 
-        # Get k clusters with smallest distances
+        # Get k clusters with the smallest distances
         closest_k = heapq.nsmallest(k, closest_pt_in_clusters.items(), key=lambda x: x[1][0])
 
         # Return in format: list of (cluster_id, min_dist, data_idx)
