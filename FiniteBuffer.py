@@ -40,17 +40,19 @@ class FiniteBuffer:
         # Check if buffer is fulls
         if self.data_circular_buffer.is_full():
             forgotten_pt_info = self._forget_pt()
+            self.min_abs_idx += 1
 
         self.data_circular_buffer.append(X)
         self.label_circular_buffer.append(label)
         self.cluster_id_circular_buffer.append(cluster_id)
         self.relevance_circular_buffer.append(relevance)
+        self.max_abs_idx += 1
 
         if len(self.ball_trees) != 0 and self.ball_trees[0].min_index < self.min_abs_idx:
             self.ball_trees.pop(0)
             build_ball_tree = True
 
-        elif len(self.ball_trees) == 0 and int(self.buffer_size * self.ball_tree_ratio) >= self.max_abs_idx:
+        elif len(self.ball_trees) == 0 and int(self.buffer_size * self.ball_tree_ratio) <= self.max_abs_idx:
             build_ball_tree = True
 
         # if ball tree is invalid, forget it and start building new tree
@@ -58,10 +60,6 @@ class FiniteBuffer:
             # start building new ball tree on separate thread
             self._building_tree = True
             self._build_new_tree()
-
-        self.max_abs_idx += 1
-        if self.max_abs_idx + 1 > self.buffer_size:
-            self.min_abs_idx += 1
 
         return forgotten_pt_info # (id, relevance, abs_index)
 
@@ -132,24 +130,38 @@ class FiniteBuffer:
 
     def _build_new_tree(self):
         """
-                Build a new tree from current buffer snapshot.
-                Runs in a background thread.
-                """
+        Take a snapshot of the latest window of points and build
+        a BallTree covering absolute indices [abs_min, abs_max).
+        Runs in its own thread.
+        """
         try:
-            # snapshot data to avoid locking for long periods
+            # === 1. Atomic snapshot of current state ===
             with self._tree_build_lock:
-                window_size = int(self.buffer_size * self.ball_tree_ratio)
-                min_idx = self.max_abs_idx - window_size
-                max_idx = self.max_abs_idx
-                data_snapshot = list(self.data_circular_buffer.get_array()[min_idx:max_idx])
+                min_abs_snapshot = self.min_abs_idx
+                max_abs_snapshot = self.max_abs_idx
+                full_array = list(self.data_circular_buffer.get_array())
 
-            if data_snapshot:
-                new_tree = BallTreeWithIndexes(data_snapshot, min_idx, max_idx, leaf_size=2)
-                # insert new tree
-                with self._tree_build_lock:
-                    self.ball_trees.append(new_tree)
+            # === 2. Compute absolute window bounds ===
+            window_size = int(self.buffer_size * self.ball_tree_ratio)
+            abs_min = max(min_abs_snapshot, max_abs_snapshot - window_size)
+            abs_max = max_abs_snapshot  # exclusive upper bound
+
+            # === 3. Convert to relative slice positions ===
+            rel_start = abs_min - min_abs_snapshot
+            rel_end = abs_max - min_abs_snapshot
+
+            # === 4. Extract the snapshot window ===
+            data_snapshot = full_array[rel_start:rel_end]
+
+            if not data_snapshot:
+                return
+
+            # === 5. Build the BallTree OFF the lock ===
+            new_tree = BallTreeWithIndexes(data_snapshot, min_index=abs_min, max_index=abs_max, leaf_size=2)
+
+            # === 6. Append finished tree under lock ===
+            with self._tree_build_lock:
+                self.ball_trees.append(new_tree)
 
         finally:
             self._building_tree = False
-
-
