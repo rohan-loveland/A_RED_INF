@@ -35,6 +35,8 @@ class FiniteBuffer:
 
     def insert_pt(self, X, label, cluster_id, relevance):
         forgotten_pt_info = None
+        build_ball_tree = False
+
         # Check if buffer is fulls
         if self.data_circular_buffer.is_full():
             forgotten_pt_info = self._forget_pt()
@@ -46,13 +48,13 @@ class FiniteBuffer:
 
         if len(self.ball_trees) != 0 and self.ball_trees[0].min_index < self.min_abs_idx:
             self.ball_trees.pop(0)
-            ball_tree_forgotten = True
+            build_ball_tree = True
 
-        elif len(self.ball_trees) == 0:
-            # determine whether we should build the first ball tree.
+        elif len(self.ball_trees) == 0 and int(self.buffer_size * self.ball_tree_ratio) >= self.max_abs_idx:
+            build_ball_tree = True
 
         # if ball tree is invalid, forget it and start building new tree
-        if ball_tree_forgotten and self._building_tree == False:
+        if build_ball_tree and self._building_tree == False:
             # start building new ball tree on separate thread
             self._building_tree = True
             self._build_new_tree()
