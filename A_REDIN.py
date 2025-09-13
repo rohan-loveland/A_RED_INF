@@ -162,20 +162,18 @@ class ARED:
 
 
     def process_first_point(self, data_point):
-
-        self.num_pts_streamed = 1
-
-        data_point_abs_idx = self.num_pts_streamed - 1
-
         # START QUERY
+        data_point_abs_idx = self.num_pts_streamed - 1
+        self.num_pts_streamed = 1
         label, relevance = self.query(data_point_abs_idx)
         # END QUERY
 
+        # UPDATE CLUSTER LIST
         cluster_id = 0
-
         # Create new cluster
         self.l_buf.insert_pt(data_point, label, relevance) #cluster_id = 0
         self.subspace_partition.create_new_cluster(label, relevance, [data_point_abs_idx], [], self.l_buf???, self.QS_VAR)?
+        # UPDATE CLUSTER LIST
 
         if 1 in self.verbose_flags:
             print("new cluster:", 0, [0])
@@ -431,8 +429,7 @@ class ARED:
 
         cluster.o_pts.remove(forgotten_abs_idx)
 
-    def process_point(self, data_point):
-    # CHANGE BIGLY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    def maintenance(self, data_point):
         if 3 in self.verbose_flags:
             print("labeled id array:", self.l_buf.cluster_id_array)
             print("labeled abs array:", self.l_buf.abs_idx_array)
@@ -450,18 +447,26 @@ class ARED:
         if forgotten_pt_cluster_id != None and not is_forgotten_point_labeled:
             self.subspace_partition_maintenance(forgotten_abs_idx, forgotten_pt_cluster_id)
 
-        # START DETERMINE COMPARISON CLUSTER
+    def process_point(self, data_point):
+        # START MAINTENANCE
+        self.maintenance(data_point)
 
+        # START DETERMINE COMPARISON CLUSTER
         comp_cluster_id, distance = self.determine_comparison_cluster(data_point)
         comp_cluster_relevant = self.subspace_partition.cluster_dict[comp_cluster_id].relevance
         comp_cluster_label = self.subspace_partition.cluster_dict[comp_cluster_id].label
 
         is_anomalous = self.anomalous(data_point, comp_cluster_id, distance)
 
-        if not comp_cluster_relevant and not is_anomalous:
-            self.add_o_pt(data_point_abs_idx, comp_cluster_id)
+        data_point_abs_idx = self.num_pts_streamed
 
-        else:
+        # IGNORE O POINTS FOR NOW
+        # if not comp_cluster_relevant and not is_anomalous:
+        #     self.add_o_pt(data_point_abs_idx, comp_cluster_id)
+
+        # else:
+
+        if comp_cluster_relevant or is_anomalous:
             # Query!
             new_pt_label, new_pt_relevant = self.query(data_point_abs_idx)
             label_is_same = (new_pt_label == comp_cluster_label)
