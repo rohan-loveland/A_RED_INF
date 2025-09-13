@@ -192,7 +192,6 @@ class FiniteBuffer:
         # Return in format: list of (cluster_key, pt_abs_idx, dist, label)
         return closest_pts
 
-
     def get_pt_data(self, abs_idx):
         if self.min_abs_idx <= abs_idx < self.max_abs_idx:
             return self.data_circular_buffer.get(abs_idx-self.min_abs_idx)
