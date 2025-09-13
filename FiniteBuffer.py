@@ -161,8 +161,6 @@ class FiniteBuffer:
         return None
 
     def _build_new_tree(self):
-
-        print("trying to build new tree")
         """
         Take a snapshot of the latest window of points and build
         a BallTree covering absolute indices [abs_min, abs_max).
