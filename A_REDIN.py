@@ -6,131 +6,10 @@ import threading
 from collections import defaultdict
 import heapq
 from sklearn.mixture import GaussianMixture
+import FiniteBuffer
 
 from main import QS_VAR
 
-"""# Data Window"""
-
-class Data_Window:
-    def __init__(self, data_window_size = 1000):
-        self.abs_idx_max = -1 # abs_idx_max is the absolute index most recent point inserted
-        self.abs_idx_min = 0
-        self.data_window_size = data_window_size
-        self.assigned_cluster_id_window = Circular_Buffer(data_window_size)
-        self.is_point_labeled_window = Circular_Buffer(data_window_size)
-        self.data_in_window = Circular_Buffer(data_window_size)
-        self.last_removed_cluster_id = None # Cluster ID of most recently forgotten point, the abs_idx of that point is abs_idx_min - 1
-
-    def insert_data(self, data_point):
-        self.data_in_window.append(data_point)
-        self.abs_idx_max += 1
-        self.abs_idx_min = max(0, self.abs_idx_max - self.data_window_size + 1)
-
-        self.last_removed_cluster_id = self.assigned_cluster_id_window.append(None)
-
-        self.is_point_labeled_window.append(False)
-
-    def get_data_point(self, abs_index):
-        if not (self.abs_idx_min <= abs_index <= self.abs_idx_max):
-            raise IndexError(f"abs_index {abs_index} is out of the window range "
-                             f"[{self.abs_idx_min}, {self.abs_idx_max})")
-
-        dw_index = abs_index - self.abs_idx_min
-        return self.data_in_window.get(dw_index)
-
-    def update_cluster_id_at(self, abs_index, new_id):
-        if not (self.abs_idx_min <= abs_index <= self.abs_idx_max):
-            raise IndexError(f"abs_index {abs_index} is out of the window range "
-                             f"[{self.abs_idx_min}, {self.abs_idx_max})")
-
-        dw_index = abs_index - self.abs_idx_min
-        self.assigned_cluster_id_window.set_at(dw_index, new_id)
-
-    def updated_labeled_window(self, abs_index):
-      if not (self.abs_idx_min <= abs_index <= self.abs_idx_max):
-            raise IndexError(f"abs_index {abs_index} is out of the window range "
-                             f"[{self.abs_idx_min}, {self.abs_idx_max})")
-
-      dw_index = abs_index - self.abs_idx_min
-      self.is_point_labeled_window.set_at(dw_index, True)
-
-"""# Labeled Data"""
-
-class Labeled_Data:
-    def __init__(self, data_window):
-        self.abs_idx_to_ld_idx_dict = {}
-        self.abs_idx_array = []
-        self.data_array = []
-        self.cluster_id_array = []
-        self.label_array = []
-        self.relevance_array = []
-
-        self.abs_idx_to_ld_idx_dict = dict()
-
-        self.data_window = data_window
-
-        self.l_pts_ball_tree = None
-        self.ball_tree_max_idx = -1
-
-        self._lock = threading.Lock()
-        self._ball_tree_thread = None
-
-    def add_point(self, abs_idx, data_point, cluster_id, label, relevance):
-        with self._lock:
-            self.abs_idx_to_ld_idx_dict[abs_idx] = len(self.data_array)
-            self.abs_idx_array.append(abs_idx)
-            self.data_array.append(data_point)
-            self.cluster_id_array.append(cluster_id)
-            self.label_array.append(label)
-            self.relevance_array.append(relevance)
-
-
-            # ALWAYS (mostly) BE BALLING (always start building a new ball tree when we are not building one.)
-            if (self._ball_tree_thread is None and len(self.data_array) > 30) or (self._ball_tree_thread is not None and not self._ball_tree_thread.is_alive()):
-                self._ball_tree_thread = threading.Thread(target=self._build_ball_tree)
-                self._ball_tree_thread.start()
-
-    def _build_ball_tree(self):
-        with self._lock:
-            data = np.array(self.data_array)
-            self.l_pts_ball_tree = BallTree(data, leaf_size=1)
-            self.ball_tree_max_idx = len(self.data_array) - 1
-
-    def get_data(self, abs_idx):
-        return self.data_array[self.abs_idx_to_ld_idx_dict[abs_idx]]
-
-    def get_index_of_abs_idx(self, abs_idx):
-        return self.abs_idx_to_ld_idx_dict[abs_idx]
-
-    def query_top_k_clusters(self, query_point, k):
-        cluster_to_min = {}  # cluster_id -> (min_dist, data_idx)
-
-        if self.l_pts_ball_tree is not None:
-            num_bt_points = self.ball_tree_max_idx + 1
-            query_k = min(k, num_bt_points)  # buffer to ensure enough clusters # NOTE CHANGE LATER
-
-            dists, indices = self.l_pts_ball_tree.query(
-                [query_point], k=query_k, return_distance=True, dualtree=True, breadth_first=False, sort_results=True
-            )
-
-            for dist, idx in zip(dists[0], indices[0]):
-                cluster_id = self.cluster_id_array[idx]
-                if cluster_id not in cluster_to_min:
-                    cluster_to_min[cluster_id] = (dist, idx)
-
-        # Brute-force remaining points
-        for i in range(self.ball_tree_max_idx + 1, len(self.data_array)):
-
-            dist = np.linalg.norm(np.array(query_point) - np.array(self.data_array[i]))
-            cluster_id = self.cluster_id_array[i]
-            if cluster_id not in cluster_to_min or dist < cluster_to_min[cluster_id][0]:
-                cluster_to_min[cluster_id] = (dist, i)
-
-        # Get k clusters with smallest distances
-        closest_k = heapq.nsmallest(k, cluster_to_min.items(), key=lambda x: x[1][0])
-
-        # Return in format: list of (cluster_id, min_dist, data_idx)
-        return [(cluster_id, min_dist, data_idx) for cluster_id, (min_dist, data_idx) in closest_k]
 
 """# Subspace Partition"""
 
@@ -243,20 +122,19 @@ class Cluster:
         l_and_o_pt_data = np.array(l_and_o_pt_data)
         self.comp_distance = self.average_nearest_neighbor_distance(l_and_o_pt_data)
 
-"""# ARED"""
+"""# AREDIN"""
 
-class ARED:
-    # CHANGE BIGLY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+class AREDIN:
+
     def __init__(self, oracle, kappa=1.0, data_window_size=1000, k_comparison_clusters = 1, QS_VAR = 0, REL_PROC_VAR = 0, SM_VAR=0, VERBOSE_FLAGS = []):
         self.kappa = kappa
-        self.data_window = Data_Window(data_window_size)
         self.k_comparison_clusters = k_comparison_clusters
-        self.labeled_data = Labeled_Data(self.data_window)
+        self.labeled_data = FiniteBuffer(??????????????)
         self.subspace_partition = Subspace_Partition()
         self.oracle = oracle
         self.num_queries = 0 # NEW!  - NEED TO KEEP TRACK OF THESE IN HERE
         self.num_pts_streamed = 0 # NEW!  - NEED TO KEEP TRACK OF THESE IN HERE
-
+        # Note: this is equivalent to abs_idx + 1
         # VARIATION CONTROL FLAGS
         self.QS_VAR = QS_VAR # {0: diameter, 1: Ave Single Link Dist in Cluster
         self.REL_PROC_VAR = REL_PROC_VAR
@@ -265,7 +143,6 @@ class ARED:
 
 
     def process_first_point(self, data_point):
-        # CHANGE BIGLY!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
         # Insert data point into data_window
         self.data_window.insert_data(data_point)

@@ -7,6 +7,14 @@ class Stats:
         self.kappa_vs_queries = [] # store kappa and querries for a run of ared as follows:
                                    # (kappa, num_queries, num_queries_by_time), kappa and num_queries are ints and num_queries_by_time is a list
         self.kappa_precision_recall = []
+        self.averaged_precision_recalls = [] # stored as a list of lists as [kappa, ave precision, ave recall]
+
+    def init_for_kappa_loop(self,kappa):
+        self.averaged_precision_recalls.append([kappa, 0, 0, 0, 0])  # kappa, ave precision, ave recall, ave baseline precision, ave baseline recall
+        self.precisions = [] # not in constructor because resetting every kappa loop iteration
+        self.recalls = []
+        self.precision_baseline = []
+        self.recall_baseline = []
 
     def store_ared_query_information(self, ared):
         num_queries = len(ared.labeled_data.abs_idx_array)

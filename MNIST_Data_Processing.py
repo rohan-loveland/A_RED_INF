@@ -4,6 +4,8 @@ import numpy as np
 import pickle
 import os
 from sklearn.datasets import fetch_openml
+from collections import Counter
+
 
 # Create skewed subset
 def create_skewed_mnist(X, y, sparsity_levels, seed=42):
@@ -52,7 +54,7 @@ def load_and_skew_mnist(sparsity_levels, seed=42, save_path="mnist_full.pkl"):
       # Load the data from the .pkl file
       with open(save_path, "rb") as file:
         X,y = pickle.load(file)
-      print("Data loaded successfully:")
+      print("\nData loaded successfully:")
     else:
       print("Loading MNIST from OpenML...")
       mnist = fetch_openml("mnist_784", version=1, as_frame=False)
@@ -80,3 +82,24 @@ def generate_is_relevant(label_list, relevant_set):
 #   plt.imshow(im_data, cmap='gray')
 #   plt.title(f"Index: {abs_index}")
 #   plt.axis('off')
+
+def MNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS):
+    sparsity_levels = [(1 / int(2 ** n)) for n in range(1, 11)]
+
+    X_skewed, y_skewed, X_full, y_full = load_and_skew_mnist(sparsity_levels, seed=42)
+    n_events = len(y_skewed)
+    # Step 2: Identify the 2 least common digits
+    digit_counts = Counter(y_skewed)
+    least_common_digits = [digit for digit, _ in digit_counts.most_common()[-N_REL_CLASSES:]]
+
+    if 0 in VERBOSE_FLAGS:
+        print(f"Running ARED on skewed MNIST dataset with {n_events} events")
+        print(f"Least common digits: {least_common_digits} (marked as relevant)")
+
+    # Generate relevance info
+    relevance_array = generate_is_relevant(y_skewed, set(least_common_digits))
+    y_w_rel = list(zip(y_skewed, relevance_array))
+
+    return X_skewed, y_skewed, X_full, y_full, y_w_rel
+
+
