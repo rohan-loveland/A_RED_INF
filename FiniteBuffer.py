@@ -21,7 +21,8 @@ class FiniteBuffer:
         self.buffer_size = buffer_size
 
         self.num_ball_trees = num_ball_trees
-        self.ball_tree_ratio = ball_tree_ratio
+        self.ball_tree_interval = self.buffer_size * ball_tree_ratio
+        self.non_overlap_interval = self.buffer_size * (1 - ball_tree_ratio) / self.num_ball_trees
         self.ball_trees = []
 
         self.max_abs_idx = 0
@@ -48,9 +49,12 @@ class FiniteBuffer:
 
         if len(self.ball_trees) != 0 and self.ball_trees[0].min_index < self.min_abs_idx:
             self.ball_trees.pop(0)
-            build_ball_tree = True
 
-        elif len(self.ball_trees) == 0 and int(self.buffer_size * self.ball_tree_ratio) <= self.max_abs_idx:
+            # if we have a btree     and # ball trees < max # btree                 and max_abs_idx is greater than max index of newest btree + non overlap interval
+        if len(self.ball_trees) != 0 and len(self.ball_trees) < self.num_ball_trees and self.max_abs_idx >= self.ball_trees[-1].max_index + self.non_overlap_interval:
+            build_ball_tree = True
+             # If we have no btrees    and we have as many points as the btree interval
+        elif len(self.ball_trees) == 0 and self.ball_tree_interval <= self.max_abs_idx:
             build_ball_tree = True
 
         # if ball tree is invalid, forget it and start building new tree
@@ -139,7 +143,7 @@ class FiniteBuffer:
                 full_array = list(self.data_circular_buffer.get_array())
 
             # === 2. Compute absolute window bounds ===
-            window_size = int(self.buffer_size * self.ball_tree_ratio)
+            window_size = self.ball_tree_interval
             abs_min = max(min_abs_snapshot, max_abs_snapshot - window_size)
             abs_max = max_abs_snapshot  # exclusive upper bound
 
