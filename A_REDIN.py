@@ -17,30 +17,31 @@ from main import QS_VAR
 # NOTE: all point data is referred to using absolute indexes (as much as possible, outside of l_buf)
 
 class Subspace_Partition:
-    def __init__(self):
+    def __init__(self,l_buf):
         #                                                                   (l_pt_idxs)          (o_pt_idxs)
         self.cluster_dict = {} # cluster is expected to be in the format of [label, relevance, [abs_idx_l_pt], [abs_idx_o_pt], diameter]
         self.set_of_known_labels = set()
         # cluster key is the cluster's key in cluster_dict - they start at 0 and just keep incrementing as new ones are needed
         # NOTE: they are _not re-used/recycled
         self.next_cluster_key_num = 0
+        self.l_buf = l_buf
 
-    def create_new_cluster(self, label, relevance, l_pt_idxs, o_pt_idxs, labeled_data, QS_VAR):
+    def create_new_cluster(self, label, relevance, l_pt_idxs, o_pt_idxs, QS_VAR):
         self.set_of_known_labels.add(label)
         # can use len(cluster_dict) as cluster_id of new cluster because new cluster goes at end of list
         this_cluster_key_num = self.next_cluster_key_num
-        self.cluster_dict[this_cluster_key_num] = Cluster(label, relevance, l_pt_idxs, o_pt_idxs, labeled_data, this_cluster_key_num, QS_VAR)
+        self.cluster_dict[this_cluster_key_num] = Cluster(label, relevance, l_pt_idxs, o_pt_idxs, this_cluster_key_num, QS_VAR)
         self.next_cluster_key_num += 1
 
-    def remove_pt_from_partition(self, pt_abs_idx, pt_cluster_key):
-        self.cluster_dict[pt_cluster_key].remove_pt_from_partition(pt_abs_idx)
-
-
-
+    def remove_l_pt_from_partition(self, pt_abs_idx, pt_cluster_key):
+        self.cluster_dict[pt_cluster_key].remove_l_pt_from_cluster(pt_abs_idx)
+        if len(self.cluster_dict[pt_cluster_key].l_pt_idxs) == 0:
+            # zero'd out points in cluster so need to remove cluster
+            del self.cluster_dict[pt_cluster_key]
 
 """# Cluster"""
 class Cluster:
-    def __init__(self, label, relevance, l_pts, o_pts, labeled_data, cluster_id, QS_VAR = 0):
+    def __init__(self, label, relevance, l_pts, o_pts, l_buf, cluster_key, QS_VAR = 0):
         self.label = label
         self.relevance = relevance
         self.l_pts = l_pts
@@ -48,32 +49,35 @@ class Cluster:
         self.comp_distance = 0  # QR_VAR=0: Diameter, QS_VAR=1: approx_nn_distance
 
         # cluster id is this cluster's position in Subspace_Partition.cluster_dict
-        self.cluster_id = cluster_id
+        self.cluster_id = cluster_key
         if len(l_pts) > 1 and QS_VAR == 0:
-            self.update_diameter(labeled_data)
+            self.update_diameter(l_buf)
 
         elif len(l_pts) > 1 and QS_VAR == 1:
-            self.update_ave_nn_dist(labeled_data)
+            self.update_ave_nn_dist(l_buf)
 
         elif QS_VAR == 2:
-            self.update_ave_nn_dist_w_o_pts(labeled_data)
+            self.update_ave_nn_dist_w_o_pts(l_buf)
 
-    def add_l_pt(self, abs_idx, labeled_data, QS_VAR = 0):
+    def add_l_pt(self, abs_idx, l_buf, QS_VAR = 0):
         self.l_pts.append(abs_idx)
 
         if QS_VAR == 0:
-            self.update_diameter(labeled_data)
+            self.update_diameter(l_buf)
         elif QS_VAR == 1:
-            self.update_ave_nn_dist(labeled_data)
+            self.update_ave_nn_dist(l_buf)
         elif QS_VAR == 2:
-            self.update_ave_nn_dist_w_o_pts(labeled_data)
+            self.update_ave_nn_dist_w_o_pts(l_buf)
 
     def add_l_pt_no_comp_dist_update(self, abs_idx):
         self.l_pts.append(abs_idx)
 
-    def merge_comp_distances(self, labeled_data, comp_distance_to_add = 0, num_points_from_merged_cluster = 0, QS_VAR = 0):
+    def remove_l_pt_from_cluster(self, pt_abs_idx):
+        del self.l_pts[pt_abs_idx]
+
+    def merge_comp_distances(self, l_buf, comp_distance_to_add = 0, num_points_from_merged_cluster = 0, QS_VAR = 0):
         if QS_VAR == 0:
-            self.update_diameter(labeled_data)
+            self.update_diameter(l_buf)
         if QS_VAR == 1:
             self.comp_distance = (
                                          self.comp_distance * num_points_from_merged_cluster
@@ -83,24 +87,24 @@ class Cluster:
     def add_o_pt(self, abs_idx):
         self.o_pts.append(abs_idx)
 
-    def update_diameter(self, labeled_data):
+    def update_diameter(self, l_buf):
         largest_distance = 0
         for i in range(len(self.l_pts)):
             for j in range(i):
-                data_l_pt_i = labeled_data.get_data(self.l_pts[i])
-                data_l_pt_j = labeled_data.get_data(self.l_pts[j])
+                data_l_pt_i = l_buf.get_pt_data(self.l_pts[i])
+                data_l_pt_j = l_buf.get_pt_data(self.l_pts[j])
                 distance = np.linalg.norm(data_l_pt_i - data_l_pt_j)
                 if largest_distance < distance:
                     largest_distance = distance
         self.comp_distance = largest_distance
 
-    def update_ave_nn_dist(self, labeled_data):
+    def update_ave_nn_dist(self, l_buf):
         if len(self.l_pts) < 2:
             self.comp_distance = 0.0
             return
 
         # Retrieve data for all labeled points in the cluster
-        data_points = np.array([labeled_data.get_data(abs_idx) for abs_idx in self.l_pts])
+        data_points = np.array([l_buf.get_pt_data(abs_idx) for abs_idx in self.l_pts])
 
         # Compute the average nearest neighbor distance
         self.comp_distance = self.average_nearest_neighbor_distance(data_points)
@@ -122,19 +126,20 @@ class Cluster:
         # Compute and return the average
         return np.mean(nearest_distances)
 
-    def update_ave_nn_dist_w_o_pts(self, labeled_data):
-        data_window = labeled_data.data_window
-        # make 2D array of all point data vectors
-        newest_l_pt_ind = self.l_pts[-1]
-        newest_l_pt_data = labeled_data.get_data(newest_l_pt_ind)
-        l_and_o_pt_data = []
-        for l_pt_ind in self.l_pts[:-1]:
-            l_and_o_pt_data.append(labeled_data.get_data(l_pt_ind))
-        for o_pt_ind in self.o_pts[:-1]:
-            l_and_o_pt_data.append(data_window.get_data_point(o_pt_ind))
-        l_and_o_pt_data.append(newest_l_pt_data)
-        l_and_o_pt_data = np.array(l_and_o_pt_data)
-        self.comp_distance = self.average_nearest_neighbor_distance(l_and_o_pt_data)
+    # NOT RE-IMPLEMENTED YET - STILL OLD CODE - CURRENT VERSION DOESN'T HAVE O-PTS
+    # def update_ave_nn_dist_w_o_pts(self, l_buf):
+    #     data_window = l_buf.data_window
+    #     # make 2D array of all point data vectors
+    #     newest_l_pt_ind = self.l_pts[-1]
+    #     newest_l_pt_data = l_buf.get_pt_data(newest_l_pt_ind)
+    #     l_and_o_pt_data = []
+    #     for l_pt_ind in self.l_pts[:-1]:
+    #         l_and_o_pt_data.append(l_buf.get_pt_data(l_pt_ind))
+    #     for o_pt_ind in self.o_pts[:-1]:
+    #         l_and_o_pt_data.append(data_window.get_data_point(o_pt_ind))
+    #     l_and_o_pt_data.append(newest_l_pt_data)
+    #     l_and_o_pt_data = np.array(l_and_o_pt_data)
+    #     self.comp_distance = self.average_nearest_neighbor_distance(l_and_o_pt_data)
 
 """# AREDIN"""
 
