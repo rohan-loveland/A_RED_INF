@@ -17,13 +17,13 @@ class Stats:
         self.recall_baseline = []
 
     def store_ared_query_information(self, ared):
-        num_queries = len(ared.labeled_data.abs_idx_array)
+        num_queries = len(ared.l_buf.abs_idx_array)
         num_queries_by_time = []
 
         highest_idx = ared.data_window.abs_idx_max
 
         last_idx = -1
-        for i, query_abs_idx in enumerate(ared.labeled_data.abs_idx_array):
+        for i, query_abs_idx in enumerate(ared.l_buf.abs_idx_array):
             diff = query_abs_idx - last_idx
             while 0 < diff:
                 num_queries_by_time.append(i + 1)

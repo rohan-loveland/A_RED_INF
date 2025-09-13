@@ -6,23 +6,37 @@ import threading
 from collections import defaultdict
 import heapq
 from sklearn.mixture import GaussianMixture
-import FiniteBuffer
+from FiniteBuffer import FiniteBuffer
 
 from main import QS_VAR
 
 
 """# Subspace Partition"""
+# NOTE: ARED_IN doesn't use o-pts at the moment, but it might in the future, so I'm leaving support
+# for them in
+# NOTE: all point data is referred to using absolute indexes (as much as possible, outside of l_buf)
 
 class Subspace_Partition:
-    def __init__(self):        #                                                                   (l_pts)          (o_pts)
-        self.cluster_list = [] # cluster is expected to be in the format of [label, relevance, [abs_idx_l_pt], [abs_idx_o_pt], diameter]
+    def __init__(self):
+        #                                                                   (l_pt_idxs)          (o_pt_idxs)
+        self.cluster_dict = {} # cluster is expected to be in the format of [label, relevance, [abs_idx_l_pt], [abs_idx_o_pt], diameter]
         self.set_of_known_labels = set()
-        # cluster id is the cluster's index in cluster_list
+        # cluster key is the cluster's key in cluster_dict - they start at 0 and just keep incrementing as new ones are needed
+        # NOTE: they are _not re-used/recycled
+        self.next_cluster_key_num = 0
 
-    def create_new_cluster(self, label, relevance, l_pts, o_pts, labeled_data, QS_VAR):
+    def create_new_cluster(self, label, relevance, l_pt_idxs, o_pt_idxs, labeled_data, QS_VAR):
         self.set_of_known_labels.add(label)
-        # can use len(cluster_list) as cluster_id of new cluster because new cluster goes at end of list
-        self.cluster_list.append(Cluster(label, relevance, l_pts, o_pts, labeled_data, len(self.cluster_list), QS_VAR))
+        # can use len(cluster_dict) as cluster_id of new cluster because new cluster goes at end of list
+        this_cluster_key_num = self.next_cluster_key_num
+        self.cluster_dict[this_cluster_key_num] = Cluster(label, relevance, l_pt_idxs, o_pt_idxs, labeled_data, this_cluster_key_num, QS_VAR)
+        self.next_cluster_key_num += 1
+
+    def remove_pt_from_partition(self, pt_abs_idx, pt_cluster_key):
+        self.cluster_dict[pt_cluster_key].remove_pt_from_partition(pt_abs_idx)
+
+
+
 
 """# Cluster"""
 class Cluster:
@@ -33,7 +47,7 @@ class Cluster:
         self.o_pts = o_pts
         self.comp_distance = 0  # QR_VAR=0: Diameter, QS_VAR=1: approx_nn_distance
 
-        # cluster id is this cluster's position in Subspace_Partition.cluster_list
+        # cluster id is this cluster's position in Subspace_Partition.cluster_dict
         self.cluster_id = cluster_id
         if len(l_pts) > 1 and QS_VAR == 0:
             self.update_diameter(labeled_data)
@@ -124,12 +138,12 @@ class Cluster:
 
 """# AREDIN"""
 
-class AREDIN:
+class ARED:
 
-    def __init__(self, oracle, kappa=1.0, data_window_size=1000, k_comparison_clusters = 1, QS_VAR = 0, REL_PROC_VAR = 0, SM_VAR=0, VERBOSE_FLAGS = []):
+    def __init__(self, oracle, kappa=1.0, l_buf_size=1000, k_closest_pts = 1, QS_VAR = 0, REL_PROC_VAR = 0, SM_VAR=0, VERBOSE_FLAGS = []):
         self.kappa = kappa
-        self.k_comparison_clusters = k_comparison_clusters
-        self.labeled_data = FiniteBuffer(??????????????)
+        self.k_comparison_clusters = k_closest_pts
+        self.l_buf = FiniteBuffer(l_buf_size)
         self.subspace_partition = Subspace_Partition()
         self.oracle = oracle
         self.num_queries = 0 # NEW!  - NEED TO KEEP TRACK OF THESE IN HERE
@@ -144,9 +158,9 @@ class AREDIN:
 
     def process_first_point(self, data_point):
 
-        # Insert data point into data_window
-        self.data_window.insert_data(data_point)
-        data_point_abs_idx = self.data_window.abs_idx_max
+        self.num_pts_streamed = 1
+
+        data_point_abs_idx = self.num_pts_streamed - 1
 
         # START QUERY
         label, relevance = self.query(data_point_abs_idx)
@@ -154,12 +168,9 @@ class AREDIN:
 
         cluster_id = 0
 
-        # Update data_window.assigned_cluster_id_window
-        self.data_window.update_cluster_id_at(0, 0)
-
         # Create new cluster
-        self.labeled_data.add_point(data_point_abs_idx, data_point, cluster_id, label, relevance) #cluster_id = 0
-        self.subspace_partition.create_new_cluster(label, relevance, [data_point_abs_idx], [], self.labeled_data, self.QS_VAR)
+        self.l_buf.insert_pt(data_point, label, relevance) #cluster_id = 0
+        self.subspace_partition.create_new_cluster(label, relevance, [data_point_abs_idx], [], self.l_buf???, self.QS_VAR)?
 
         if 1 in self.verbose_flags:
             print("new cluster:", 0, [0])
@@ -183,8 +194,8 @@ class AREDIN:
             if abs_l_pt_idx_in_larger_id_cluster > self.data_window.abs_idx_min:
                 self.data_window.update_cluster_id_at(abs_l_pt_idx_in_larger_id_cluster, cluster_with_smaller_id.cluster_id)
 
-            idx = self.labeled_data.get_index_of_abs_idx(abs_l_pt_idx_in_larger_id_cluster)
-            self.labeled_data.cluster_id_array[idx] = cluster_with_smaller_id.cluster_id
+            idx = self.l_buf.get_index_of_abs_idx(abs_l_pt_idx_in_larger_id_cluster)
+            self.l_buf.cluster_id_array[idx] = cluster_with_smaller_id.cluster_id
 
             cluster_with_smaller_id.add_l_pt_no_comp_dist_update(abs_l_pt_idx_in_larger_id_cluster)
 
@@ -193,27 +204,27 @@ class AREDIN:
             cluster_with_smaller_id.add_o_pt(abs_o_pt_idx_in_larger_id_cluster)
 
         if QS_VAR == 0:
-            #merge_comp_distances(self, labeled_data, comp_distance_to_add = 0, num_points_from_merged_cluster = 0, QS_VAR = 0):
-            cluster_with_smaller_id.merge_comp_distances(self.labeled_data)
+            #merge_comp_distances(self, l_buf, comp_distance_to_add = 0, num_points_from_merged_cluster = 0, QS_VAR = 0):
+            cluster_with_smaller_id.merge_comp_distances(self.l_buf)
 
         elif QS_VAR == 1:
-            cluster_with_smaller_id.merge_comp_distances(self.labeled_data, cluster_with_larger_id.comp_distance, len(cluster_with_larger_id.l_pts), self.QS_VAR)
+            cluster_with_smaller_id.merge_comp_distances(self.l_buf, cluster_with_larger_id.comp_distance, len(cluster_with_larger_id.l_pts), self.QS_VAR)
 
         # replace old cluster with a cluster with an empty shell
-        self.subspace_partition.cluster_list[cluster_with_larger_id.cluster_id] = Cluster(None, False, [], [], self.labeled_data, cluster_with_larger_id.cluster_id)
+        self.subspace_partition.cluster_dict[cluster_with_larger_id.cluster_id] = Cluster(None, False, [], [], self.l_buf, cluster_with_larger_id.cluster_id)
 
         return cluster_with_smaller_id.cluster_id
 
     def determine_comparison_cluster(self, data_point):
         comparison_cluster_id = None
 
-        # Get top-k closest clusters (cluster_id, distance, idx of point in self.labeled_data)
-        top_k = self.labeled_data.query_top_k_clusters(data_point, self.k_comparison_clusters)
+        # Get top-k closest clusters (cluster_id, distance, idx of point in self.l_buf)
+        top_k = self.l_buf.query_top_k_clusters(data_point, self.k_comparison_clusters)
 
         comparison_cluster_id = top_k[0][0]
 
-        if len(top_k) > 1 and self.subspace_partition.cluster_list[top_k[0][0]].label == self.subspace_partition.cluster_list[top_k[1][0]].label:
-            comparison_cluster_id = self.merge_clusters(self.subspace_partition.cluster_list[top_k[0][0]], self.subspace_partition.cluster_list[top_k[1][0]])
+        if len(top_k) > 1 and self.subspace_partition.cluster_dict[top_k[0][0]].label == self.subspace_partition.cluster_dict[top_k[1][0]].label:
+            comparison_cluster_id = self.merge_clusters(self.subspace_partition.cluster_dict[top_k[0][0]], self.subspace_partition.cluster_dict[top_k[1][0]])
 
         #print(top_k)
 
@@ -221,7 +232,7 @@ class AREDIN:
         relevant_clusters = [
             (cluster_id, dist)
             for cluster_id, dist, lda_idx in top_k
-                if self.subspace_partition.cluster_list[cluster_id].relevance > 0
+                if self.subspace_partition.cluster_dict[cluster_id].relevance > 0
         ]
 
         # Prefer a relevant cluster if found
@@ -234,7 +245,7 @@ class AREDIN:
 
 
     def anomalous(self, data_point, cluster_id, distance):
-        cluster = self.subspace_partition.cluster_list[cluster_id]
+        cluster = self.subspace_partition.cluster_dict[cluster_id]
 
         # Point is anomalous if its distance is greater than the cluster's diameter
         return distance * self.kappa > cluster.comp_distance
@@ -251,7 +262,7 @@ class AREDIN:
         if 1 in self.verbose_flags:
             print("add_o_pt:", abs_idx, cluster_id)
 
-        cluster = self.subspace_partition.cluster_list[cluster_id]
+        cluster = self.subspace_partition.cluster_dict[cluster_id]
         cluster.add_o_pt(abs_idx)
 
         # update data_window.assigned_cluster_id_window
@@ -265,7 +276,7 @@ class AREDIN:
             print("add_l_pt:", abs_idx, cluster_id)
 
         # update cluster in subspace partition
-        cluster = self.subspace_partition.cluster_list[cluster_id]
+        cluster = self.subspace_partition.cluster_dict[cluster_id]
 
         # get label and relevance
         label = cluster.label
@@ -274,19 +285,19 @@ class AREDIN:
         # update data_window.assigned_cluster_id_window
         self.data_window.update_cluster_id_at(abs_idx, cluster_id)
 
-        # update labeled_data to have the new point
-        self.labeled_data.add_point(abs_idx, data_point, cluster_id, label, relevance)
+        # update l_buf to have the new point
+        self.l_buf.add_point(abs_idx, data_point, cluster_id, label, relevance)
 
         # add point to cluster, so diameter gets updated properly
-        cluster.add_l_pt(abs_idx, self.labeled_data, self.QS_VAR)
+        cluster.add_l_pt(abs_idx, self.l_buf, self.QS_VAR)
 
 
     def split(self, data_point, data_point_idx, new_cluster_label, new_cluster_relevance, old_cluster_id):
         if self.SM_VAR == 0: # VORONOI Splitting method
-            new_cluster_id = len(self.subspace_partition.cluster_list)
-            self.labeled_data.add_point(data_point_idx, data_point, new_cluster_id, new_cluster_label, new_cluster_relevance)
+            new_cluster_id = len(self.subspace_partition.cluster_dict)
+            self.l_buf.add_point(data_point_idx, data_point, new_cluster_id, new_cluster_label, new_cluster_relevance)
             self.data_window.update_cluster_id_at(data_point_idx, new_cluster_id)
-            self.subspace_partition.create_new_cluster(new_cluster_label, new_cluster_relevance, [data_point_idx], [], self.labeled_data, self.QS_VAR)
+            self.subspace_partition.create_new_cluster(new_cluster_label, new_cluster_relevance, [data_point_idx], [], self.l_buf, self.QS_VAR)
 
             if 1 in self.verbose_flags:
                 print("new cluster:", new_cluster_id, [data_point_idx])
@@ -296,13 +307,13 @@ class AREDIN:
             old_cluster_o_pts_abs_inds = []
 
             # get o_pt indices
-            o_pts_abs_inds_to_split = self.subspace_partition.cluster_list[old_cluster_id].o_pts
+            o_pts_abs_inds_to_split = self.subspace_partition.cluster_dict[old_cluster_id].o_pts
 
             if (len(o_pts_abs_inds_to_split) == 0):
                 return
 
             # get l_pt indices
-            l_pt_inds = self.subspace_partition.cluster_list[old_cluster_id].l_pts
+            l_pt_inds = self.subspace_partition.cluster_dict[old_cluster_id].l_pts
 
             # o_pt_index is an abs_idx
             for o_pt_index in o_pts_abs_inds_to_split:
@@ -310,7 +321,7 @@ class AREDIN:
 
                 # find the closest labeled point in the exisiting cluster
                 distance_to_existing = min([
-                    np.linalg.norm(o_pt - self.labeled_data.get_data(l_pt_index))
+                    np.linalg.norm(o_pt - self.l_buf.get_data(l_pt_index))
                     for l_pt_index in l_pt_inds
                 ])
 
@@ -329,30 +340,30 @@ class AREDIN:
 
             if 2 in self.verbose_flags:
                 print("Split :")
-                print("old_cluster_id w/ o_pts:", old_cluster_id, old_cluster_o_pts_abs_inds)
-                print("new_cluster_id w/ o_pts:", new_cluster_id, new_cluster_o_pts_abs_inds)
+                print("old_cluster_id w/ o_pt_idxs:", old_cluster_id, old_cluster_o_pts_abs_inds)
+                print("new_cluster_id w/ o_pt_idxs:", new_cluster_id, new_cluster_o_pts_abs_inds)
 
-            # put the o_pts in their correct cluster
-            self.subspace_partition.cluster_list[new_cluster_id].o_pts = new_cluster_o_pts_abs_inds # update o_pts new_cluster
-            self.subspace_partition.cluster_list[old_cluster_id].o_pts = old_cluster_o_pts_abs_inds # update o_pts old_cluster
+            # put the o_pt_idxs in their correct cluster
+            self.subspace_partition.cluster_dict[new_cluster_id].o_pts = new_cluster_o_pts_abs_inds # update o_pt_idxs new_cluster
+            self.subspace_partition.cluster_dict[old_cluster_id].o_pts = old_cluster_o_pts_abs_inds # update o_pt_idxs old_cluster
 
         # if self.SM_VAR == 1: # 2 GMM splitting method
         #
-        #     old_cluster_l_pts_idxes = self.subspace_partition.cluster_list[old_cluster_id].l_pts
-        #     old_cluster_l_pts = [self.labeled_data.get_data(l_pt_idx) for l_pt_idx in old_cluster_l_pts_idxes]
-        #     l_pts = old_cluster_l_pts.append(data_point)
+        #     old_cluster_l_pts_idxes = self.subspace_partition.cluster_dict[old_cluster_id].l_pt_idxs
+        #     old_cluster_l_pts = [self.l_buf.get_data(l_pt_idx) for l_pt_idx in old_cluster_l_pts_idxes]
+        #     l_pt_idxs = old_cluster_l_pts.append(data_point)
         #
         #     # get o_pt indices
-        #     o_pts_abs_inds_to_split = self.subspace_partition.cluster_list[old_cluster_id].o_pts
-        #     o_pts = [self.data_window.get_data_point(o_pt_idx) for o_pt_idx in o_pts_abs_inds_to_split]
+        #     o_pts_abs_inds_to_split = self.subspace_partition.cluster_dict[old_cluster_id].o_pt_idxs
+        #     o_pt_idxs = [self.data_window.get_data_point(o_pt_idx) for o_pt_idx in o_pts_abs_inds_to_split]
         #
-        #     all_pts = list(set(l_pts) | set(o_pts))
+        #     all_pts = list(set(l_pt_idxs) | set(o_pt_idxs))
         #
         #     # Make 2 GMM using the labeled data points from each cluster
         #     gm = GaussianMixture(n_components=2).fit(all_pts)
         #
         #     # Predict where the unlabeled points belong based on the labeled data
-        #     for o_pt_index in o_pts:
+        #     for o_pt_index in o_pt_idxs:
         #         o_pt =
 
 
@@ -361,16 +372,16 @@ class AREDIN:
         if self.REL_PROC_VAR == 0:
             pass
         elif self.REL_PROC_VAR == 1:
-            current_rel_cluster = self.subspace_partition.cluster_list[new_cluster_id]
+            current_rel_cluster = self.subspace_partition.cluster_dict[new_cluster_id]
             additional_cls_to_process = [current_rel_cluster]
 
             while len(additional_cls_to_process) > 0:
                 current_rel_cluster = additional_cls_to_process.pop()
                 if len(current_rel_cluster.o_pts) > 0:
-                    # here we need to check whether the o_pts that have been assigned to this cluster are still part of the relevant class
+                    # here we need to check whether the o_pt_idxs that have been assigned to this cluster are still part of the relevant class
                     current_cluster_label = current_rel_cluster.label
                     # currently this is a new cluster with only 1 l_pt
-                    # so sort o_pts based on distance from that 1 pt, and query in that order, splitting when new label is encountered
+                    # so sort o_pt_idxs based on distance from that 1 pt, and query in that order, splitting when new label is encountered
                     o_pts_abs_inds = current_rel_cluster.o_pts
                     o_pts_data = []
                     dists = []
@@ -392,7 +403,7 @@ class AREDIN:
 
                         else:
                             self.split(o_pt_data,o_pt_abs_ind,new_pt_label,new_pt_relevance, current_rel_cluster.cluster_id)
-                            newest_cluster = self.subspace_partition.cluster_list[-1]
+                            newest_cluster = self.subspace_partition.cluster_dict[-1]
                             self.data_window.update_cluster_id_at(o_pt_abs_ind, newest_cluster.cluster_id)
                             self.data_window.updated_labeled_window(o_pt_abs_ind)
 
@@ -405,10 +416,10 @@ class AREDIN:
                             break
 
 
-    # Removing forgotten o_pts from the subspace partition
+    # Removing forgotten o_pt_idxs from the subspace partition
     def subspace_partition_maintenance(self, forgotten_abs_idx, forgotten_point_cluster_id):
 
-        cluster = self.subspace_partition.cluster_list[forgotten_point_cluster_id]
+        cluster = self.subspace_partition.cluster_dict[forgotten_point_cluster_id]
 
         if 4 in self.verbose_flags:
             print(forgotten_abs_idx, forgotten_point_cluster_id)
@@ -418,8 +429,8 @@ class AREDIN:
     def process_point(self, data_point):
     # CHANGE BIGLY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         if 3 in self.verbose_flags:
-            print("labeled id array:", self.labeled_data.cluster_id_array)
-            print("labeled abs array:", self.labeled_data.abs_idx_array)
+            print("labeled id array:", self.l_buf.cluster_id_array)
+            print("labeled abs array:", self.l_buf.abs_idx_array)
             print("data window assigned id:", self.data_window.assigned_cluster_id_window.get_array())
         # THIS STUFF NEEDS TO GO IN A MAINTENANCE FUNCTION !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         is_forgotten_point_labeled = self.data_window.is_point_labeled_window.get(0) # the '0' here is the index of the oldest element in data window
@@ -437,8 +448,8 @@ class AREDIN:
         # START DETERMINE COMPARISON CLUSTER
 
         comp_cluster_id, distance = self.determine_comparison_cluster(data_point)
-        comp_cluster_relevant = self.subspace_partition.cluster_list[comp_cluster_id].relevance
-        comp_cluster_label = self.subspace_partition.cluster_list[comp_cluster_id].label
+        comp_cluster_relevant = self.subspace_partition.cluster_dict[comp_cluster_id].relevance
+        comp_cluster_label = self.subspace_partition.cluster_dict[comp_cluster_id].label
 
         is_anomalous = self.anomalous(data_point, comp_cluster_id, distance)
 
@@ -454,6 +465,6 @@ class AREDIN:
             else:
                 self.split(data_point, data_point_abs_idx, new_pt_label, new_pt_relevant, comp_cluster_id)
                 if new_pt_relevant:
-                    self.relevance_processing(len(self.subspace_partition.cluster_list) - 1)
+                    self.relevance_processing(len(self.subspace_partition.cluster_dict) - 1)
 
         # POINT PROCESSED

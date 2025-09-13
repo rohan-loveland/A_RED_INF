@@ -34,7 +34,7 @@ K_COMP_CLUST = 2
 QS_VAR: Query Strategy Variants
 |- 0: Diameter check
 |- 1: Approx. Ave Single Linkage Average 
-|- 2: Approx. Ave Single Linkage Average w/ o_pts
+|- 2: Approx. Ave Single Linkage Average w/ o_pt_idxs
 '''
 QS_VAR = 0
 
@@ -81,7 +81,7 @@ VERBOSE_FLAGS: Array of control flags to make ARED loud or quite
 |- 0: Prints dataset info and every 1000th loop of data processing
 |- 1: Prints when new clusters are created and where clusters are inserted
 |- 2: Prints split information, which cluster id and o_pt movements 
-|- 3: Prints the labeled_data cluster_id_array and abs_index_array and data windows assigned_cluster_id buffer
+|- 3: Prints the l_buf cluster_id_array and abs_index_array and data windows assigned_cluster_id buffer
 |- 4: Prints the forgotten_abs_index and forgotten_point_cluster_id during subspace_partition_maintenance 
 |- 5: Prints information about cluster merging 
 '''
@@ -130,7 +130,7 @@ if __name__ == '__main__':
                 data_stream = Data_Stream(X_skewed, y_w_rel)
                 oracle = Oracle(X_skewed, y_w_rel)
 
-                ared = AREDIN(oracle, kappa, DATA_WINDOW_SIZE, K_COMP_CLUST, QS_VAR, REL_PROC_VAR, SM_VAR, VERBOSE_FLAGS)
+                ared = ARED(oracle, kappa, DATA_WINDOW_SIZE, K_COMP_CLUST, QS_VAR, REL_PROC_VAR, SM_VAR, VERBOSE_FLAGS)
 
                 # Start overall timer
                 start_time = time.time()
@@ -154,8 +154,8 @@ if __name__ == '__main__':
                         last_batch_time = current_time
                         if 0 in VERBOSE_FLAGS:
                             print(f"Processing point {i}... (last 1000 points took {time_elapsed:.2f} seconds)")
-                            print(f"Points queried: {len(ared.labeled_data.data_array) - points_queried}, Query Rate: {(len(ared.labeled_data.data_array) - points_queried) / 1000 * 100}%")
-                            points_queried = len(ared.labeled_data.data_array)
+                            print(f"Points queried: {len(ared.l_buf.data_array) - points_queried}, Query Rate: {(len(ared.l_buf.data_array) - points_queried) / 1000 * 100}%")
+                            points_queried = len(ared.l_buf.data_array)
 
                     ared.process_point(data_stream.stream_new_data_point())
 
@@ -172,8 +172,8 @@ if __name__ == '__main__':
                 # num_total_relevant_points = num_pts_streamed * sum(sparsity_levels[-N_REL_CLASSES:])
 
                 num_relevant_points_found = 0
-                for cluster in ared.subspace_partition.cluster_list:
-                    # print(cluster.cluster_id,'# l',len(cluster.l_pts),'#o',len(cluster.o_pts),'label',cluster.label,cluster.relevance,cluster.comp_distance)
+                for cluster in ared.subspace_partition.cluster_dict:
+                    # print(cluster.cluster_id,'# l',len(cluster.l_pt_idxs),'#o',len(cluster.o_pt_idxs),'label',cluster.label,cluster.relevance,cluster.comp_distance)
                     if cluster.relevance:
                         num_relevant_points_found += len(cluster.l_pts)
 
@@ -303,8 +303,8 @@ if __name__ == '__main__':
     #                 time_elapsed = current_time - last_batch_time
     #                 print(f"Processing point {i}... (last 1000 points took {time_elapsed:.2f} seconds)")
     #                 print(
-    #                     f"Points queried: {len(ared.labeled_data.data_array) - points_queried}, Query Rate: {(len(ared.labeled_data.data_array) - points_queried) / 1000 * 100}%")
-    #                 points_queried = len(ared.labeled_data.data_array)
+    #                     f"Points queried: {len(ared.l_buf.data_array) - points_queried}, Query Rate: {(len(ared.l_buf.data_array) - points_queried) / 1000 * 100}%")
+    #                 points_queried = len(ared.l_buf.data_array)
     #                 last_batch_time = current_time
     #
     #             ared.process_point(data_stream.stream_new_data_point())
@@ -318,7 +318,7 @@ if __name__ == '__main__':
     #         if 0 in VERBOSE_FLAGS:
     #             total_elapsed_time = time.time() - start_time_total
     #             print(f"Total streaming time: {total_elapsed_time:.2f} seconds")
-    #             num_queries = len(ared.labeled_data.abs_idx_array)
+    #             num_queries = len(ared.l_buf.abs_idx_array)
     #             num_pts_streamed = ared.data_window.abs_idx_max + 1
     #             print(f"kappa = {kappa}")
     #             print(f"k = {K_COMP_CLUST}")
@@ -327,8 +327,8 @@ if __name__ == '__main__':
     #             print(f"Number of queries: {num_queries}")
     #
     #             num_relevant_points_found = sum(
-    #                 len(c.l_pts) + len(c.o_pts)
-    #                 for c in ared.subspace_partition.cluster_list
+    #                 len(c.l_pt_idxs) + len(c.o_pt_idxs)
+    #                 for c in ared.subspace_partition.cluster_dict
     #                 if c.relevance
     #             )
     #
@@ -415,8 +415,8 @@ if __name__ == '__main__':
     #                 time_elapsed = current_time - last_batch_time
     #                 print(f"Processing point {i}... (last 1000 points took {time_elapsed:.2f} seconds)")
     #                 print(
-    #                     f"Points queried: {len(ared.labeled_data.data_array) - points_queried}, Query Rate: {(len(ared.labeled_data.data_array) - points_queried) / 1000 * 100}%")
-    #                 points_queried = len(ared.labeled_data.data_array)
+    #                     f"Points queried: {len(ared.l_buf.data_array) - points_queried}, Query Rate: {(len(ared.l_buf.data_array) - points_queried) / 1000 * 100}%")
+    #                 points_queried = len(ared.l_buf.data_array)
     #                 last_batch_time = current_time
     #
     #             ared.process_point(data_stream.stream_new_data_point())
@@ -431,7 +431,7 @@ if __name__ == '__main__':
     #             total_elapsed_time = time.time() - start_time_total
     #             print(f"Total streaming time: {total_elapsed_time:.2f} seconds")
     #
-    #             num_queries = len(ared.labeled_data.abs_idx_array)
+    #             num_queries = len(ared.l_buf.abs_idx_array)
     #             num_pts_streamed = ared.data_window.abs_idx_max + 1
     #
     #             print(f"kappa = {kappa}")
@@ -443,10 +443,10 @@ if __name__ == '__main__':
     #             print(f"Number of queries: {num_queries}")
     #
     #             num_relevant_points_found = 0
-    #             for cluster in ared.subspace_partition.cluster_list:
-    #                 # print(cluster.cluster_id,'# l',len(cluster.l_pts),'#o',len(cluster.o_pts),'label',cluster.label,cluster.relevance,cluster.comp_distance)
+    #             for cluster in ared.subspace_partition.cluster_dict:
+    #                 # print(cluster.cluster_id,'# l',len(cluster.l_pt_idxs),'#o',len(cluster.o_pt_idxs),'label',cluster.label,cluster.relevance,cluster.comp_distance)
     #                 if cluster.relevance:
-    #                     num_relevant_points_found += len(cluster.l_pts) + len(cluster.o_pts)
+    #                     num_relevant_points_found += len(cluster.l_pt_idxs) + len(cluster.o_pt_idxs)
     #
     #             print(f"Relevant points found {num_relevant_points_found}")
     #             print(
