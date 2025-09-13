@@ -86,12 +86,12 @@ class FiniteBuffer:
                     distances = [d for _, d in closest_pts]
                     pos = bisect.bisect_left(distances, dist)
                     # just insert at the right position
-                    closest_pts.insert(pos, (self.min_abs_idx + i, dist, self.label_circular_buffer.get(i)))
+                    closest_pts.insert(pos, (self.min_abs_idx + i, dist, self.label_circular_buffer.get(i), self.data_circular_buffer.get(i)))
                 elif dist < closest_pts[-1]:
                     distances = [d for _, d in closest_pts]
                     pos = bisect.bisect_left(distances, dist)
                     # insert and drop the farthest (last) element
-                    closest_pts.insert(pos, (self.min_abs_idx + i, dist, self.label_circular_buffer.get(i)))
+                    closest_pts.insert(pos, (self.min_abs_idx + i, dist, self.label_circular_buffer.get(i), self.data_circular_buffer.get(i)))
                     closest_pts.pop()
 
             # search ball trees
@@ -104,13 +104,13 @@ class FiniteBuffer:
                     distances = [d for _, d in closest_pts]
                     pos = bisect.bisect_left(distances, dist)
                     # just insert at the right position
-                    closest_pts.insert(pos, (ball_tree.min_index + idx, dist, self.label_circular_buffer.get(ball_tree.min_index + idx - self.min_abs_idx)))
+                    closest_pts.insert(pos, (ball_tree.min_index + idx, dist, self.label_circular_buffer.get(ball_tree.min_index + idx - self.min_abs_idx), self.data_circular_buffer.get(ball_tree.min_index + idx - self.min_abs_idx)))
 
                 elif dist < closest_pts[-1][1]:
                     distances = [d for _, d in closest_pts]
                     pos = bisect.bisect_left(distances, dist)
                     # insert and drop the farthest (last) element
-                    closest_pts.insert(pos, (ball_tree.min_index + idx, dist, self.label_circular_buffer.get(ball_tree.min_index + idx - self.min_abs_idx)))
+                    closest_pts.insert(pos, (ball_tree.min_index + idx, dist, self.label_circular_buffer.get(ball_tree.min_index + idx - self.min_abs_idx), self.data_circular_buffer.get(ball_tree.min_index + idx - self.min_abs_idx)))
                     closest_pts.pop()
 
 
@@ -123,12 +123,12 @@ class FiniteBuffer:
                     distances = [d for _, d in closest_pts]
                     pos = bisect.bisect_left(distances, dist)
                     # just insert at the right position
-                    closest_pts.insert(pos, (max_idx_covered_by_btree + i, dist, self.label_circular_buffer.get(i + max_idx_covered_by_btree - self.min_abs_idx)))
+                    closest_pts.insert(pos, (max_idx_covered_by_btree + i, dist, self.label_circular_buffer.get(i + max_idx_covered_by_btree - self.min_abs_idx), self.data_circular_buffer.get(i + max_idx_covered_by_btree - self.min_abs_idx)))
                 elif dist < closest_pts[-1][1]:
                     distances = [d for _, d in closest_pts]
                     pos = bisect.bisect_left(distances, dist)
                     # insert and drop the farthest (last) element
-                    closest_pts.insert(pos, (self.min_abs_idx + i, dist, self.label_circular_buffer.get(i + max_idx_covered_by_btree - self.min_abs_idx)))
+                    closest_pts.insert(pos, (self.min_abs_idx + i, dist, self.label_circular_buffer.get(i + max_idx_covered_by_btree - self.min_abs_idx), self.data_circular_buffer.get(i + max_idx_covered_by_btree - self.min_abs_idx)))
                     closest_pts.pop()
 
         else:
@@ -141,13 +141,13 @@ class FiniteBuffer:
                     distances = [d for _, d in closest_pts]
                     pos = bisect.bisect_left(distances, dist)
                     # just insert at the right position
-                    closest_pts.insert(pos, (i, dist, self.label_circular_buffer.get(i)))
+                    closest_pts.insert(pos, (i, dist, self.label_circular_buffer.get(i), self.data_circular_buffer.get(i)))
 
                 elif dist < closest_pts[-1][1]:
                     distances = [d for _, d in closest_pts]
                     pos = bisect.bisect_left(distances, dist)
                     # insert and drop the farthest (last) element
-                    closest_pts.insert(pos, (i, dist, self.label_circular_buffer.get(i)))
+                    closest_pts.insert(pos, (i, dist, self.label_circular_buffer.get(i), self.data_circular_buffer.get(i)))
                     closest_pts.pop()
 
         # Return in format: list of (pt_abs_idx, dist, label)
