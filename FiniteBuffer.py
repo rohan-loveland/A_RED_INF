@@ -128,7 +128,7 @@ class FiniteBuffer:
                     distances = [d for _, d in closest_pts]
                     pos = bisect.bisect_left(distances, dist)
                     # insert and drop the farthest (last) element
-                    closest_pts.insert(pos, (self.min_abs_idx + i, dist, self.label_circular_buffer.get(i + max_idx_covered_by_btree - self.min_abs_idx), self.data_circular_buffer.get(i + max_idx_covered_by_btree - self.min_abs_idx)))
+                    closest_pts.insert(pos, (max_idx_covered_by_btree + i, dist, self.label_circular_buffer.get(i + max_idx_covered_by_btree - self.min_abs_idx), self.data_circular_buffer.get(i + max_idx_covered_by_btree - self.min_abs_idx)))
                     closest_pts.pop()
 
         else:
