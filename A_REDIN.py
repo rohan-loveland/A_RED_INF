@@ -58,8 +58,6 @@ class Cluster:
         elif len(l_pts) > 1 and QS_VAR == 1:
             self.update_ave_nn_dist(l_buf)
 
-        elif QS_VAR == 2:
-            self.update_ave_nn_dist_w_o_pts(l_buf)
 
     def add_l_pt(self, abs_idx, l_buf, QS_VAR = 0):
         self.l_pts.append(abs_idx)
@@ -129,7 +127,7 @@ class Cluster:
 
 class ARED:
 
-    def __init__(self, oracle, kappa=1.0, l_buf_size=1000, k_closest_pts = 1, QS_VAR = 0, REL_PROC_VAR = 0, SM_VAR=0, VERBOSE_FLAGS = []):
+    def __init__(self, oracle, kappa=1.0, l_buf_size=1000, k_closest_pts = 1, QS_VAR = 0, REL_PROC_VAR = 0, SM_VAR=0, VERBOSE_FLAGS = ()):
         self.kappa = kappa
         self.k_closest_pts = k_closest_pts
         self.l_buf = FiniteBuffer(l_buf_size)
@@ -202,8 +200,8 @@ class ARED:
         # Get k closest points in l_buf [(cluster_key, pt_abs_idx, dist, label, data, rel)]
         k_closest_pts = self.l_buf.find_closest_pts(data_point, self.k_closest_pts)
 
-        if len(k_closest_pts) > 1 and k_closest_pts[0][0] == k_closest_pts[1][0] and k_closest_pts[0][3] != k_closest_pts[1][3]:
-            self.merge_clusters(k_closest_pts[0], k_closest_pts[1])
+        # if len(k_closest_pts) > 1 and k_closest_pts[0][0] == k_closest_pts[1][0] and k_closest_pts[0][3] != k_closest_pts[1][3]:
+        #     self.merge_clusters(k_closest_pts[0], k_closest_pts[1])
 
         #print(k_closest_pts)
 
@@ -223,9 +221,19 @@ class ARED:
         return distance * self.kappa > cluster.comp_distance
 
     def query(self, abs_data_index):
-        self.data_window.updated_labeled_window(abs_data_index)
         # return (label, relevance) from oracle
         return self.oracle.answer_query(abs_data_index)
+
+    def update_structs_w_new_pt(self, abs_idx, data_point, cluster_key, label, relevance):
+        # do maintenance by adding pt to l_buf, forgetting from subspace_partition if necessary
+
+        # update l_buf to have the new point
+        forgotten_pt_info = self.l_buf.insert_pt(abs_idx, data_point, cluster_key, label, relevance)
+        forgotten_pt_cluster_key = forgotten_pt_info[0]
+        forgotten_pt_abs_idx = forgotten_pt_info[3]
+
+        if forgotten_pt_info:
+            self.subspace_partition.remove_l_pt_from_partition(forgotten_pt_abs_idx, forgotten_pt_cluster_key)
 
     def add_l_pt_to_existing_cl(self, abs_idx, data_point, cluster_key):
         # Done (by Ro)
@@ -238,84 +246,21 @@ class ARED:
 
         this_cluster = self.subspace_partition.cluster_dict[cluster_key]
 
-        # update l_buf to have the new point
-        forgotten_pt_info = self.l_buf.insert_pt(abs_idx, data_point, cluster_key, this_cluster.label, this_cluster.relevance)
-        forgotten_pt_cluster_key = forgotten_pt_info[0]
-        forgotten_pt_abs_idx = forgotten_pt_info[3]
-
         # add point to cluster, so diameter gets updated properly
         this_cluster.add_l_pt(abs_idx, self.l_buf, self.QS_VAR)
 
-        if forgotten_pt_info:
-            self.subspace_partition.remove_l_pt_from_partition(forgotten_pt_abs_idx, forgotten_pt_cluster_key)
+        # do maintenance by adding pt to l_buf, forgetting from subspace_partition if necessary
+        self.update_structs_w_new_pt(abs_idx, data_point, cluster_key,this_cluster.label, this_cluster.relevance)
 
     def split(self, data_point, data_point_idx, new_cluster_label, new_cluster_relevance, old_cluster_id):
+        # Done (by Ro Not-Goodly)
         # NOTE: there are no o_pts in this implementation, so "splitting" consists only of creating a new cluster
 
         # make new cluster with 1 new l_pt
         this_cluster_key_num = self.subspace_partition.create_new_cluster(new_cluster_label, new_cluster_relevance, [data_point_idx], [], self.QS_VAR)
 
-        # update l_buf to have the new point
-        forgotten_pt_info = self.l_buf.insert_pt(data_point_idx, data_point, this_cluster_key_num, new_cluster_label, new_cluster_relevance)
-        forgotten_pt_cluster_key = forgotten_pt_info[0]
-        forgotten_pt_abs_idx = forgotten_pt_info[3]
-
-        if forgotten_pt_info:
-            self.subspace_partition.remove_l_pt_from_partition(forgotten_pt_abs_idx, forgotten_pt_cluster_key)
-
-        if self.SM_VAR == 0: # VORONOI Splitting method
-            new_cluster_id = len(self.subspace_partition.cluster_dict)
-            self.l_buf.add_point(data_point_idx, data_point, new_cluster_id, new_cluster_label, new_cluster_relevance)
-            self.data_window.update_cluster_id_at(data_point_idx, new_cluster_id)
-            self.subspace_partition.create_new_cluster(new_cluster_label, new_cluster_relevance, [data_point_idx], [], self.l_buf, self.QS_VAR)
-
-            if 1 in self.verbose_flags:
-                print("new cluster:", new_cluster_id, [data_point_idx])
-
-            # array to hold o_pt indexes during the split process
-            new_cluster_o_pts_abs_inds = []
-            old_cluster_o_pts_abs_inds = []
-
-            # get o_pt indices
-            o_pts_abs_inds_to_split = self.subspace_partition.cluster_dict[old_cluster_id].o_pts
-
-            if (len(o_pts_abs_inds_to_split) == 0):
-                return
-
-            # get l_pt indices
-            l_pt_inds = self.subspace_partition.cluster_dict[old_cluster_id].l_pts
-
-            # o_pt_index is an abs_idx
-            for o_pt_index in o_pts_abs_inds_to_split:
-                o_pt = self.data_window.get_data_point(o_pt_index)
-
-                # find the closest labeled point in the exisiting cluster
-                distance_to_existing = min([
-                    np.linalg.norm(o_pt - self.l_buf.get_data(l_pt_index))
-                    for l_pt_index in l_pt_inds
-                ])
-
-                # get the distance to the labeled point in the new cluster
-                distance_to_new = np.linalg.norm(o_pt - data_point)
-
-                # put the o_pt in the closest cluster of the two
-                if distance_to_existing < distance_to_new:
-                    old_cluster_o_pts_abs_inds.append(o_pt_index)
-                else:
-                    #print(distance_to_new, distance_to_existing, o_pt_index)
-                    new_cluster_o_pts_abs_inds.append(o_pt_index)
-
-                    # update the data window so the assigned_label_id_window is correct for window maintenance later
-                    self.data_window.update_cluster_id_at(o_pt_index, new_cluster_id)
-
-            if 2 in self.verbose_flags:
-                print("Split :")
-                print("old_cluster_id w/ o_pt_idxs:", old_cluster_id, old_cluster_o_pts_abs_inds)
-                print("new_cluster_id w/ o_pt_idxs:", new_cluster_id, new_cluster_o_pts_abs_inds)
-
-            # put the o_pt_idxs in their correct cluster
-            self.subspace_partition.cluster_dict[new_cluster_id].o_pts = new_cluster_o_pts_abs_inds # update o_pt_idxs new_cluster
-            self.subspace_partition.cluster_dict[old_cluster_id].o_pts = old_cluster_o_pts_abs_inds # update o_pt_idxs old_cluster
+        # do maintenance by adding pt to l_buf, forgetting from subspace_partition if necessary
+        self.update_structs_w_new_pt(data_point_idx, data_point, this_cluster_key_num, new_cluster_label, new_cluster_relevance)
 
     def process_point(self, data_point):
 
@@ -338,7 +283,3 @@ class ARED:
                 # this adds pt to l_buf and updates appropriate cluster in subspace partition
             else:
                 self.split(data_point, data_point_abs_idx, new_pt_label, new_pt_relevant, comp_cluster_key)
-
-
-
-        # POINT PROCESSED
