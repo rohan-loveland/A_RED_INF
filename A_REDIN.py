@@ -32,6 +32,7 @@ class Subspace_Partition:
         this_cluster_key_num = self.next_cluster_key_num
         self.cluster_dict[this_cluster_key_num] = Cluster(label, relevance, l_pt_idxs, o_pt_idxs, this_cluster_key_num, QS_VAR)
         self.next_cluster_key_num += 1
+        return this_cluster_key_num
 
     def remove_l_pt_from_partition(self, pt_abs_idx, pt_cluster_key):
         self.cluster_dict[pt_cluster_key].remove_l_pt_from_cluster(pt_abs_idx)
@@ -169,10 +170,9 @@ class ARED:
         # END QUERY
 
         # UPDATE CLUSTER LIST
-        cluster_id = 0
         # Create new cluster
-        self.l_buf.insert_pt(data_point, label, relevance) #cluster_id = 0
-        self.subspace_partition.create_new_cluster(label, relevance, [data_point_abs_idx], [], self.l_buf???, self.QS_VAR)?
+        cluster_key = self.subspace_partition.create_new_cluster(label, relevance, [data_point_abs_idx], [], self.QS_VAR)
+        self.l_buf.insert_pt(data_point, label, relevance, ) #cluster_id = 0
         # UPDATE CLUSTER LIST
 
         if 1 in self.verbose_flags:
