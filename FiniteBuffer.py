@@ -209,7 +209,7 @@ class FiniteBuffer:
                                              self.true_abs_idx_circular_buffer.get(i)))
                     closest_pts.pop()
 
-        # Return in format: list of (cluster_key, pt_abs_idx, dist, label, data, rel)
+        # Return in format: list of (cluster_key, pt_abs_idx, dist, label, data, rel, true_abs_idx)
         return closest_pts
 
     def get_pt_data(self, internal_abs_idx):
