@@ -448,7 +448,7 @@ class ARED:
             label_is_same = (new_pt_label == comp_cluster_label)
             if label_is_same:  # if not a new label
                 self.add_l_pt(data_point_abs_idx, data_point, comp_cluster_key)
-                # this needs to add to l_buf, cluster in subspace partition
+                # this adds pt to l_buf and updates appropriate cluster in subspace partition
             else:
                 self.split(data_point, data_point_abs_idx, new_pt_label, new_pt_relevant, comp_cluster_key)
                 if new_pt_relevant:
