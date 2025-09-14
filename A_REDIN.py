@@ -148,7 +148,7 @@ class ARED:
 
     def __init__(self, oracle, kappa=1.0, l_buf_size=1000, k_closest_pts = 1, QS_VAR = 0, REL_PROC_VAR = 0, SM_VAR=0, VERBOSE_FLAGS = []):
         self.kappa = kappa
-        self.k_comparison_clusters = k_closest_pts
+        self.k_closest_pts = k_closest_pts
         self.l_buf = FiniteBuffer(l_buf_size)
         self.subspace_partition = Subspace_Partition()
         self.oracle = oracle
@@ -172,7 +172,7 @@ class ARED:
         # UPDATE CLUSTER LIST
         # Create new cluster
         cluster_key = self.subspace_partition.create_new_cluster(label, relevance, [data_point_abs_idx], [], self.QS_VAR)
-        self.l_buf.insert_pt(data_point, label, relevance, ) #cluster_id = 0
+        self.l_buf.insert_pt(data_point, cluster_key, label, relevance)
         # UPDATE CLUSTER LIST
 
         if 1 in self.verbose_flags:
@@ -219,32 +219,24 @@ class ARED:
         return cluster_with_smaller_id.cluster_id
 
     def determine_comparison_cluster(self, data_point):
-        comparison_cluster_id = None
+        comparison_point_info = None
+        #                                 0            1           2     3      4     5
+        # Get k closest points in l_buf [(cluster_key, pt_abs_idx, dist, label, data, rel)]
+        k_closest_pts = self.l_buf.find_closest_pts(data_point, self.k_closest_pts)
 
-        # Get top-k closest clusters (cluster_id, distance, idx of point in self.l_buf)
-        top_k = self.l_buf.query_top_k_clusters(data_point, self.k_comparison_clusters)
+        if len(k_closest_pts) > 1 and k_closest_pts[0][0] == k_closest_pts[1][0] and k_closest_pts[0][3] != k_closest_pts[1][3]:
+            # MERGING SHOULD HAPPEN HERE
+            pass
 
-        comparison_cluster_id = top_k[0][0]
+        #print(k_closest_pts)
 
-        if len(top_k) > 1 and self.subspace_partition.cluster_dict[top_k[0][0]].label == self.subspace_partition.cluster_dict[top_k[1][0]].label:
-            comparison_cluster_id = self.merge_clusters(self.subspace_partition.cluster_dict[top_k[0][0]], self.subspace_partition.cluster_dict[top_k[1][0]])
-
-        #print(top_k)
-
-        # Check for relevance in top-k
-        relevant_clusters = [
-            (cluster_id, dist)
-            for cluster_id, dist, lda_idx in top_k
-                if self.subspace_partition.cluster_dict[cluster_id].relevance > 0
-        ]
-
-        # Prefer a relevant cluster if found
-        if relevant_clusters and self.k_comparison_clusters > 1:
-            # Return the closest relevant one
-            return min(relevant_clusters, key=lambda x: x[1])
+        # Check for relevance in k the closest points
+        for pt in k_closest_pts.reversed():
+            if pt[5] == True: # redundant equality statement for confused programmers [making me add more compute cycles :c ]
+                comparison_point_info = pt
 
         # No relevant cluster in top-k, return closest overall
-        return comparison_cluster_id, top_k[0][1]
+        return comparison_point_info
 
 
     def anomalous(self, data_point, cluster_id, distance):
@@ -296,6 +288,7 @@ class ARED:
 
 
     def split(self, data_point, data_point_idx, new_cluster_label, new_cluster_relevance, old_cluster_id):
+
         if self.SM_VAR == 0: # VORONOI Splitting method
             new_cluster_id = len(self.subspace_partition.cluster_dict)
             self.l_buf.add_point(data_point_idx, data_point, new_cluster_id, new_cluster_label, new_cluster_relevance)

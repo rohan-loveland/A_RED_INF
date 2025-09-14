@@ -28,7 +28,7 @@ class MyTestCase(unittest.TestCase):
         for n in range(self.buffer_size*10):
             self.l_buf.insert_pt(self.data_stream.stream_new_data_point(),'0',  True)
         # check abs_index of l_buf
-        self.assertEqual(self.l_buf.max_abs_idx,self.buffer_size*10-1,"failed forgetting test")  # add assertion here
+        self.assertEqual(self.l_buf.max_internal_abs_idx, self.buffer_size * 10 - 1, "failed forgetting test")  # add assertion here
 
 
     def test_find_closest_pt_in_BT(self):
