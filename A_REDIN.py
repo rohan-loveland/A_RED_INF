@@ -222,8 +222,8 @@ class ARED:
 
     def determine_comparison_cluster(self, data_point):
         comparison_point_info = None
-        #                                 0            1           2     3      4     5    6
-        # Get k closest points in l_buf [(cluster_key, pt_abs_idx, dist, label, data, rel, true_abs_idx)]
+        #                                 0            1           2     3      4     5
+        # Get k closest points in l_buf [(cluster_key, pt_abs_idx, dist, label, data, rel)]
         k_closest_pts = self.l_buf.find_closest_pts(data_point, self.k_closest_pts)
 
         if len(k_closest_pts) > 1 and k_closest_pts[0][0] == k_closest_pts[1][0] and k_closest_pts[0][3] != k_closest_pts[1][3]:
@@ -270,18 +270,19 @@ class ARED:
         # Done (by Ro)
         # run when we add a new labeled data point to a known cluster
         # this adds to both l_buf and appropriate cluster in subspace partition
-        # it also
+        # it also performs subspace partition maintenance if necessary
 
         if 1 in self.verbose_flags:
             print("add_l_pt:", abs_idx, cluster_key)
 
+        this_cluster = self.subspace_partition.cluster_dict[cluster_key]
+
         # update l_buf to have the new point
-        forgotten_pt_info = self.l_buf.insert_pt(abs_idx, data_point, cluster_key, label, relevance)
+        forgotten_pt_info = self.l_buf.insert_pt(abs_idx, data_point, cluster_key, this_cluster.label, this_cluster.relevance)
         forgotten_pt_cluster_key = forgotten_pt_info[0]
         forgotten_pt_abs_idx = forgotten_pt_info[3]
 
         # add point to cluster, so diameter gets updated properly
-        this_cluster = self.subspace_partition.cluster_dict[cluster_key]
         this_cluster.add_l_pt(abs_idx, self.l_buf, self.QS_VAR)
 
         if forgotten_pt_info:
