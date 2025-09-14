@@ -86,9 +86,6 @@ class Cluster:
                                          + comp_distance_to_add * len(self.l_pts)
                                  ) / (len(self.l_pts) + num_points_from_merged_cluster)
 
-    # def add_o_pt(self, abs_idx):
-    #     self.o_pts.append(abs_idx)
-
     def update_diameter(self, l_buf):
         largest_distance = 0
         for i in range(len(self.l_pts)):
@@ -166,44 +163,37 @@ class ARED:
             print("new cluster:", 0, [0])
 
     def merge_clusters(self, cluster_key_a, cluster_key_b):
-        if cluster_key_a.cluster_id == cluster_key_b.cluster_id:
-            return cluster_key_a.cluster_id
+        # DONE (by Nate Mediocrely)
 
-        # find the cluster with the smaller id
-        cluster_with_smaller_id = cluster_key_a
-        cluster_with_larger_id = cluster_key_b
-        if cluster_key_b.cluster_id < cluster_key_a.cluster_id:
-            cluster_with_larger_id = cluster_key_a
-            cluster_with_smaller_id = cluster_key_b
+        # failsafe to ensure that we don't try merging the same cluster.
+        if cluster_key_a == cluster_key_b:
+            return self.subspace_partition.cluster_dict[cluster_key_a]
+
+        # get the smaller key (I am not sure that matters)
+        smaller_cluster_key, larger_cluster_key = (
+            (cluster_key_a, cluster_key_b)
+            if cluster_key_a < cluster_key_b
+            else (cluster_key_b, cluster_key_a)
+        )
 
         if 5 in self.verbose_flags:
-            print("Merging clusters:", cluster_with_smaller_id.cluster_id, cluster_with_larger_id.cluster_id)
+            print("Merging clusters:", smaller_cluster_key, larger_cluster_key)
 
-        for abs_l_pt_idx_in_larger_id_cluster in cluster_with_larger_id.l_pts:
-            #update data window
-            if abs_l_pt_idx_in_larger_id_cluster > self.data_window.abs_idx_min:
-                self.data_window.update_cluster_id_at(abs_l_pt_idx_in_larger_id_cluster, cluster_with_smaller_id.cluster_id)
+        cluster_a = self.subspace_partition.cluster_dict[smaller_cluster_key]
+        cluster_b = self.subspace_partition.cluster_dict[larger_cluster_key]
 
-            idx = self.l_buf.get_index_of_abs_idx(abs_l_pt_idx_in_larger_id_cluster)
-            self.l_buf.cluster_id_array[idx] = cluster_with_smaller_id.cluster_id
+        [cluster_a.add_l_pt_no_comp_dist_update(l_pt) for l_pt in cluster_b.l_pts]
 
-            cluster_with_smaller_id.add_l_pt_no_comp_dist_update(abs_l_pt_idx_in_larger_id_cluster)
-
-        for abs_o_pt_idx_in_larger_id_cluster in cluster_with_larger_id.o_pts:
-            self.data_window.update_cluster_id_at(abs_o_pt_idx_in_larger_id_cluster, cluster_with_smaller_id.cluster_id)
-            cluster_with_smaller_id.add_o_pt(abs_o_pt_idx_in_larger_id_cluster)
 
         if QS_VAR == 0:
             #merge_comp_distances(self, l_buf, comp_distance_to_add = 0, num_points_from_merged_cluster = 0, QS_VAR = 0):
-            cluster_with_smaller_id.merge_comp_distances(self.l_buf)
+            cluster_a.merge_comp_distances(self.l_buf, QS_VAR=self.QS_VAR)
 
         elif QS_VAR == 1:
-            cluster_with_smaller_id.merge_comp_distances(self.l_buf, cluster_with_larger_id.comp_distance, len(cluster_with_larger_id.l_pts), self.QS_VAR)
+            cluster_a.merge_comp_distances(self.l_buf, cluster_b.comp_distance, len(cluster_b.l_pts), self.QS_VAR)
 
-        # replace old cluster with a cluster with an empty shell
-        self.subspace_partition.cluster_dict[cluster_with_larger_id.cluster_id] = Cluster(None, False, [], [], self.l_buf, cluster_with_larger_id.cluster_id)
 
-        return cluster_with_smaller_id.cluster_id
+        return cluster_a
 
     def determine_comparison_cluster(self, data_point):
         #DONE (by Nate Goodly)
