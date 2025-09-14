@@ -29,7 +29,7 @@ class Circular_Buffer:
     def get(self, idx):
       """Return the element at the given relative index (0 is the oldest element)."""
       if idx < 0 or idx >= self.count:
-          raise IndexError(f"Index out of bounds in circular buffer. Index: {idx}")
+          raise IndexError(f"Index out of bounds in circular buffer. Index: {idx}. Count: {self.count}")
       return self.buffer[(self.start + idx) % self.size]
 
     def print_array(self):

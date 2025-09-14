@@ -13,7 +13,7 @@ N_REL_CLASSES: Specified number of relevant classes
 |=== High relevance: 8 relevant classes ~25% of data as relevant
 |=== Low relevance: 4 relevant classes ~1.4% of data as relevant`
 '''
-N_REL_CLASSES = 8
+N_REL_CLASSES = 4
 
 '''
 KAPPAS: Paranoia Parameter
@@ -126,6 +126,23 @@ if __name__ == '__main__':
                 # Get data and skew and add relevance
                 X_skewed, y_w_rel = MNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS)
 
+                # X_skewed = 1000*np.random.rand(150000,784)
+                # l_s = np.random.randint(0,9,(150000,1))
+                # rel_s = np.random.randint(0,1,(150000,1))
+                # y_w_rel = np.hstack((l_s,rel_s))
+
+                # X_skewed = np.vstack((X_skewed, X_skewed))
+                # y_w_rel = np.vstack((y_w_rel, y_w_rel))
+                # print(type(X_skewed), X_skewed.shape)
+                # X_skewed = np.repeat(X_skewed, repeats=2, axis=0)
+                # print(type(X_skewed), X_skewed.shape)
+                # y_w_rel = np.repeat(y_w_rel, repeats=2, axis=0)
+                # indices = np.random.permutation(X_skewed.shape[0])
+                # X_skewed = X_skewed[indices]
+                # y_w_rel = y_w_rel[indices]
+                # print(X_skewed.shape)
+
+
                 # Initialize Oracle and ARED ===================================
                 data_stream = Data_Stream(X_skewed, y_w_rel)
                 oracle = Oracle(X_skewed, y_w_rel)
@@ -146,77 +163,85 @@ if __name__ == '__main__':
 
                 points_queried = 1 # already processed first point
                 current_time = time.time()
-                for i in range(2, points_to_process + 1):
+                num_queries_last_1000 = 0
 
+                times = []
+
+                for i in range(2, points_to_process + 1):
                     if i % 1000 == 0:
                         current_time = time.time()
                         time_elapsed = current_time - last_batch_time
                         last_batch_time = current_time
+                        num_queries_this_1000 = ared.num_queries - num_queries_last_1000
                         if 0 in VERBOSE_FLAGS:
                             print(f"Processing point {i}... (last 1000 points took {time_elapsed:.2f} seconds)")
-                            print(f"Points queried: {len(ared.l_buf.data_array) - points_queried}, Query Rate: {(len(ared.l_buf.data_array) - points_queried) / 1000 * 100}%")
-                            points_queried = len(ared.l_buf.data_array)
+                            print(f"Points queried in this 1000: {num_queries_this_1000}, Query Rate: {num_queries_this_1000 / 1000 * 100}%")
+                            times.append(time_elapsed)
+                        num_queries_last_1000 = ared.num_queries
 
                     ared.process_point(data_stream.stream_new_data_point())
 
                 current_time = time.time()
                 time_elapsed = current_time - start_time
-                print(f"Last points took {time_elapsed:.2f} seconds")
+                print(f"Run took {time_elapsed:.2f} seconds")
                 print("ARED COMPLETE")
 
-                num_queries = ared.num_queries
-                num_pts_streamed = ared.num_pts_streamed
-                num_total_points = NUM_POINTS_TO_PROCESS
-                num_total_relevant_points = sum(y_w_rel[:num_pts_streamed,1]) # need to test this...
-                # # Note: THIS NEEDS TO BE REWORKED - IT'S AN APPROXIMATION THAT IS ONLY REALLY TRUE IF ALL PTS ARE STREAMED
-                # num_total_relevant_points = num_pts_streamed * sum(sparsity_levels[-N_REL_CLASSES:])
 
-                num_relevant_points_found = 0
-                for cluster in ared.subspace_partition.cluster_dict:
-                    # print(cluster.cluster_id,'# l',len(cluster.l_pt_idxs),'#o',len(cluster.o_pt_idxs),'label',cluster.label,cluster.relevance,cluster.comp_distance)
-                    if cluster.relevance:
-                        num_relevant_points_found += len(cluster.l_pts)
-
-                stats.precisions.append(num_relevant_points_found / num_queries)  # Relevant points found / total query
-                stats.recalls.append(num_relevant_points_found / num_total_relevant_points)  # Relevant points found / total num rel points
-
-                # Random Baseline
-                # Note: see math explanation
-                # Precision just equals ratio of num_relevant_pts to num_total_points
-                stats.precision_baseline.append(num_total_relevant_points / num_total_points)
-                # Recall just equals query rate
-                query_rate = num_queries/ num_total_points
-                stats.recall_baseline.append(query_rate)
-
-                if 0 in VERBOSE_FLAGS:
-                    total_elapsed_time = time.time() - start_time
-                    print(f"Total streaming time: {total_elapsed_time:.2f} seconds")
-                    print(f"kappa = {kappa}")
-                    print(f"k = {K_COMP_CLUST}")
-                    print(f"Number of points processed = {num_pts_streamed}")
-                    print(f"number of classes discovered {len(ared.subspace_partition.set_of_known_labels)}")
-                    print(f"classes discovered {ared.subspace_partition.set_of_known_labels}")
-                    print(f"Number of queries: {num_queries}")
-                    print(f"Relevant points found {num_relevant_points_found}")
-                    print(f"Relevant recall percentage: {100*num_relevant_points_found/num_total_relevant_points:.2f}%")
-                    print(f"Equivalent Random Relevant recall percentage: {(100*num_queries/num_pts_streamed):.2f}%")
-
-                #only use the first seed for queries over time and query rate
-                # if i == 0:
-                #     stats.store_ared_query_information(ared)
-
-            print(stats.precisions, stats.recalls, stats.precision_baseline, stats.recall_baseline)
-
-            stats.averaged_precision_recalls[-1][1] = sum(stats.precisions) / len(stats.precisions)
-            stats.averaged_precision_recalls[-1][2] = sum(stats.recalls) / len(stats.recalls)
-            stats.averaged_precision_recalls[-1][3] = sum(stats.precision_baseline) / len(stats.precision_baseline)
-            stats.averaged_precision_recalls[-1][4] = sum(stats.recall_baseline) / len(stats.recall_baseline)
-            stats.store_ared_precision_recall(kappa, stats.averaged_precision_recalls[-1][1], stats.averaged_precision_recalls[-1][2], stats.averaged_precision_recalls[-1][3], stats.averaged_precision_recalls[-1][4])
-
-        if MAKE_GRAPHS:
-            stats.graph_all_queries_over_time("./queries_over_time_mnist.pdf")
-            stats.graph_all_query_rates_over_time(100, "./query_rate_over_time_mnist.pdf")
-            stats.plot_precision_recall_curve("./precision_recall_curve_mnist.pdf")
+                plt.plot(times)
+                plt.show()
+        #         num_queries = ared.num_queries
+        #         num_pts_streamed = ared.num_pts_streamed
+        #         num_total_points = NUM_POINTS_TO_PROCESS
+        #         num_total_relevant_points = sum(y_w_rel[:num_pts_streamed,1]) # need to test this...
+        #         # # Note: THIS NEEDS TO BE REWORKED - IT'S AN APPROXIMATION THAT IS ONLY REALLY TRUE IF ALL PTS ARE STREAMED
+        #         # num_total_relevant_points = num_pts_streamed * sum(sparsity_levels[-N_REL_CLASSES:])
+        #
+        #         num_relevant_points_found = 0
+        #         for cluster in ared.subspace_partition.cluster_dict:
+        #             # print(cluster.cluster_id,'# l',len(cluster.l_pt_idxs),'#o',len(cluster.o_pt_idxs),'label',cluster.label,cluster.relevance,cluster.comp_distance)
+        #             if cluster.relevance:
+        #                 num_relevant_points_found += len(cluster.l_pts)
+        #
+        #         stats.precisions.append(num_relevant_points_found / num_queries)  # Relevant points found / total query
+        #         stats.recalls.append(num_relevant_points_found / num_total_relevant_points)  # Relevant points found / total num rel points
+        #
+        #         # Random Baseline
+        #         # Note: see math explanation
+        #         # Precision just equals ratio of num_relevant_pts to num_total_points
+        #         stats.precision_baseline.append(num_total_relevant_points / num_total_points)
+        #         # Recall just equals query rate
+        #         query_rate = num_queries/ num_total_points
+        #         stats.recall_baseline.append(query_rate)
+        #
+        #         if 0 in VERBOSE_FLAGS:
+        #             total_elapsed_time = time.time() - start_time
+        #             print(f"Total streaming time: {total_elapsed_time:.2f} seconds")
+        #             print(f"kappa = {kappa}")
+        #             print(f"k = {K_COMP_CLUST}")
+        #             print(f"Number of points processed = {num_pts_streamed}")
+        #             print(f"number of classes discovered {len(ared.subspace_partition.set_of_known_labels)}")
+        #             print(f"classes discovered {ared.subspace_partition.set_of_known_labels}")
+        #             print(f"Number of queries: {num_queries}")
+        #             print(f"Relevant points found {num_relevant_points_found}")
+        #             print(f"Relevant recall percentage: {100*num_relevant_points_found/num_total_relevant_points:.2f}%")
+        #             print(f"Equivalent Random Relevant recall percentage: {(100*num_queries/num_pts_streamed):.2f}%")
+        #
+        #         #only use the first seed for queries over time and query rate
+        #         # if i == 0:
+        #         #     stats.store_ared_query_information(ared)
+        #
+        #     print(stats.precisions, stats.recalls, stats.precision_baseline, stats.recall_baseline)
+        #
+        #     stats.averaged_precision_recalls[-1][1] = sum(stats.precisions) / len(stats.precisions)
+        #     stats.averaged_precision_recalls[-1][2] = sum(stats.recalls) / len(stats.recalls)
+        #     stats.averaged_precision_recalls[-1][3] = sum(stats.precision_baseline) / len(stats.precision_baseline)
+        #     stats.averaged_precision_recalls[-1][4] = sum(stats.recall_baseline) / len(stats.recall_baseline)
+        #     stats.store_ared_precision_recall(kappa, stats.averaged_precision_recalls[-1][1], stats.averaged_precision_recalls[-1][2], stats.averaged_precision_recalls[-1][3], stats.averaged_precision_recalls[-1][4])
+        #
+        # if MAKE_GRAPHS:
+        #     stats.graph_all_queries_over_time("./queries_over_time_mnist.pdf")
+        #     stats.graph_all_query_rates_over_time(100, "./query_rate_over_time_mnist.pdf")
+        #     stats.plot_precision_recall_curve("./precision_recall_curve_mnist.pdf")
 
     # elif DATA_SOURCE == "EMNIST":
     #     print("Loading EMNIST dataset... ")

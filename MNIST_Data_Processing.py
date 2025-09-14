@@ -1,9 +1,6 @@
-"""# Create Skewed MNIST"""
-
 import numpy as np
 import pickle
 import os
-from sklearn.datasets import fetch_openml
 from collections import Counter
 
 
@@ -18,7 +15,7 @@ def create_skewed_mnist(X, y, sparsity_levels, seed=42):
     digit_indices_idx_0 = np.where(y == str(digit_order[0]))[0]
     num_most_populous_class = len(digit_indices_idx_0)
     print('num_most_populous_class:', num_most_populous_class)
-    sparsity_levels = np.array((sparsity_levels *2 * num_most_populous_class)).astype(int)
+    sparsity_levels = np.array((sparsity_levels * 2 * num_most_populous_class)).astype(int)
     # Note: need *2 because want _all of most populous class, then /2 from there...
     print('sparsity_levels:', sparsity_levels)
     for digit, count in zip(digit_order, sparsity_levels):
@@ -36,35 +33,42 @@ def create_skewed_mnist(X, y, sparsity_levels, seed=42):
     y_skewed = y[indices]
     return X_skewed, y_skewed
 
-def load_and_skew_mnist(sparsity_levels, seed=42, save_path="mnist_full.pkl"):
+def load_and_skew_mnist(sparsity_levels, seed=42, save_path="mnist_replicated_10x.pkl"):
     """
-    Loads MNIST, creates a skewed subset using create_skewed_mnist.
-    Also saves the full MNIST (X, y) to a pickle file.
+    Loads the replicated MNIST dataset (10x duplicated) from a pickle file,
+    creates a skewed subset using create_skewed_mnist, and returns both the skewed
+    and full replicated datasets.
 
     Args:
-        sparsity_levels: list of 10 integers, number of samples per digit.
-        n_events: total number of samples to include in final skewed dataset.
-        save_path: path to store full MNIST data as pickle.
+        sparsity_levels: list of 10 floats, ratio of samples per digit relative to most populous.
+        seed: random seed for reproducibility.
+        save_path: path to the replicated MNIST pickle file (mnist_replicated_10x.pkl).
 
     Returns:
         X_skewed, y_skewed: filtered and shuffled MNIST subset.
-        X, y: full MNIST dataset.
+        X, y: full replicated MNIST dataset (700,000 samples).
     """
-    if os.path.exists(save_path):
-      # Load the data from the .pkl file
-      with open(save_path, "rb") as file:
-        X,y = pickle.load(file)
-      print("\nData loaded successfully:")
-    else:
-      print("Loading MNIST from OpenML...")
-      mnist = fetch_openml("mnist_784", version=1, as_frame=False)
-      X, y = mnist.data, mnist.target  # y is a string array of digits
-      print(f"Full MNIST loaded: {X.shape[0]} samples")
-      # Save full dataset
-      with open(save_path, "wb") as f:
-          pickle.dump((X, y), f)
-      print(f"Full MNIST (X, y) saved to {save_path}")
+    if not os.path.exists(save_path):
+        raise FileNotFoundError(f"Replicated MNIST file not found at {save_path}. "
+                               "Please generate it first using the previous script.")
 
+    # Load the replicated MNIST dataset
+    print(f"Loading replicated MNIST from {save_path}...")
+    with open(save_path, "rb") as file:
+        data = pickle.load(file)
+    
+    # Extract images and labels
+    X = data['images']  # Shape: (700000, 28, 28)
+    y = data['labels']  # Shape: (700000,)
+    
+    # Reshape images to (n_samples, 784) to match original code's expectation
+    X = X.reshape(X.shape[0], -1)  # Shape: (700000, 784)
+    
+    # Convert labels to strings (original code expects string labels)
+    y = y.astype(str)
+    
+    print(f"Replicated MNIST loaded: {X.shape[0]} samples")
+    
     # Create skewed subset
     print(f"Creating skewed subset with sparsity {sparsity_levels}")
     X_skewed, y_skewed = create_skewed_mnist(X, y, sparsity_levels, seed)
@@ -74,14 +78,6 @@ def load_and_skew_mnist(sparsity_levels, seed=42, save_path="mnist_full.pkl"):
 
 def generate_is_relevant(label_list, relevant_set):
     return [label in relevant_set for label in label_list]
-
-# temp storage
-# def showframe(self, abs_index):
-#   im_data = self.data_window.get_data_point(abs_index)
-#   im_data = im_data.reshape([128, 128, 3])
-#   plt.imshow(im_data, cmap='gray')
-#   plt.title(f"Index: {abs_index}")
-#   plt.axis('off')
 
 def MNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS):
     sparsity_levels = [(1 / int(2 ** n)) for n in range(1, 11)]
@@ -100,6 +96,4 @@ def MNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS):
     relevance_array = generate_is_relevant(y_skewed, set(least_common_digits))
     y_w_rel = list(zip(y_skewed, relevance_array))
 
-    return X_skewed, y_skewed, X_full, y_full, y_w_rel
-
-
+    return X_skewed, y_w_rel

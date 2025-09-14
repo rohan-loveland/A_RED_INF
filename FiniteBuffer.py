@@ -23,7 +23,7 @@ class FiniteBuffer:
 
         self.num_ball_trees = num_ball_trees
         self.ball_tree_interval = int(self.buffer_size * ball_tree_ratio)
-        self.non_overlap_interval = self.buffer_size * (1 - ball_tree_ratio) / self.num_ball_trees
+        self.non_overlap_interval = np.ceil(self.buffer_size * (1 - ball_tree_ratio) / self.num_ball_trees)
         self.ball_trees = []
 
         self.max_internal_abs_idx = -1
@@ -34,6 +34,7 @@ class FiniteBuffer:
         self._building_tree = False  # flag so we don’t start multiple builds
 
     def insert_pt(self, X, cluster_key, label, relevance, true_abs_idx):
+
         forgotten_pt_info = None
         build_ball_tree = False
 
@@ -88,7 +89,7 @@ class FiniteBuffer:
             # brute force tail end
             for i in range (min_idx_covered_by_btree - self.min_internal_abs_idx):
                 dist = np.linalg.norm(X - self.data_circular_buffer.get(i))
-                distances = [d for _, d, __, ___ in closest_pts]
+                distances = [d for _, d, __, ___, ____, _____, ______ in closest_pts]
 
                 if len(closest_pts) < k:
 
@@ -101,7 +102,7 @@ class FiniteBuffer:
                                              self.data_circular_buffer.get(i),
                                              self.relevance_circular_buffer.get(i),
                                              self.true_abs_idx_circular_buffer.get(i)))
-                elif dist < closest_pts[-1]:
+                elif dist < closest_pts[-1][2]:
 
                     pos = bisect.bisect_left(distances, dist)
                     # insert and drop the farthest (last) element
@@ -116,43 +117,42 @@ class FiniteBuffer:
 
             # search ball trees
             for ball_tree in self.ball_trees:
-
+                X = X.reshape((1,-1))
                 dist, idx = ball_tree.query(X) # returned value is dist, index
-                idx = idx + ball_tree.min_index
+                idx = idx[0][0] + ball_tree.min_index
 
-                distances = [d for _, d, __, ___ in closest_pts]
+                distances = [d for _, d, __, ___, ____, _____, ______ in closest_pts]
                 pos = bisect.bisect_left(distances, dist)
                 if len(closest_pts) < k:
 
                     # just insert at the right position
-                    closest_pts.insert(pos, (self.cluster_key_circular_buffer.get(ball_tree.min_index + idx - self.min_internal_abs_idx),
+                    closest_pts.insert(pos, (self.cluster_key_circular_buffer.get(idx- self.min_internal_abs_idx),
                                              ball_tree.min_index + idx,
                                              dist,
-                                             self.label_circular_buffer.get(ball_tree.min_index + idx - self.min_internal_abs_idx),
-                                             self.data_circular_buffer.get(ball_tree.min_index + idx - self.min_internal_abs_idx),
-                                             self.relevance_circular_buffer.get(ball_tree.min_index + idx - self.min_internal_abs_idx),
-                                             self.true_abs_idx_circular_buffer.get(ball_tree.min_index + idx - self.min_internal_abs_idx)))
+                                             self.label_circular_buffer.get(idx - self.min_internal_abs_idx),
+                                             self.data_circular_buffer.get(idx - self.min_internal_abs_idx),
+                                             self.relevance_circular_buffer.get(idx - self.min_internal_abs_idx),
+                                             self.true_abs_idx_circular_buffer.get(idx - self.min_internal_abs_idx)))
 
-                elif dist < closest_pts[-1][1]:
+                elif dist < closest_pts[-1][2]:
 
                     # insert and drop the farthest (last) element
-                    closest_pts.insert(pos, (self.cluster_key_circular_buffer.get(ball_tree.min_index + idx - self.min_internal_abs_idx),
+                    closest_pts.insert(pos, (self.cluster_key_circular_buffer.get(idx - self.min_internal_abs_idx),
                                              ball_tree.min_index + idx,
                                              dist,
-                                             self.label_circular_buffer.get(ball_tree.min_index + idx - self.min_internal_abs_idx),
-                                             self.data_circular_buffer.get(ball_tree.min_index + idx - self.min_internal_abs_idx),
-                                             self.cluster_key_circular_buffer.get(ball_tree.min_index + idx - self.min_internal_abs_idx),
-                                             self.relevance_circular_buffer.get(ball_tree.min_index + idx - self.min_internal_abs_idx),
-                                             self.true_abs_idx_circular_buffer.get(ball_tree.min_index + idx - self.min_internal_abs_idx)))
+                                             self.label_circular_buffer.get(idx - self.min_internal_abs_idx),
+                                             self.data_circular_buffer.get(idx - self.min_internal_abs_idx),
+                                             self.relevance_circular_buffer.get(idx - self.min_internal_abs_idx),
+                                             self.true_abs_idx_circular_buffer.get(idx - self.min_internal_abs_idx)))
                     closest_pts.pop()
 
 
             # brute force head end
-            for i in range(self.max_internal_abs_idx - max_idx_covered_by_btree):
-                i = i + 1 # adjust index to not include data[max_inx_covered_by_btree] from bein used (it had it's chance in the ball tree), and to include data[max_abs_idx] *since max_abs_idx is a valid index*
-                dist = np.linalg.norm(X - self.data_circular_buffer.get(i + max_idx_covered_by_btree))
+            for i in range(self.max_internal_abs_idx - (max_idx_covered_by_btree + 1)):
 
-                distances = [d for _, d, __, ___ in closest_pts]
+                dist = np.linalg.norm(X - self.data_circular_buffer.get(i + max_idx_covered_by_btree - self.min_internal_abs_idx))
+
+                distances = [d for _, d, __, ___, ____, _____, ______ in closest_pts]
                 pos = bisect.bisect_left(distances, dist)
 
                 if len(closest_pts) < k:
@@ -166,10 +166,11 @@ class FiniteBuffer:
                                              self.relevance_circular_buffer.get(i + max_idx_covered_by_btree - self.min_internal_abs_idx),
                                              self.true_abs_idx_circular_buffer.get(i + max_idx_covered_by_btree - self.min_internal_abs_idx)))
 
-                elif dist < closest_pts[-1][1]:
+                elif dist < closest_pts[-1][2]:
 
                     # insert and drop the farthest (last) element
-                    closest_pts.insert(pos, (self.cluster_key_circular_buffer.get(i + max_idx_covered_by_btree - self.min_internal_abs_idx),
+                    closest_pts.insert(pos, (self.cluster_key_circular_buffer.get(
+                        i + max_idx_covered_by_btree - self.min_internal_abs_idx),
                                              max_idx_covered_by_btree + i,
                                              dist,
                                              self.label_circular_buffer.get(i + max_idx_covered_by_btree - self.min_internal_abs_idx),
@@ -183,7 +184,7 @@ class FiniteBuffer:
             for i in range(self.max_internal_abs_idx - self.min_internal_abs_idx + 1): #NOTE THIS SHOULD JUST BE from 0 to max_abs_idx (inclusive) since if min_abs_idx != 0 then we should have ball tree/s
 
                 dist = np.linalg.norm(X - self.data_circular_buffer.get(i))
-                distances = [d for _, d, __, ___ in closest_pts]
+                distances = [d for _, d, __, ___, ____, _____, ______ in closest_pts]
                 pos = bisect.bisect_left(distances, dist)
 
                 if len(closest_pts) < k:
@@ -197,7 +198,7 @@ class FiniteBuffer:
                                              self.relevance_circular_buffer.get(i),
                                              self.true_abs_idx_circular_buffer.get(i)))
 
-                elif dist < closest_pts[-1][1]:
+                elif dist < closest_pts[-1][2]:
 
                     # insert and drop the farthest (last) element
                     closest_pts.insert(pos, (self.cluster_key_circular_buffer.get(i),
@@ -209,7 +210,7 @@ class FiniteBuffer:
                                              self.true_abs_idx_circular_buffer.get(i)))
                     closest_pts.pop()
 
-        # Return in format: list of (cluster_key, pt_abs_idx, dist, label, data, rel, true_abs_idx)
+        # Return in format: list of (cluster_key, pt_internal_idx, dist, label, data, rel, true_abs_idx)
         return closest_pts
 
     def get_pt_data(self, internal_abs_idx):
@@ -217,6 +218,10 @@ class FiniteBuffer:
             return self.data_circular_buffer.get(internal_abs_idx - self.min_internal_abs_idx)
 
         return None
+
+    def get_pt_data_abs(self, true_abs_idx):
+        internal_abs_idx = self.true_abs_idx_circular_buffer.get_array().index(true_abs_idx)
+        return self.data_circular_buffer.get(internal_abs_idx)
 
     def _build_new_tree(self):
         """
