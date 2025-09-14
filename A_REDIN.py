@@ -169,7 +169,7 @@ class ARED:
         label, relevance = self.query(data_point_abs_idx)
         # END QUERY
 
-        # UPDATE CLUSTER LIST
+        # UPDATE CLUSTER Dictionary
         # Create new cluster
         cluster_key = self.subspace_partition.create_new_cluster(label, relevance, [data_point_abs_idx], [], self.QS_VAR)
         self.l_buf.insert_pt(data_point, cluster_key, label, relevance)
@@ -441,33 +441,35 @@ class ARED:
             self.subspace_partition_maintenance(forgotten_abs_idx, forgotten_pt_cluster_id)
 
     def process_point(self, data_point):
-        # START MAINTENANCE
-        self.maintenance(data_point)
 
         # START DETERMINE COMPARISON CLUSTER
-        comp_cluster_id, distance = self.determine_comparison_cluster(data_point)
-        comp_cluster_relevant = self.subspace_partition.cluster_dict[comp_cluster_id].relevance
-        comp_cluster_label = self.subspace_partition.cluster_dict[comp_cluster_id].label
+        comp_cluster_key, distance = self.determine_comparison_cluster(data_point)
+        comp_cluster_relevant = self.subspace_partition.cluster_dict[comp_cluster_key].relevance
+        comp_cluster_label = self.subspace_partition.cluster_dict[comp_cluster_key].label
 
-        is_anomalous = self.anomalous(data_point, comp_cluster_id, distance)
+        is_anomalous = self.anomalous(data_point, comp_cluster_key, distance)
 
         data_point_abs_idx = self.num_pts_streamed
 
         # IGNORE O POINTS FOR NOW
         # if not comp_cluster_relevant and not is_anomalous:
-        #     self.add_o_pt(data_point_abs_idx, comp_cluster_id)
+        #     self.add_o_pt(data_point_abs_idx, comp_cluster_key)
 
         # else:
 
         if comp_cluster_relevant or is_anomalous:
             # Query!
             new_pt_label, new_pt_relevant = self.query(data_point_abs_idx)
+
             label_is_same = (new_pt_label == comp_cluster_label)
             if label_is_same:  # if not a new label
-                self.add_l_pt(data_point_abs_idx, data_point, comp_cluster_id)
+                self.add_l_pt(data_point_abs_idx, data_point, comp_cluster_key)
             else:
-                self.split(data_point, data_point_abs_idx, new_pt_label, new_pt_relevant, comp_cluster_id)
+                self.split(data_point, data_point_abs_idx, new_pt_label, new_pt_relevant, comp_cluster_key)
                 if new_pt_relevant:
                     self.relevance_processing(len(self.subspace_partition.cluster_dict) - 1)
+
+        # START MAINTENANCE
+        self.maintenance(data_point)
 
         # POINT PROCESSED
