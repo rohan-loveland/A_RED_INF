@@ -58,8 +58,6 @@ class Cluster:
         elif len(l_pts) > 1 and QS_VAR == 1:
             self.update_ave_nn_dist(l_buf)
 
-        elif QS_VAR == 2:
-            self.update_ave_nn_dist_w_o_pts(l_buf)
 
     def add_l_pt(self, abs_idx, l_buf, QS_VAR = 0):
         self.l_pts.append(abs_idx)
@@ -132,7 +130,7 @@ class Cluster:
 
 class ARED:
 
-    def __init__(self, oracle, kappa=1.0, l_buf_size=1000, k_closest_pts = 1, QS_VAR = 0, REL_PROC_VAR = 0, SM_VAR=0, VERBOSE_FLAGS = []):
+    def __init__(self, oracle, kappa=1.0, l_buf_size=1000, k_closest_pts = 1, QS_VAR = 0, REL_PROC_VAR = 0, SM_VAR=0, VERBOSE_FLAGS = ()):
         self.kappa = kappa
         self.k_closest_pts = k_closest_pts
         self.l_buf = FiniteBuffer(l_buf_size)
@@ -212,8 +210,8 @@ class ARED:
         # Get k closest points in l_buf [(cluster_key, pt_abs_idx, dist, label, data, rel)]
         k_closest_pts = self.l_buf.find_closest_pts(data_point, self.k_closest_pts)
 
-        if len(k_closest_pts) > 1 and k_closest_pts[0][0] == k_closest_pts[1][0] and k_closest_pts[0][3] != k_closest_pts[1][3]:
-            self.merge_clusters(k_closest_pts[0], k_closest_pts[1])
+        # if len(k_closest_pts) > 1 and k_closest_pts[0][0] == k_closest_pts[1][0] and k_closest_pts[0][3] != k_closest_pts[1][3]:
+        #     self.merge_clusters(k_closest_pts[0], k_closest_pts[1])
 
         #print(k_closest_pts)
 
@@ -233,7 +231,6 @@ class ARED:
         return distance * self.kappa > cluster.comp_distance
 
     def query(self, abs_data_index):
-        self.data_window.updated_labeled_window(abs_data_index)
         # return (label, relevance) from oracle
         return self.oracle.answer_query(abs_data_index)
 
