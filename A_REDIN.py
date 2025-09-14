@@ -14,7 +14,9 @@ from main import QS_VAR
 """# Subspace Partition"""
 # NOTE: ARED_IN doesn't use o-pts at the moment, but it might in the future, so I'm leaving support
 # for them in
-# NOTE: all point data is referred to using absolute indexes (as much as possible, outside of l_buf)
+# NOTE: all point data is referred to using absolute indexes including _all the points that have been streamed - _both
+# l_pts and o_pts (the Finite Buffer has an internal conversion that keeps track of just l_pts, since o_pts aren't
+# streamed into it)
 
 class Subspace_Partition:
     def __init__(self,l_buf):
@@ -30,7 +32,7 @@ class Subspace_Partition:
         self.set_of_known_labels.add(label)
         # can use len(cluster_dict) as cluster_id of new cluster because new cluster goes at end of list
         this_cluster_key_num = self.next_cluster_key_num
-        self.cluster_dict[this_cluster_key_num] = Cluster(label, relevance, l_pt_idxs, o_pt_idxs, this_cluster_key_num, QS_VAR)
+        self.cluster_dict[this_cluster_key_num] = Cluster(label, relevance, l_pt_idxs, self.l_buf, this_cluster_key_num, QS_VAR)
         self.next_cluster_key_num += 1
         return this_cluster_key_num
 
@@ -67,8 +69,8 @@ class Cluster:
             self.update_diameter(l_buf)
         elif QS_VAR == 1:
             self.update_ave_nn_dist(l_buf)
-        elif QS_VAR == 2:
-            self.update_ave_nn_dist_w_o_pts(l_buf)
+        # elif QS_VAR == 2:
+        #     self.update_ave_nn_dist_w_o_pts(l_buf)
 
     def add_l_pt_no_comp_dist_update(self, abs_idx):
         self.l_pts.append(abs_idx)
@@ -85,8 +87,8 @@ class Cluster:
                                          + comp_distance_to_add * len(self.l_pts)
                                  ) / (len(self.l_pts) + num_points_from_merged_cluster)
 
-    def add_o_pt(self, abs_idx):
-        self.o_pts.append(abs_idx)
+    # def add_o_pt(self, abs_idx):
+    #     self.o_pts.append(abs_idx)
 
     def update_diameter(self, l_buf):
         largest_distance = 0
@@ -150,7 +152,7 @@ class ARED:
         self.kappa = kappa
         self.k_closest_pts = k_closest_pts
         self.l_buf = FiniteBuffer(l_buf_size)
-        self.subspace_partition = Subspace_Partition()
+        self.subspace_partition = Subspace_Partition(self.l_buf)
         self.oracle = oracle
         self.num_queries = 0 # NEW!  - NEED TO KEEP TRACK OF THESE IN HERE
         self.num_pts_streamed = 0 # NEW!  - NEED TO KEEP TRACK OF THESE IN HERE
@@ -172,7 +174,7 @@ class ARED:
         # UPDATE CLUSTER Dictionary
         # Create new cluster
         cluster_key = self.subspace_partition.create_new_cluster(label, relevance, [data_point_abs_idx], [], self.QS_VAR)
-        self.l_buf.insert_pt(data_point, cluster_key, label, relevance)
+        self.l_buf.insert_pt(data_point_abs_idx,data_point, cluster_key, label, relevance)
         # UPDATE CLUSTER LIST
 
         if 1 in self.verbose_flags:
@@ -251,41 +253,39 @@ class ARED:
         return self.oracle.answer_query(abs_data_index)
 
 
-    # ran when we add a new o_pt to a cluster
-    def add_o_pt(self, abs_idx, cluster_id):
+    # # ran when we add a new o_pt to a cluster
+    # def add_o_pt(self, abs_idx, cluster_id):
+    #
+    #     if 1 in self.verbose_flags:
+    #         print("add_o_pt:", abs_idx, cluster_id)
+    #
+    #     cluster = self.subspace_partition.cluster_dict[cluster_id]
+    #     cluster.add_o_pt(abs_idx)
+    #
+    #     # update data_window.assigned_cluster_id_window
+    #     self.data_window.update_cluster_id_at(abs_idx, cluster_id)
+
+
+    def add_l_pt(self, abs_idx, data_point, cluster_key):
+        # Done (by Ro)
+        # run when we add a new labeled data point to a known cluster
+        # this adds to both l_buf and appropriate cluster in subspace partition
+        # it also
 
         if 1 in self.verbose_flags:
-            print("add_o_pt:", abs_idx, cluster_id)
-
-        cluster = self.subspace_partition.cluster_dict[cluster_id]
-        cluster.add_o_pt(abs_idx)
-
-        # update data_window.assigned_cluster_id_window
-        self.data_window.update_cluster_id_at(abs_idx, cluster_id)
-
-
-    # ran when we add a new labeled data point to a known cluster
-    def add_l_pt(self, abs_idx, data_point, cluster_id):
-
-        if 1 in self.verbose_flags:
-            print("add_l_pt:", abs_idx, cluster_id)
-
-        # update cluster in subspace partition
-        cluster = self.subspace_partition.cluster_dict[cluster_id]
-
-        # get label and relevance
-        label = cluster.label
-        relevance = cluster.relevance
-
-        # update data_window.assigned_cluster_id_window
-        self.data_window.update_cluster_id_at(abs_idx, cluster_id)
+            print("add_l_pt:", abs_idx, cluster_key)
 
         # update l_buf to have the new point
-        self.l_buf.add_point(abs_idx, data_point, cluster_id, label, relevance)
+        forgotten_pt_info = self.l_buf.insert_pt(abs_idx, data_point, cluster_key, label, relevance)
+        forgotten_pt_cluster_key = forgotten_pt_info[0]
+        forgotten_pt_abs_idx = forgotten_pt_info[3]
 
         # add point to cluster, so diameter gets updated properly
-        cluster.add_l_pt(abs_idx, self.l_buf, self.QS_VAR)
+        this_cluster = self.subspace_partition.cluster_dict[cluster_key]
+        this_cluster.add_l_pt(abs_idx, self.l_buf, self.QS_VAR)
 
+        if forgotten_pt_info:
+            self.subspace_partition.remove_l_pt_from_partition(forgotten_pt_abs_idx, forgotten_pt_cluster_key)
 
     def split(self, data_point, data_point_idx, new_cluster_label, new_cluster_relevance, old_cluster_id):
 
@@ -412,33 +412,16 @@ class ARED:
                             break
 
 
-    # Removing forgotten o_pt_idxs from the subspace partition
-    def subspace_partition_maintenance(self, forgotten_abs_idx, forgotten_point_cluster_id):
+    # # Removing forgotten o_pt_idxs from the subspace partition
+    # def subspace_partition_maintenance(self, forgotten_abs_idx, forgotten_point_cluster_id):
+    #
+    #     cluster = self.subspace_partition.cluster_dict[forgotten_point_cluster_id]
+    #
+    #     if 4 in self.verbose_flags:
+    #         print(forgotten_abs_idx, forgotten_point_cluster_id)
+    #
+    #     cluster.o_pts.remove(forgotten_abs_idx)
 
-        cluster = self.subspace_partition.cluster_dict[forgotten_point_cluster_id]
-
-        if 4 in self.verbose_flags:
-            print(forgotten_abs_idx, forgotten_point_cluster_id)
-
-        cluster.o_pts.remove(forgotten_abs_idx)
-
-    def maintenance(self, data_point):
-        if 3 in self.verbose_flags:
-            print("labeled id array:", self.l_buf.cluster_id_array)
-            print("labeled abs array:", self.l_buf.abs_idx_array)
-            print("data window assigned id:", self.data_window.assigned_cluster_id_window.get_array())
-        # THIS STUFF NEEDS TO GO IN A MAINTENANCE FUNCTION !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        is_forgotten_point_labeled = self.data_window.is_point_labeled_window.get(0) # the '0' here is the index of the oldest element in data window
-
-        self.data_window.insert_data(data_point)
-        data_point_abs_idx = self.data_window.abs_idx_max
-
-        forgotten_abs_idx = self.data_window.abs_idx_min - 1
-        forgotten_pt_cluster_id = self.data_window.last_removed_cluster_id
-
-        # if forgotten_pt_cluster_id is NOT None (ie a point has been forgotten) do maintenance
-        if forgotten_pt_cluster_id != None and not is_forgotten_point_labeled:
-            self.subspace_partition_maintenance(forgotten_abs_idx, forgotten_pt_cluster_id)
 
     def process_point(self, data_point):
 
@@ -464,12 +447,10 @@ class ARED:
             label_is_same = (new_pt_label == comp_cluster_label)
             if label_is_same:  # if not a new label
                 self.add_l_pt(data_point_abs_idx, data_point, comp_cluster_key)
+                # this needs to add to l_buf, cluster in subspace partition
             else:
                 self.split(data_point, data_point_abs_idx, new_pt_label, new_pt_relevant, comp_cluster_key)
                 if new_pt_relevant:
                     self.relevance_processing(len(self.subspace_partition.cluster_dict) - 1)
-
-        # START MAINTENANCE
-        self.maintenance(data_point)
 
         # POINT PROCESSED
