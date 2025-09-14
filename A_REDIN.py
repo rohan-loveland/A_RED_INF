@@ -178,16 +178,16 @@ class ARED:
         if 1 in self.verbose_flags:
             print("new cluster:", 0, [0])
 
-    def merge_clusters(self, cluster_a, cluster_b):
-        if cluster_a.cluster_id == cluster_b.cluster_id:
-            return cluster_a.cluster_id
+    def merge_clusters(self, cluster_key_a, cluster_key_b):
+        if cluster_key_a.cluster_id == cluster_key_b.cluster_id:
+            return cluster_key_a.cluster_id
 
         # find the cluster with the smaller id
-        cluster_with_smaller_id = cluster_a
-        cluster_with_larger_id = cluster_b
-        if cluster_b.cluster_id < cluster_a.cluster_id:
-            cluster_with_larger_id = cluster_a
-            cluster_with_smaller_id = cluster_b
+        cluster_with_smaller_id = cluster_key_a
+        cluster_with_larger_id = cluster_key_b
+        if cluster_key_b.cluster_id < cluster_key_a.cluster_id:
+            cluster_with_larger_id = cluster_key_a
+            cluster_with_smaller_id = cluster_key_b
 
         if 5 in self.verbose_flags:
             print("Merging clusters:", cluster_with_smaller_id.cluster_id, cluster_with_larger_id.cluster_id)
@@ -219,28 +219,28 @@ class ARED:
         return cluster_with_smaller_id.cluster_id
 
     def determine_comparison_cluster(self, data_point):
+        #DONE (by Nate Goodly)
         comparison_point_info = None
         #                                 0            1           2     3      4     5    6
         # Get k closest points in l_buf [(cluster_key, pt_abs_idx, dist, label, data, rel, true_abs_idx)]
         k_closest_pts = self.l_buf.find_closest_pts(data_point, self.k_closest_pts)
 
         if len(k_closest_pts) > 1 and k_closest_pts[0][0] == k_closest_pts[1][0] and k_closest_pts[0][3] != k_closest_pts[1][3]:
-            # MERGING SHOULD HAPPEN HERE
-            pass
+            self.merge_clusters(k_closest_pts[0], k_closest_pts[1])
 
         #print(k_closest_pts)
 
         # Check for relevance in k the closest points
         for pt in k_closest_pts.reversed():
-            if pt[5] == True: # redundant equality statement for confused programmers [making me add more compute cycles :c ]
+            if pt[5]: # if pt[5] is true
                 comparison_point_info = pt
 
         # No relevant cluster in top-k, return closest overall
         return comparison_point_info
 
 
-    def anomalous(self, data_point, cluster_id, distance):
-        cluster = self.subspace_partition.cluster_dict[cluster_id]
+    def anomalous(self, data_point, cluster_key, distance):
+        cluster = self.subspace_partition.cluster_dict[cluster_key]
 
         # Point is anomalous if its distance is greater than the cluster's diameter
         return distance * self.kappa > cluster.comp_distance
