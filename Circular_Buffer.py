@@ -1,8 +1,10 @@
 """# Circular Buffer"""
+import numpy as np
+
 
 class Circular_Buffer:
     def __init__(self, size):
-        self.buffer = [None] * size
+        self.buffer = np.full(size, None) #[None] * size
         self.size = size
         self.start = 0  # Points to the oldest element
         self.count = 0  # Number of elements currently in the buffer

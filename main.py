@@ -13,7 +13,7 @@ N_REL_CLASSES: Specified number of relevant classes
 |=== High relevance: 8 relevant classes ~25% of data as relevant
 |=== Low relevance: 4 relevant classes ~1.4% of data as relevant`
 '''
-N_REL_CLASSES = 2
+N_REL_CLASSES = 4
 
 '''
 KAPPAS: Paranoia Parameter
@@ -28,7 +28,7 @@ K_COMP_CLUST: Number of clusters to compare to when looking for relevance
 |- 2 or more: k ARED
 @WARNING: must be 1 or greater
 '''
-K_COMP_CLUST = 4
+K_COMP_CLUST = 2
 
 '''
 QS_VAR: Query Strategy Variants
@@ -57,7 +57,7 @@ window_size: size of the data_window window saved by ARED
 |- int: larger window size means it remembers more data
 |- WARNING: value must be larger than 0
 '''
-DATA_WINDOW_SIZE = 1250
+DATA_WINDOW_SIZE = 2000
 
 '''
 NUM_POINTS_TO_PROCESS: Number of points in dataset to process
@@ -111,6 +111,8 @@ import cv2
 import pandas as pd
 import random
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('TkAgg')  # or 'Qt5Agg' or 'wxAgg' depending on your system
 
 if __name__ == '__main__':
     if DATA_SOURCE == "MNIST":
@@ -149,6 +151,7 @@ if __name__ == '__main__':
                 num_queries_last_1000 = 0
 
                 times = []
+                query_rates = []
 
                 for i in range(2, points_to_process + 1):
                     if i % 1000 == 0:
@@ -160,7 +163,8 @@ if __name__ == '__main__':
                             print(f"Processing point {i}... (last 1000 points took {time_elapsed:.2f} seconds)")
                             print(f"Points queried in this 1000: {num_queries_this_1000}, Query Rate: {num_queries_this_1000 / 1000 * 100}%")
                             times.append(time_elapsed)
-                        num_queries_last_1000 = ared.num_queries
+                            query_rates.append(num_queries_this_1000)
+                            num_queries_last_1000 = ared.num_queries
 
                     ared.process_point(data_stream.stream_new_data_point())
 
@@ -169,8 +173,10 @@ if __name__ == '__main__':
                 print(f"Run took {time_elapsed:.2f} seconds")
                 print("ARED COMPLETE")
 
-
-                plt.plot(times)
+                times_max = max(times)
+                query_rates_max = max(query_rates)
+                plt.plot(np.array(times)/times_max)
+                plt.plot(np.array(query_rates)/query_rates_max)
                 plt.show()
         #         num_queries = ared.num_queries
         #         num_pts_streamed = ared.num_pts_streamed

@@ -265,7 +265,7 @@ class FiniteBuffer:
             self.num_ball_trees_completed += 1
 
             if self.num_ball_trees_completed < self.num_ball_trees:
-                print("BUILD UP PERIOD: ", len(self.ball_trees), self.max_internal_abs_idx)
+                print("BUILD UP PERIOD: ", len(self.ball_trees), self.max_internal_abs_idx, self.true_abs_idx_circular_buffer.get(self.max_internal_abs_idx))
 
             if self.num_ball_trees_completed == self.num_ball_trees:
-                print("STEADY STATE REACHED: ", len(self.ball_trees), self.max_internal_abs_idx)
+                print("STEADY STATE REACHED: ", len(self.ball_trees), self.max_internal_abs_idx, self.true_abs_idx_circular_buffer.get(self.max_internal_abs_idx))
