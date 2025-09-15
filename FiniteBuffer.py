@@ -26,6 +26,8 @@ class FiniteBuffer:
         self.non_overlap_interval = np.ceil(self.buffer_size * (1 - ball_tree_ratio) / self.num_ball_trees)
         self.ball_trees = []
 
+        self.num_ball_trees_completed = 0 # DEBUGGGG
+
         self.max_internal_abs_idx = -1
         self.min_internal_abs_idx = 0
 
@@ -260,3 +262,6 @@ class FiniteBuffer:
 
         finally:
             self._building_tree = False
+            self.num_ball_trees_completed += 1
+            if self.num_ball_trees_completed == self.num_ball_trees:
+                print("STEADY STATE REACHED: ", len(self.ball_trees), self.max_internal_abs_idx)
