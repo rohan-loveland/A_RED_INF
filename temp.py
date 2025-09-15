@@ -2,6 +2,52 @@ import numpy as np
 import pickle
 import os
 import struct
+from sklearn.datasets import fetch_openml
+
+
+def load_and_replicate_mnist(save_path="mnist_replicated_10x.pkl"):
+    """
+    Loads the MNIST dataset using sklearn, duplicates all samples 10 times,
+    and saves to a pickle file.
+
+    Args:
+        save_path: Path to save the replicated MNIST dataset pickle file.
+
+    Returns:
+        None (saves replicated dataset to pickle file).
+    """
+    if os.path.exists(save_path):
+        print(f"Replicated MNIST already exists at {save_path}. Skipping...")
+        return
+
+    print("Loading MNIST dataset from sklearn...")
+
+    # Load MNIST dataset using sklearn
+    mnist = fetch_openml('mnist_784', version=1, cache=True, as_frame=False)
+    all_images = mnist.data  # Shape: (70000, 784)
+    all_labels = mnist.target  # Shape: (70000,)
+
+    print(f"Original MNIST loaded: {all_images.shape[0]} samples")
+
+    # Replicate 10 times
+    all_images_replicated = np.tile(all_images, (10, 1))  # Shape: (700000, 784)
+    all_labels_replicated = np.tile(all_labels, (10,))  # Shape: (700000,)
+
+    # Normalize images to [0, 1] (sklearn's MNIST is already flattened but not normalized)
+    X_replicated = all_images_replicated / 255.0  # Shape: (700000, 784)
+    y_replicated = all_labels_replicated.astype(str)  # Convert to strings
+
+    # Save replicated dataset
+    mnist_replicated = {
+        'images': X_replicated,
+        'labels': y_replicated
+    }
+    with open(save_path, 'wb') as f:
+        pickle.dump(mnist_replicated, f)
+    print(f"Replicated MNIST (10x) saved to {save_path}")
+    print(f"Replicated dataset shape: images {X_replicated.shape}, labels {y_replicated.shape}")
+
+
 
 def load_emnist(data_dir="./gzip", save_path="emnist.pkl"):
     """
@@ -78,3 +124,4 @@ def load_emnist(data_dir="./gzip", save_path="emnist.pkl"):
 
 if __name__ == "__main__":
     load_emnist()
+    load_and_replicate_mnist()

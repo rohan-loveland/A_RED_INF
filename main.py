@@ -13,7 +13,7 @@ N_REL_CLASSES: Specified number of relevant classes
 |=== High relevance: 8 relevant classes ~25% of data as relevant
 |=== Low relevance: 4 relevant classes ~1.4% of data as relevant`
 '''
-N_REL_CLASSES = 4
+N_REL_CLASSES = 6
 
 '''
 KAPPAS: Paranoia Parameter
@@ -57,7 +57,7 @@ window_size: size of the data_window window saved by ARED
 |- int: larger window size means it remembers more data
 |- WARNING: value must be larger than 0
 '''
-DATA_WINDOW_SIZE = 2000
+DATA_WINDOW_SIZE = 1000
 
 '''
 NUM_POINTS_TO_PROCESS: Number of points in dataset to process
