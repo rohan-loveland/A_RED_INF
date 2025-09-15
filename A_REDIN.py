@@ -215,8 +215,8 @@ class ARED:
         k_closest_pts = self.l_buf.find_closest_pts(data_point, self.k_closest_pts)
         comparison_point_info = k_closest_pts[0]
 
-        #if len(k_closest_pts) > 1 and k_closest_pts[0][0] == k_closest_pts[1][0] and k_closest_pts[0][3] != k_closest_pts[1][3]:
-        #    self.merge_clusters(k_closest_pts[0], k_closest_pts[1])
+        if len(k_closest_pts) > 1 and k_closest_pts[0][0] == k_closest_pts[1][0] and k_closest_pts[0][3] != k_closest_pts[1][3]:
+           self.merge_clusters(k_closest_pts[0], k_closest_pts[1])
 
         #print(k_closest_pts)
 

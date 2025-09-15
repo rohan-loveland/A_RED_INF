@@ -13,7 +13,7 @@ N_REL_CLASSES: Specified number of relevant classes
 |=== High relevance: 8 relevant classes ~25% of data as relevant
 |=== Low relevance: 4 relevant classes ~1.4% of data as relevant`
 '''
-N_REL_CLASSES = 4
+N_REL_CLASSES = 2
 
 '''
 KAPPAS: Paranoia Parameter
@@ -28,7 +28,7 @@ K_COMP_CLUST: Number of clusters to compare to when looking for relevance
 |- 2 or more: k ARED
 @WARNING: must be 1 or greater
 '''
-K_COMP_CLUST = 2
+K_COMP_CLUST = 4
 
 '''
 QS_VAR: Query Strategy Variants
@@ -57,7 +57,7 @@ window_size: size of the data_window window saved by ARED
 |- int: larger window size means it remembers more data
 |- WARNING: value must be larger than 0
 '''
-DATA_WINDOW_SIZE = 1000
+DATA_WINDOW_SIZE = 1250
 
 '''
 NUM_POINTS_TO_PROCESS: Number of points in dataset to process
@@ -125,23 +125,6 @@ if __name__ == '__main__':
 
                 # Get data and skew and add relevance
                 X_skewed, y_w_rel = MNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS)
-
-                # X_skewed = 1000*np.random.rand(150000,784)
-                # l_s = np.random.randint(0,9,(150000,1))
-                # rel_s = np.random.randint(0,1,(150000,1))
-                # y_w_rel = np.hstack((l_s,rel_s))
-
-                # X_skewed = np.vstack((X_skewed, X_skewed))
-                # y_w_rel = np.vstack((y_w_rel, y_w_rel))
-                # print(type(X_skewed), X_skewed.shape)
-                # X_skewed = np.repeat(X_skewed, repeats=2, axis=0)
-                # print(type(X_skewed), X_skewed.shape)
-                # y_w_rel = np.repeat(y_w_rel, repeats=2, axis=0)
-                # indices = np.random.permutation(X_skewed.shape[0])
-                # X_skewed = X_skewed[indices]
-                # y_w_rel = y_w_rel[indices]
-                # print(X_skewed.shape)
-
 
                 # Initialize Oracle and ARED ===================================
                 data_stream = Data_Stream(X_skewed, y_w_rel)
