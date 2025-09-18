@@ -1,0 +1,90 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import make_blobs
+
+
+def generate_synthetic_dataset_with_relevance(n_least_populous, seed=42):
+    """
+    Generates a 2D dataset with 10 well-separated classes and a relevance vector
+    marking the n least populous classes with 1s. Concatenates y and relevance into a 2D array.
+
+    Args:
+        n_least_populous: Number of least populous classes to mark as relevant (1s).
+        seed: Random seed for reproducibility.
+
+    Returns:
+        X: Feature matrix (n_samples, 2).
+        y_w_rel: 2D array (n_samples, 2) with class labels in first column and relevance in second.
+    """
+    # Define the number of classes
+    num_classes = 10
+
+    # Define the number of samples for each class
+    # Start with 512 for class 0, halving each time
+    samples_per_class = [100000 // (2 ** i) for i in range(num_classes)]
+    print("Samples per class:", samples_per_class)
+
+    # Generate random centers with good separation
+    np.random.seed(seed)
+    min_distance = 10.0  # Minimum distance between centers for good separation
+    centers = []
+
+    # Generate first center
+    centers.append(np.random.uniform(-20, 20, 2))
+
+    # Generate remaining centers, ensuring minimum distance
+    for _ in range(num_classes - 1):
+        while True:
+            new_center = np.random.uniform(-20, 20, 2)
+            # Check distance to all existing centers
+            too_close = False
+            for existing_center in centers:
+                distance = np.linalg.norm(new_center - existing_center)
+                if distance < min_distance:
+                    too_close = True
+                    break
+            if not too_close:
+                centers.append(new_center)
+                break
+    centers = np.array(centers)
+
+    # Generate the dataset
+    X, y = make_blobs(n_samples=samples_per_class, centers=centers, cluster_std=1.0, random_state=seed)
+
+    # Identify the n least populous classes
+    # Since samples_per_class is [512, 256, ..., 1], least populous are highest indices
+    least_populous_classes = list(range(num_classes - n_least_populous, num_classes))
+    print(f"Least populous classes (marked as relevant): {least_populous_classes}")
+
+    # Generate relevance vector (1 for least populous classes, 0 otherwise)
+    relevance = np.isin(y, least_populous_classes).astype(int)
+
+    # Concatenate y and relevance into a 2D array
+    y_w_rel = np.column_stack((y, relevance))
+
+    # Plot the dataset
+    plt.figure(figsize=(10, 10))
+    for class_id in range(num_classes):
+        mask = y == class_id
+        # Use different markers for relevant vs non-relevant classes
+        marker = 'o' if class_id in least_populous_classes else 's'
+        plt.scatter(X[mask, 0], X[mask, 1], label=f'Class {class_id} (Relevant: {class_id in least_populous_classes})',
+                    alpha=0.7, marker=marker)
+
+    plt.title(f'2D Dataset with {n_least_populous} Least Populous Classes Marked')
+    plt.xlabel('Feature 1')
+    plt.ylabel('Feature 2')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+    return X, y_w_rel
+
+
+# Example usage
+if __name__ == "__main__":
+    n_least_populous = 2  # Example: mark 2 least populous classes
+    X, y_w_rel = generate_synthetic_dataset_with_relevance(n_least_populous)
+    print("Dataset shape:", X.shape)
+    print("y_w_rel shape:", y_w_rel.shape)
+    print("Number of relevant samples (1s):", np.sum(y_w_rel[:, 1]))
