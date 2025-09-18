@@ -139,8 +139,10 @@ class ARED:
         self.l_buf = FiniteBuffer(l_buf_size)
         self.subspace_partition = Subspace_Partition(self.l_buf)
         self.oracle = oracle
-        self.num_queries = 0 # NEW!  - NEED TO KEEP TRACK OF THESE IN HERE
-        self.num_pts_streamed = 0 # NEW!  - NEED TO KEEP TRACK OF THESE IN HERE
+        self.num_queries = 0
+        self.anom_queries = 0 # queries arising from kappa comparison - NOT IMPLEMENTED YET
+        self.rel_queries = 0 # queries arising from relevance assignment- NOT IMPLEMENTED YET
+        self.num_pts_streamed = 0
         # Note: this is equivalent to abs_idx + 1
         # VARIATION CONTROL FLAGS
         self.QS_VAR = QS_VAR # {0: diameter, 1: Ave Single Link Dist in Cluster
@@ -188,6 +190,7 @@ class ARED:
         cluster_b = self.subspace_partition.cluster_dict[larger_cluster_key]
 
         [cluster_a.add_l_pt_no_comp_dist_update(l_pt) for l_pt in cluster_b.l_pts]
+        # RL - or "cluster_a.l_pt_idxs += cluster_b_lpt_idxs"?
 
         l_buf_key_array = self.l_buf.cluster_key_circular_buffer.get_array()
         for i in range(l_buf_key_array):

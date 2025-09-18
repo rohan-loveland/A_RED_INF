@@ -67,6 +67,11 @@ def EMNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, save_path="emnist.pkl"):
     # Identify the N_REL_CLASSES least common classes
     class_counts = Counter(y)
     least_common_classes = [cls for cls, _ in class_counts.most_common()[-N_REL_CLASSES:]]
+    lc_class_freqs = [f for _, f in class_counts.most_common()[-N_REL_CLASSES:]]
+    num_relevant_points = sum(lc_class_freqs)
+    num_points_total = X.shape[0]
+    print(f"Number of classes: {len(set(y))}, number of relevant classes: {N_REL_CLASSES}")
+    print(f"% of relevant class points = {100*num_relevant_points/num_points_total:.2f}")
 
     if 0 in VERBOSE_FLAGS:
         print(f"Running ARED on EMNIST dataset with {n_events} events")
@@ -75,6 +80,7 @@ def EMNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, save_path="emnist.pkl"):
     # Generate relevance info
     relevance_array = generate_is_relevant(y, set(least_common_classes))
     y_w_rel = list(zip(y, relevance_array))
+    # y_w_rel = np.column_stack((y, np.array(relevance_array),))
 
     return X, y_w_rel
 
