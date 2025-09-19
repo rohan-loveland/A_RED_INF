@@ -335,12 +335,13 @@ class ARED:
         data_point_abs_idx = self.num_pts_streamed - 1
 
         # START DETERMINE COMPARISON CLUSTER
-        comp_cluster_key, pt_abs_idx, distance, label, data, relevance, true_abs_idx = self.determine_comparison_cluster(data_point)
+        #  0              1                2         3      4     5          6
+        #  cluster_key,   pt_internal_idx, dist,     label, data, rel,       true_abs_idxz
+        comp_cluster_key, pt_internal_idx, distance, label, data, relevance, true_abs_idx = self.determine_comparison_cluster(data_point)
         comp_cluster_relevant = self.subspace_partition.cluster_dict[comp_cluster_key].relevance
         comp_cluster_label = self.subspace_partition.cluster_dict[comp_cluster_key].label
 
         is_anomalous = self.anomalous(data_point, comp_cluster_key, distance)
-
 
         if comp_cluster_relevant or is_anomalous:
             # Query!

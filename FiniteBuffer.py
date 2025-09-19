@@ -91,7 +91,7 @@ class FiniteBuffer:
             # brute force tail end
             for i in range (min_idx_covered_by_btree - self.min_internal_abs_idx):
                 dist = np.linalg.norm(X - self.data_circular_buffer.get(i))
-                distances = [d for _, d, __, ___, ____, _____, ______ in closest_pts]
+                distances = [d for _, __, d, ___, ____, _____, ______ in closest_pts]
 
                 dist = np.linalg.norm(X - self.data_circular_buffer.get(i))
                 distances = [d for _, d, __, ___, ____, _____, ______ in closest_pts]
@@ -111,11 +111,11 @@ class FiniteBuffer:
             for ball_tree in self.ball_trees:
                 X = X.reshape((1,-1))
                 dist, idx = ball_tree.query(X, k) # returned value is dist, index
-                for i in range(len(closest_pts)):
+                for i in range(len(dist)):
                     idx = idx[0][i] + ball_tree.min_index
                     dist = dist[0][i]
 
-                    distances = [d for _, d, __, ___, ____, _____, ______ in closest_pts]
+                    distances = [d for _, __, d, ___, ____, _____, ______ in closest_pts]
                     pos = bisect.bisect_left(distances, dist)
 
                     if pos < k:
@@ -127,8 +127,8 @@ class FiniteBuffer:
                                                  self.relevance_circular_buffer.get(idx - self.min_internal_abs_idx),
                                                  self.true_abs_idx_circular_buffer.get(idx - self.min_internal_abs_idx)))
 
-                        if len(closest_pts) > k:
-                            closest_pts.pop()
+                    if len(closest_pts) > k:
+                        closest_pts.pop()
 
 
             # brute force head end
@@ -136,7 +136,7 @@ class FiniteBuffer:
 
                 dist = np.linalg.norm(X - self.data_circular_buffer.get(i + max_idx_covered_by_btree - self.min_internal_abs_idx))
 
-                distances = [d for _, d, __, ___, ____, _____, ______ in closest_pts]
+                distances = [d for _, __, d, ___, ____, _____, ______ in closest_pts]
                 pos = bisect.bisect_left(distances, dist)
 
                 if pos < k:
@@ -157,7 +157,7 @@ class FiniteBuffer:
             for i in range(self.max_internal_abs_idx - self.min_internal_abs_idx + 1): #NOTE THIS SHOULD JUST BE from 0 to max_abs_idx (inclusive) since if min_abs_idx != 0 then we should have ball tree/s
 
                 dist = np.linalg.norm(X - self.data_circular_buffer.get(i))
-                distances = [d for _, d, __, ___, ____, _____, ______ in closest_pts]
+                distances = [d for _, __, d, ___, ____, _____, ______ in closest_pts]
                 pos = bisect.bisect_left(distances, dist)
 
                 if pos < k:
@@ -168,6 +168,7 @@ class FiniteBuffer:
                                                  self.data_circular_buffer.get(i),
                                                  self.relevance_circular_buffer.get(i),
                                                  self.true_abs_idx_circular_buffer.get(i)))
+
                     if len(closest_pts) > k:
                         closest_pts.pop()
 
