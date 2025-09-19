@@ -110,23 +110,25 @@ class FiniteBuffer:
             # search ball trees
             for ball_tree in self.ball_trees:
                 X = X.reshape((1,-1))
-                dist, idx = ball_tree.query(X) # returned value is dist, index
-                idx = idx[0][0] + ball_tree.min_index
+                dist, idx = ball_tree.query(X, k) # returned value is dist, index
+                for i in range(len(closest_pts)):
+                    idx = idx[0][i] + ball_tree.min_index
+                    dist = dist[0][i]
 
-                distances = [d for _, d, __, ___, ____, _____, ______ in closest_pts]
-                pos = bisect.bisect_left(distances, dist)
+                    distances = [d for _, d, __, ___, ____, _____, ______ in closest_pts]
+                    pos = bisect.bisect_left(distances, dist)
 
-                if pos < k:
-                    closest_pts.insert(pos, (self.cluster_key_circular_buffer.get(idx - self.min_internal_abs_idx),
-                                             ball_tree.min_index + idx,
-                                             dist,
-                                             self.label_circular_buffer.get(idx - self.min_internal_abs_idx),
-                                             self.data_circular_buffer.get(idx - self.min_internal_abs_idx),
-                                             self.relevance_circular_buffer.get(idx - self.min_internal_abs_idx),
-                                             self.true_abs_idx_circular_buffer.get(idx - self.min_internal_abs_idx)))
+                    if pos < k:
+                        closest_pts.insert(pos, (self.cluster_key_circular_buffer.get(idx - self.min_internal_abs_idx),
+                                                 ball_tree.min_index + idx,
+                                                 dist,
+                                                 self.label_circular_buffer.get(idx - self.min_internal_abs_idx),
+                                                 self.data_circular_buffer.get(idx - self.min_internal_abs_idx),
+                                                 self.relevance_circular_buffer.get(idx - self.min_internal_abs_idx),
+                                                 self.true_abs_idx_circular_buffer.get(idx - self.min_internal_abs_idx)))
 
-                    if len(closest_pts) > k:
-                        closest_pts.pop()
+                        if len(closest_pts) > k:
+                            closest_pts.pop()
 
 
             # brute force head end

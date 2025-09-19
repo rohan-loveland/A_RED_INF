@@ -27,8 +27,8 @@ def plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visua
     for cluster_id, cluster in cluster_dict.items():
         # Assume cluster stores point indices (adjust based on actual cluster object)
         # Replace with actual attribute accessing point indices/data in your cluster object
-        if hasattr(cluster, 'point_indices'):
-            indices = cluster.point_indices
+        if hasattr(cluster, 'l_pt_idxs'):
+            indices = cluster.l_pt_idxs
         else:
             # Fallback: assume cluster stores data directly (modify as needed)
             print(f"Warning: cluster.point_indices not found for cluster {cluster_id}. Skipping.")
@@ -65,7 +65,7 @@ def plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visua
     # Plot points, color-coded by label
     plt.figure(figsize=(10, 8))
     for i, label in enumerate(unique_labels):
-        mask = labels == label
+        mask = np.where(labels == label)[0]
         plt.scatter(
             points_2d[mask, 0], points_2d[mask, 1],
             c=[colormap[i]], label=f'Label {label}',

@@ -75,12 +75,11 @@ NUM_POINTS_TO_PROCESS: Number of points in dataset to process
 |- -1: process all the data
 |-  0 to inf: process up to that number if data is available
 '''
-NUM_POINTS_TO_PROCESS = 30000#-1
+NUM_POINTS_TO_PROCESS = 10000#-1
 
 '''
 NUM_RUN_TO_AVE: number of runs to average.
 |- INT, higher numbers means more runs to average for graphs. 
-|- @WARNING MUST BE GREATER THAN 1.
 '''
 NUM_RUNS_TO_AVE = 1
 
@@ -153,9 +152,6 @@ if __name__ == '__main__':
             elif DATA_SOURCE == "NICE":
                 X_skewed, y_w_rel = generate_synthetic_dataset_with_relevance(N_REL_CLASSES)
 
-            # # data visualization
-            # tSNE_3D_vis(X_skewed, y_w_rel)
-
             # Initialize Oracle and ARED ===================================
             data_stream = Data_Stream(X_skewed, y_w_rel)
             oracle = Oracle(X_skewed, y_w_rel)
@@ -183,6 +179,7 @@ if __name__ == '__main__':
             for i in range(1, num_points_to_process):
                 # save and print per batch ---------------------------------------------------------------------
                 if i % GRAPH_BATCH_SIZE == 0:
+                    print(f"are we really here at {i} == 1????????")
                     j = i//GRAPH_BATCH_SIZE # count of number of batches
                     times.append(time.time())
                     time_elapsed =  times[j]- times[j-1]
