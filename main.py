@@ -68,7 +68,7 @@ window_size: size of the data_window window saved by ARED
 |- int: larger window size means it remembers more data
 |- WARNING: value must be larger than 0
 '''
-DATA_WINDOW_SIZE = 10000
+DATA_WINDOW_SIZE = 1000
 
 '''
 NUM_POINTS_TO_PROCESS: Number of points in dataset to process
@@ -132,6 +132,8 @@ import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('TkAgg')  # or 'Qt5Agg' or 'wxAgg' depending on your system
 from data_visualization import *
+
+from cluster_visualization import plot_clusters_colored_by_label
 
 if __name__ == '__main__':
     # Note: this assumes 10 classes - is totally "MNIST centric"
@@ -198,6 +200,8 @@ if __name__ == '__main__':
                         print(f"Points queried in this batch: {num_queries_this_batch}, Query Rate: {num_queries_this_batch / GRAPH_BATCH_SIZE * 100}%")
                         print(f"Number of clusters: {num_clusters[j-1]}")  # Add cluster count
                         # print(f"Precision: {precision_this_batch}")  # Add cluster count
+
+                    plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label")
                 # end save and print -------------------------------------------------------------
 
                 ared.process_point(data_stream.stream_new_data_point())
@@ -216,3 +220,4 @@ if __name__ == '__main__':
             plt.legend(["time per batch", "num queries per batch", "num_clusters"])
             # plt.legend(["times", "query_rates", "num_clusters",'precision'])
             plt.show()
+
