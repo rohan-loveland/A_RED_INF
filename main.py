@@ -198,7 +198,7 @@ if __name__ == '__main__':
                         print(f"Number of clusters: {num_clusters[j-1]}")  # Add cluster count
                         # print(f"Precision: {precision_this_batch}")  # Add cluster count
 
-                    plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label")
+                    # plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label")
                 # end save and print -------------------------------------------------------------
 
                 ared.process_point(data_stream.stream_new_data_point())

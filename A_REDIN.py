@@ -121,6 +121,7 @@ class Cluster:
             self.comp_distance = self.average_nearest_neighbor_distance(data_points)
 
     def update_diameter(self, l_buf):
+        # MAKE NOT O-N2 OR DIE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         largest_distance = 0
         for i in range(len(self.l_pt_idxs)):
             for j in range(i):
@@ -136,6 +137,8 @@ class Cluster:
         Compute the average nearest-neighbor distance of all labeled points in the cluster.
         Updated to retrieve data the same way QS_VAR = 0 does (using absolute indices).
         """
+        # MAKE NOT O-N2 OR DIE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
         if len(self.l_pt_idxs) < 2:
             self.comp_distance = 0.0
             return
