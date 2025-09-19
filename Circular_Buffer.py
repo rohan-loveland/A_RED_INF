@@ -47,3 +47,6 @@ class Circular_Buffer:
 
     def __repr__(self):
         return f"Circular_Buffer({self.get_array()})"
+
+    def __len__(self):
+        return self.count

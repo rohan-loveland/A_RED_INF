@@ -84,14 +84,41 @@ class Cluster:
         elif QS_VAR == 1:
             self.update_ave_nn_dist(l_buf)
 
-    def merge_comp_distances(self, l_buf, comp_distance_to_add = 0, num_points_from_merged_cluster = 0, QS_VAR = 0):
+    def merge_comp_distances(
+            self,
+            l_buf,
+            other_l_pt_idxs=None,
+            QS_VAR=0,
+    ):
+        """
+        Merge cluster distances.
+
+        Parameters
+        ----------
+        l_buf : buffer providing get_pt_data_abs
+        other_l_pt_idxs : list of absolute indices of points
+                          in the cluster being merged.
+        QS_VAR : 0 -> diameter merge
+                 1 -> average nearest-neighbor distance merge
+        """
         if QS_VAR == 0:
+            # Recompute diameter on the combined set
             self.update_diameter(l_buf)
-        if QS_VAR == 1:
-            self.comp_distance = (
-                                         self.comp_distance * num_points_from_merged_cluster
-                                         + comp_distance_to_add * len(self.l_pt_idxs)
-                                 ) / (len(self.l_pt_idxs) + num_points_from_merged_cluster)
+
+        elif QS_VAR == 1:
+            if other_l_pt_idxs is None:
+                raise ValueError(
+                    "For QS_VAR=1 you must pass other_l_pt_idxs to recompute average NN distance."
+                )
+
+            # Combine point indices
+            combined_idxs = self.l_pt_idxs + list(other_l_pt_idxs)
+
+            # Retrieve data like update_diameter
+            data_points = np.array([l_buf.get_pt_data_abs(idx) for idx in combined_idxs])
+
+            # Recompute average nearest-neighbor distance on the union
+            self.comp_distance = self.average_nearest_neighbor_distance(data_points)
 
     def update_diameter(self, l_buf):
         largest_distance = 0
@@ -105,16 +132,20 @@ class Cluster:
         self.comp_distance = largest_distance
 
     def update_ave_nn_dist(self, l_buf):
+        """
+        Compute the average nearest-neighbor distance of all labeled points in the cluster.
+        Updated to retrieve data the same way QS_VAR = 0 does (using absolute indices).
+        """
         if len(self.l_pt_idxs) < 2:
             self.comp_distance = 0.0
             return
 
-        # Retrieve data for all labeled points in the cluster
-        data_points = np.array([l_buf.get_pt_data(abs_idx) for abs_idx in self.l_pt_idxs])
+        # Retrieve data for all labeled points using absolute index accessor,
+        # matching the approach in update_diameter.
+        data_points = np.array([l_buf.get_pt_data_abs(abs_idx) for abs_idx in self.l_pt_idxs])
 
-        # Compute the average nearest neighbor distance
+        # Compute and store the average nearest-neighbor distance
         self.comp_distance = self.average_nearest_neighbor_distance(data_points)
-
 
     # for QS_VAR == 2
     # AI helper function
@@ -139,7 +170,7 @@ class ARED:
     def __init__(self, oracle, kappa=1.0, l_buf_size=1000, k_closest_pts = 1, QS_VAR = 0, REL_PROC_VAR = 0, SM_VAR=0, VERBOSE_FLAGS = ()):
         self.kappa = kappa
         self.k_closest_pts = k_closest_pts
-        self.l_buf = FiniteBuffer(l_buf_size)
+        self.l_buf = FiniteBuffer(l_buf_size, .8, 3)
         self.subspace_partition = Subspace_Partition(self.l_buf)
         self.oracle = oracle
         self.num_queries = 0
@@ -175,43 +206,38 @@ class ARED:
     def merge_clusters(self, cluster_key_a, cluster_key_b):
         # DONE (by Nate Mediocrely)
 
-        # failsafe to ensure that we don't try merging the same cluster.
+        #                                 0            1                2     3      4     5    6
+        # Get k closest points in l_buf [(cluster_key, pt_internal_idx, dist, label, data, rel, true_abs_idx)]
+
+        # failsafe to ensure that we don't try merging the same cluster # NOTE REDUNDANT SINCE we do this check before merging.
         if cluster_key_a == cluster_key_b:
             return self.subspace_partition.cluster_dict[cluster_key_a]
-
-        # get the smaller key (I am not sure that matters)
-        smaller_cluster_key, larger_cluster_key = (
-            (cluster_key_a, cluster_key_b)
-            if cluster_key_a < cluster_key_b
-            else (cluster_key_b, cluster_key_a)
-        )
+        # ^ CONSIDER REMOVING THIS
 
         if 5 in self.verbose_flags:
-            print("Merging clusters:", smaller_cluster_key, larger_cluster_key)
+            print("Merging clusters:", cluster_key_a, cluster_key_b)
 
-        cluster_a = self.subspace_partition.cluster_dict[smaller_cluster_key]
-        cluster_b = self.subspace_partition.cluster_dict[larger_cluster_key]
+        cluster_a = self.subspace_partition.cluster_dict[cluster_key_a]
+        cluster_b = self.subspace_partition.cluster_dict[cluster_key_b]
 
-        [cluster_a.add_l_pt_no_comp_dist_update(l_pt) for l_pt in cluster_b.l_pts]
-        # RL - or "cluster_a.l_pt_idxs += cluster_b_lpt_idxs"?
+        cluster_a.l_pt_idxs += cluster_b.l_pt_idxs
 
-        l_buf_key_array = self.l_buf.cluster_key_circular_buffer.get_array()
-        for i in range(l_buf_key_array):
-            if l_buf_key_array[i] == cluster_key_b:
-                l_buf_key_array[i] = cluster_key_a
+        cb = self.l_buf.cluster_key_circular_buffer
+        for i in range(len(self.l_buf.cluster_key_circular_buffer)):
+            if cb.get(i) == cluster_key_b:
+                cb.set_at(i, cluster_key_a)
 
+        self.subspace_partition.cluster_dict.pop(cluster_key_b)
 
-        self.subspace_partition.cluster_dict.pop(larger_cluster_key)
-
-        if QS_VAR == 0:
+        if self.QS_VAR == 0:
             #merge_comp_distances(self, l_buf, comp_distance_to_add = 0, num_points_from_merged_cluster = 0, QS_VAR = 0):
             cluster_a.merge_comp_distances(self.l_buf, QS_VAR=self.QS_VAR)
 
-        elif QS_VAR == 1:
-            cluster_a.merge_comp_distances(self.l_buf, cluster_b.comp_distance, len(cluster_b.l_pts), self.QS_VAR)
+        elif self.QS_VAR == 1:
+            cluster_a.merge_comp_distances(self.l_buf, cluster_b.l_pt_idxs, self.QS_VAR)
 
 
-        return cluster_a
+        return cluster_key_a
 
     def determine_comparison_cluster(self, data_point):
         #DONE (by Nate Badly)
@@ -219,12 +245,25 @@ class ARED:
         #                                 0            1                2     3      4     5    6
         # Get k closest points in l_buf [(cluster_key, pt_internal_idx, dist, label, data, rel, true_abs_idx)]
         k_closest_pts = self.l_buf.find_closest_pts(data_point, self.k_closest_pts)
+
+        if len(k_closest_pts) > 1 and k_closest_pts[0][3] == k_closest_pts[1][3] and k_closest_pts[0][0] != k_closest_pts[1][0]:
+
+            if k_closest_pts[0][0] < k_closest_pts[1][0]:
+                keep_idx, merge_idx = 0, 1
+            else:
+                keep_idx, merge_idx = 1, 0
+
+            keep_key = k_closest_pts[keep_idx][0]
+            merge_key = k_closest_pts[merge_idx][0]
+
+            self.merge_clusters(keep_key, merge_key)
+
+            # update the merged point’s key so k_closest_pts is correct
+            pt_info = list(k_closest_pts[merge_idx])
+            pt_info[0] = keep_key
+            k_closest_pts[merge_idx] = tuple(pt_info)
+
         comparison_point_info = k_closest_pts[0]
-
-        if len(k_closest_pts) > 1 and k_closest_pts[0][0] == k_closest_pts[1][0] and k_closest_pts[0][3] != k_closest_pts[1][3]:
-            self.merge_clusters(k_closest_pts[0], k_closest_pts[1])
-
-        #print(k_closest_pts)
 
         # Check for relevance in k the closest points
         k_closest_pts.reverse()
