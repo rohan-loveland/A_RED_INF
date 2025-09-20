@@ -21,7 +21,7 @@ def generate_synthetic_dataset_with_relevance(n_least_populous, seed=42):
 
     # Define the number of samples for each class
     # Start with 512 for class 0, halving each time
-    samples_per_class = [100000 // (2 ** i) for i in range(num_classes)]
+    samples_per_class = [500000 // (2 ** i) for i in range(num_classes)]
     print("Samples per class:", samples_per_class)
 
     # Generate random centers with good separation

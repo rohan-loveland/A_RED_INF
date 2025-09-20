@@ -109,6 +109,13 @@ MAKE_GRAPHS
 '''
 MAKE_GRAPHS = True
 
+'''
+SEED_OFFSET
+|- any integer
+|- a way to vary seed sequence
+'''
+SEED_OFFSET = 5
+
 # Imports ===================================
 from Circular_Buffer import *
 from MNIST_Data_Processing import *
@@ -143,7 +150,7 @@ if __name__ == '__main__':
         stats.init_for_kappa_loop(kappa)
 
         for seed in range(NUM_RUNS_TO_AVE):
-
+            seed = seed + SEED_OFFSET
             # Get data and skew and add relevance
             if DATA_SOURCE == "MNIST":
                 X_skewed, y_w_rel = MNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS)
@@ -177,9 +184,9 @@ if __name__ == '__main__':
             precision = []
 
             for i in range(1, num_points_to_process):
+
                 # save and print per batch ---------------------------------------------------------------------
                 if i % GRAPH_BATCH_SIZE == 0:
-                    print(f"are we really here at {i} == 1????????")
                     j = i//GRAPH_BATCH_SIZE # count of number of batches
                     times.append(time.time())
                     time_elapsed =  times[j]- times[j-1]

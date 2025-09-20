@@ -259,10 +259,11 @@ class ARED:
         comparison_point_info = None
         #                                 0            1                2     3      4     5    6
         # Get k closest points in l_buf [(cluster_key, pt_internal_idx, dist, label, data, rel, true_abs_idx)]
+
         k_closest_pts = self.l_buf.find_closest_pts(data_point, self.k_closest_pts)
 
         if len(k_closest_pts) > 1 and k_closest_pts[0][3] == k_closest_pts[1][3] and k_closest_pts[0][0] != k_closest_pts[1][0]:
-
+        # i.e. if we have more than one point, and the closest points have the same label, and they're not in the same cluster...
             if k_closest_pts[0][0] < k_closest_pts[1][0]:
                 keep_idx, merge_idx = 0, 1
             else:
@@ -359,6 +360,7 @@ class ARED:
         is_anomalous = self.anomalous(data_point, comp_cluster_key, distance)
 
         if comp_cluster_relevant or is_anomalous:
+
             # Query!
             new_pt_label, new_pt_relevant = self.query(data_point_abs_idx)
 
@@ -367,4 +369,6 @@ class ARED:
                 self.add_l_pt_to_existing_cl(data_point_abs_idx, data_point, comp_cluster_key)
                 # this adds pt to l_buf and updates appropriate cluster in subspace partition
             else:
+                # if self.num_pts_streamed > 80000:
+                #     pass
                 self.split(data_point, data_point_abs_idx, new_pt_label, new_pt_relevant, comp_cluster_key)
