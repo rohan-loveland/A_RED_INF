@@ -63,20 +63,20 @@ def generate_synthetic_dataset_with_relevance(n_least_populous, seed=42):
     y_w_rel = np.column_stack((y, relevance))
 
     # Plot the dataset
-    plt.figure(figsize=(10, 10))
-    for class_id in range(num_classes):
-        mask = y == class_id
-        # Use different markers for relevant vs non-relevant classes
-        marker = 'o' if class_id in least_populous_classes else 's'
-        plt.scatter(X[mask, 0], X[mask, 1], label=f'Class {class_id} (Relevant: {class_id in least_populous_classes})',
-                    alpha=0.7, marker=marker)
-
-    plt.title(f'2D Dataset with {n_least_populous} Least Populous Classes Marked')
-    plt.xlabel('Feature 1')
-    plt.ylabel('Feature 2')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
+    # plt.figure(figsize=(10, 10))
+    # for class_id in range(num_classes):
+    #     mask = y == class_id
+    #     # Use different markers for relevant vs non-relevant classes
+    #     marker = 'o' if class_id in least_populous_classes else 's'
+    #     plt.scatter(X[mask, 0], X[mask, 1], label=f'Class {class_id} (Relevant: {class_id in least_populous_classes})',
+    #                 alpha=0.7, marker=marker)
+    #
+    # plt.title(f'2D Dataset with {n_least_populous} Least Populous Classes Marked')
+    # plt.xlabel('Feature 1')
+    # plt.ylabel('Feature 2')
+    # plt.legend()
+    # plt.grid(True)
+    # plt.show()
 
     return X, y_w_rel
 

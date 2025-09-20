@@ -46,11 +46,10 @@ class Subspace_Partition:
 
 """# Cluster"""
 class Cluster:
-    def __init__(self, label, relevance, l_pt_idxs, o_pt_idxs, l_buf, cluster_key, QS_VAR = 0):
+    def __init__(self, label, relevance, l_pt_idxs, l_buf, cluster_key, QS_VAR = 0):
         self.label = label
         self.relevance = relevance
         self.l_pt_idxs = l_pt_idxs
-        self.o_pt_idxs = o_pt_idxs
         self.comp_distance = 0  # QR_VAR=0: Diameter, QS_VAR=1: approx_nn_distance
 
         # cluster id is this cluster's position in Subspace_Partition.cluster_dict
@@ -120,17 +119,30 @@ class Cluster:
             # Recompute average nearest-neighbor distance on the union
             self.comp_distance = self.average_nearest_neighbor_distance(data_points)
 
+    # def update_diameter(self, l_buf):
+    #     largest_distance = 0
+    #     for i in range(len(self.l_pt_idxs)):
+    #         for j in range(i):
+    #             data_l_pt_i = l_buf.get_pt_data_abs(self.l_pt_idxs[i])
+    #             data_l_pt_j = l_buf.get_pt_data_abs(self.l_pt_idxs[j])
+    #             distance = np.linalg.norm(data_l_pt_i - data_l_pt_j)
+    #             if largest_distance < distance:
+    #                 largest_distance = distance
+    #     self.comp_distance = largest_distance
+
     def update_diameter(self, l_buf):
-        # MAKE NOT O-N2 OR DIE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        latest_l_pt_idx = self.l_pt_idxs[-1]
+        latest_pt_data = l_buf.get_pt_data_abs(latest_l_pt_idx)
         largest_distance = 0
-        for i in range(len(self.l_pt_idxs)):
-            for j in range(i):
+        for i in range(len(self.l_pt_idxs)-1): # all except the latest...
                 data_l_pt_i = l_buf.get_pt_data_abs(self.l_pt_idxs[i])
-                data_l_pt_j = l_buf.get_pt_data_abs(self.l_pt_idxs[j])
-                distance = np.linalg.norm(data_l_pt_i - data_l_pt_j)
+                distance = np.linalg.norm(data_l_pt_i - latest_pt_data)
                 if largest_distance < distance:
                     largest_distance = distance
-        self.comp_distance = largest_distance
+        # if new distance is > existing diameter, update diameter, otherwise leave alone
+        if largest_distance > self.comp_distance:
+            self.comp_distance = largest_distance
+
 
     def update_ave_nn_dist(self, l_buf):
         """

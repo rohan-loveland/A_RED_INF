@@ -35,6 +35,8 @@ class FiniteBuffer:
         self._tree_build_lock = threading.Lock()
         self._building_tree = False  # flag so we don’t start multiple builds
 
+        self.balling = False    # stays false until we complete the first ball tree
+
     def insert_pt(self, X, cluster_key, label, relevance, true_abs_idx):
 
         forgotten_pt_info = None
@@ -84,6 +86,7 @@ class FiniteBuffer:
         closest_pts = []
 
         if len(self.ball_trees) != 0:
+            self.balling = True # we've now completed at least 1 ball tree
             # brute force tail end, search ball trees, brute force head end
             min_idx_covered_by_btree = self.ball_trees[0].min_index
             max_idx_covered_by_btree = self.ball_trees[-1].max_index
@@ -93,8 +96,6 @@ class FiniteBuffer:
                 dist = np.linalg.norm(X - self.data_circular_buffer.get(i))
                 distances = [d for _, __, d, ___, ____, _____, ______ in closest_pts]
 
-                dist = np.linalg.norm(X - self.data_circular_buffer.get(i))
-                distances = [d for _, d, __, ___, ____, _____, ______ in closest_pts]
                 pos = bisect.bisect_left(distances, dist)
                 if pos < k:
                     closest_pts.insert(pos, (self.cluster_key_circular_buffer.get(i),
