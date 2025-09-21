@@ -183,6 +183,10 @@ if __name__ == '__main__':
             recall = []
             precision = []
 
+            # DEBUG ONLY
+            pt_dists = []
+            num_pts_searched_list = []
+
             for i in range(1, num_points_to_process):
 
                 # save and print per batch ---------------------------------------------------------------------
@@ -208,7 +212,9 @@ if __name__ == '__main__':
                     # plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label")
                 # end save and print -------------------------------------------------------------
 
-                ared.process_point(data_stream.stream_new_data_point())
+                pt_dist, num_pts_searched = ared.process_point(data_stream.stream_new_data_point())
+                pt_dists.append(pt_dist)
+                num_pts_searched_list.append(num_pts_searched)
 
             current_time = time.time()
             time_elapsed = current_time - start_time
@@ -222,6 +228,15 @@ if __name__ == '__main__':
             plt.plot(np.array(num_clusters)/max(num_clusters))
             # plt.plot(np.array(precision)/1.0)
             plt.legend(["time per batch", "num queries per batch", "num_clusters"])
-            # plt.legend(["times", "query_rates", "num_clusters",'precision'])
             plt.show()
+            plt.figure()
+            #DEBUG ONLY------------------------------------------------
+            pt_dists = np.array(pt_dists)
+            num_pts_searched_list = np.array(num_pts_searched_list)
+            plt.plot(pt_dists/max(pt_dists)*max(num_pts_searched_list),'bo-') # don't care about scale of this
+            plt.plot(num_pts_searched_list,'ro-') # do care about scale of this!
+            plt.legend(["closest pt dists", "num pts searched in l_buf"])
+
+            plt.show()
+
 

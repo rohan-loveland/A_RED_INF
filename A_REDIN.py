@@ -255,12 +255,13 @@ class ARED:
         return cluster_key_a
 
     def determine_comparison_cluster(self, data_point):
-        #DONE (by Nate Badly)
+        #DONE (by Nate Okly)
         comparison_point_info = None
         #                                 0            1                2     3      4     5    6
         # Get k closest points in l_buf [(cluster_key, pt_internal_idx, dist, label, data, rel, true_abs_idx)]
-
-        k_closest_pts = self.l_buf.find_closest_pts(data_point, self.k_closest_pts)
+        # if self.num_pts_streamed == 52918:
+        #     pass
+        k_closest_pts, num_pts_searched = self.l_buf.find_closest_pts(data_point, self.k_closest_pts)
 
         if len(k_closest_pts) > 1 and k_closest_pts[0][3] == k_closest_pts[1][3] and k_closest_pts[0][0] != k_closest_pts[1][0]:
         # i.e. if we have more than one point, and the closest points have the same label, and they're not in the same cluster...
@@ -288,7 +289,7 @@ class ARED:
                 comparison_point_info = pt
 
         # No relevant cluster in top-k, return closest overall
-        return comparison_point_info # 0            1                 2     3      4     5          6
+        return comparison_point_info, num_pts_searched # 0            1                 2     3      4     5          6
                                     # [(cluster_key, pt_internal_idx, dist, label, data, rel, true_abs_idx)]
 
 
@@ -353,7 +354,8 @@ class ARED:
         # START DETERMINE COMPARISON CLUSTER
         #  0              1                2         3      4     5          6
         #  cluster_key,   pt_internal_idx, dist,     label, data, rel,       true_abs_idxz
-        comp_cluster_key, pt_internal_idx, distance, label, data, relevance, true_abs_idx = self.determine_comparison_cluster(data_point)
+        comp_cl_data, num_pts_searched = self.determine_comparison_cluster(data_point)
+        comp_cluster_key, pt_internal_idx, distance, label, data, relevance, true_abs_idx = comp_cl_data
         comp_cluster_relevant = self.subspace_partition.cluster_dict[comp_cluster_key].relevance
         comp_cluster_label = self.subspace_partition.cluster_dict[comp_cluster_key].label
 
@@ -372,3 +374,6 @@ class ARED:
                 # if self.num_pts_streamed > 80000:
                 #     pass
                 self.split(data_point, data_point_abs_idx, new_pt_label, new_pt_relevant, comp_cluster_key)
+
+        # DEBUG ONLY -----------------------
+        return distance, num_pts_searched

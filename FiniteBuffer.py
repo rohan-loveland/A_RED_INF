@@ -87,12 +87,13 @@ class FiniteBuffer:
 
         if len(self.ball_trees) != 0:
             self.balling = True # we've now completed at least 1 ball tree
+
             # brute force tail end, search ball trees, brute force head end
             min_idx_covered_by_btree = self.ball_trees[0].min_index
             max_idx_covered_by_btree = self.ball_trees[-1].max_index
 
             # brute force tail end
-            for i in range (min_idx_covered_by_btree - self.min_internal_abs_idx):
+            for i in range(min_idx_covered_by_btree - self.min_internal_abs_idx):
                 dist = np.linalg.norm(X - self.data_circular_buffer.get(i))
                 # distances = [d for _, __, d, ___, ____, _____, ______ in closest_pts]
                 distances = [d[2] for d in closest_pts]
@@ -112,10 +113,12 @@ class FiniteBuffer:
             # search ball trees
             for ball_tree in self.ball_trees:
                 X = X.reshape((1,-1))
-                dist, idx = ball_tree.query(X, k) # returned value is dist, index
-                for i in range(len(dist)):
-                    idx = idx[0][i] + ball_tree.min_index
-                    dist = dist[0][i]
+                dists, idxs = ball_tree.query(X, k) # returned value is dist, index
+                # for i in range(len(dist)): # len(dist) == 1 since it's a 2D array!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                # renamed from 'dist' to 'dists' also
+                for i in range(dists.shape[1]):
+                    idx = idxs[0][i] + ball_tree.min_index
+                    dist = dists[0][i]
 
                     # distances = [d for _, __, d, ___, ____, _____, ______ in closest_pts]
                     distances = [d[2] for d in closest_pts]
@@ -130,9 +133,8 @@ class FiniteBuffer:
                                                  self.relevance_circular_buffer.get(idx - self.min_internal_abs_idx),
                                                  self.true_abs_idx_circular_buffer.get(idx - self.min_internal_abs_idx)))
 
-                    if len(closest_pts) > k:
-                        closest_pts.pop()
-
+                        if len(closest_pts) > k:
+                            closest_pts.pop()
 
             # brute force head end
             for i in range(self.max_internal_abs_idx - (max_idx_covered_by_btree + 1)):
@@ -154,10 +156,11 @@ class FiniteBuffer:
                     if len(closest_pts) > k:
                         closest_pts.pop()
 
+            num_pts_searched = min_idx_covered_by_btree - self.min_internal_abs_idx + \
+                ball_tree.max_index - ball_tree.min_index + 1 + \
+                self.max_internal_abs_idx - (max_idx_covered_by_btree + 1)
 
-
-        else:
-        brute force all points
+        else: # brute force all points
             for i in range(self.max_internal_abs_idx - self.min_internal_abs_idx + 1):
                 #NOTE THIS SHOULD JUST BE from 0 to max_abs_idx (inclusive) since if min_abs_idx != 0 then we should have ball tree/s
 
@@ -177,7 +180,9 @@ class FiniteBuffer:
                     if len(closest_pts) > k:
                         closest_pts.pop()
 
-        return closest_pts
+            num_pts_searched = self.max_internal_abs_idx - self.min_internal_abs_idx + 1
+
+        return closest_pts, num_pts_searched
 
     def get_pt_data(self, internal_abs_idx):
         if self.min_internal_abs_idx <= internal_abs_idx < self.max_internal_abs_idx:
