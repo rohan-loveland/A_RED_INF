@@ -94,7 +94,8 @@ class FiniteBuffer:
             # brute force tail end
             for i in range (min_idx_covered_by_btree - self.min_internal_abs_idx):
                 dist = np.linalg.norm(X - self.data_circular_buffer.get(i))
-                distances = [d for _, __, d, ___, ____, _____, ______ in closest_pts]
+                # distances = [d for _, __, d, ___, ____, _____, ______ in closest_pts]
+                distances = [d[2] for d in closest_pts]
 
                 pos = bisect.bisect_left(distances, dist)
                 if pos < k:
@@ -116,7 +117,8 @@ class FiniteBuffer:
                     idx = idx[0][i] + ball_tree.min_index
                     dist = dist[0][i]
 
-                    distances = [d for _, __, d, ___, ____, _____, ______ in closest_pts]
+                    # distances = [d for _, __, d, ___, ____, _____, ______ in closest_pts]
+                    distances = [d[2] for d in closest_pts]
                     pos = bisect.bisect_left(distances, dist)
 
                     if pos < k:
@@ -137,7 +139,8 @@ class FiniteBuffer:
 
                 dist = np.linalg.norm(X - self.data_circular_buffer.get(i + max_idx_covered_by_btree - self.min_internal_abs_idx))
 
-                distances = [d for _, __, d, ___, ____, _____, ______ in closest_pts]
+        #        distances = [d for _, __, d, ___, ____, _____, ______ in closest_pts]
+                distances = [d[2] for d in closest_pts]
                 pos = bisect.bisect_left(distances, dist)
 
                 if pos < k:
@@ -154,8 +157,9 @@ class FiniteBuffer:
 
 
         else:
-            # brute force all points
-            for i in range(self.max_internal_abs_idx - self.min_internal_abs_idx + 1): #NOTE THIS SHOULD JUST BE from 0 to max_abs_idx (inclusive) since if min_abs_idx != 0 then we should have ball tree/s
+        brute force all points
+            for i in range(self.max_internal_abs_idx - self.min_internal_abs_idx + 1):
+                #NOTE THIS SHOULD JUST BE from 0 to max_abs_idx (inclusive) since if min_abs_idx != 0 then we should have ball tree/s
 
                 dist = np.linalg.norm(X - self.data_circular_buffer.get(i))
                 distances = [d for _, __, d, ___, ____, _____, ______ in closest_pts]

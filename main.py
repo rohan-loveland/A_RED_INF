@@ -75,7 +75,7 @@ NUM_POINTS_TO_PROCESS: Number of points in dataset to process
 |- -1: process all the data
 |-  0 to inf: process up to that number if data is available
 '''
-NUM_POINTS_TO_PROCESS = -1
+NUM_POINTS_TO_PROCESS = 80000#-1
 
 '''
 NUM_RUN_TO_AVE: number of runs to average.
@@ -86,7 +86,7 @@ NUM_RUNS_TO_AVE = 1
 '''
 GRAPH_BATCH_SIZE: number of points in batch for stats purposes.
 '''
-GRAPH_BATCH_SIZE = 1000
+GRAPH_BATCH_SIZE = 100
 
 '''
 VERBOSE_FLAGS: Array of control flags to make ARED loud or quite
