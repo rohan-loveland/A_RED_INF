@@ -59,3 +59,36 @@ def tSNE_3D_vis(X_skewed,y_w_rel):
     ax.set_ylabel('t-SNE Component 2')
     ax.set_zlabel('t-SNE Component 3')
     plt.show()
+
+
+def plot_stacked_area(list1, list2, list3,legend_labels=['List 1', 'List 2', 'List 3']):
+    # Convert lists to numpy arrays for easier manipulation
+    y1 = np.array(list1)
+    y2 = np.array(list2)
+    y3 = np.array(list3)
+    x = range(len(list1))
+
+    # Create cumulative arrays for stacking
+    y2_cum = y1 + y2
+    y3_cum = y1 + y2 + y3
+
+    # Create the stacked area plot
+
+    plt.stackplot(x, y1, y2, y3, labels=legend_labels, colors=['#FF9999', '#66B2FF', '#99FF99'])
+
+    # Customize the plot
+    plt.title('Cumulative Stacked Area Plot')
+    plt.xlabel('Index')
+    plt.ylabel('Value')
+    plt.legend(loc='upper left')
+    plt.grid(True, alpha=0.3)
+
+    # Show the plot
+    plt.show()
+
+# Example usage
+if __name__ == "__main__":
+    list1 = [1, 2, 3, 4, 5]
+    list2 = [2, 3, 2, 3, 4]
+    list3 = [3, 4, 5, 4, 3]
+    plot_stacked_area(list1, list2, list3)

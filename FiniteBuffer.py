@@ -5,6 +5,17 @@ import threading
 import numpy as np
 import bisect
 
+# READ AND ACT UPON.
+# NOTE by Ro: There are 3 types of indexes here, and we should improve the names:
+# indexes into circular buffer, ranging from 0 to size of circular buffer - 1
+# henceforth "cb_idxs"
+# indexes based on total number of l_pts, ever.  These are the "internal abs" at the moment
+# henceforth "abs_l_idxs"
+# indexes based on total number of l AND o_pts, ever.  These are "true abs" at the moment
+# henceforth "abs_l_o_idxs"
+# the max internal abs index should correspond to the max circ buff index
+# at the moment, ball tree indexes in calls are ball tree indexes, stuff stored in class is l_idxs
+
 class BallTreeWithIndexes(BallTree):
     def __init__(self, X, min_index, max_index, leaf_size = 40, metric: str | DistanceMetric = "minkowski"):
         super().__init__(X, leaf_size=leaf_size, metric=metric)
@@ -89,80 +100,89 @@ class FiniteBuffer:
             self.balling = True # we've now completed at least 1 ball tree
 
             # brute force tail end, search ball trees, brute force head end
-            min_idx_covered_by_btree = self.ball_trees[0].min_index
-            max_idx_covered_by_btree = self.ball_trees[-1].max_index
+            min_l_idx_covered_by_btree = self.ball_trees[0].min_index
+            max_l_idx_covered_by_btree = self.ball_trees[-1].max_index
+            min_cb_index_covered_by_btree = min_l_idx_covered_by_btree - self.min_internal_abs_idx
+            max_cb_index_covered_by_btree = max_l_idx_covered_by_btree - self.min_internal_abs_idx
 
             # brute force tail end
-            for i in range(min_idx_covered_by_btree - self.min_internal_abs_idx):
-                dist = np.linalg.norm(X - self.data_circular_buffer.get(i))
+            for cb_i in range(0,min_cb_index_covered_by_btree):
+                dist = np.linalg.norm(X - self.data_circular_buffer.get(cb_i))
                 # distances = [d for _, __, d, ___, ____, _____, ______ in closest_pts]
                 distances = [d[2] for d in closest_pts]
 
                 pos = bisect.bisect_left(distances, dist)
                 if pos < k:
-                    closest_pts.insert(pos, (self.cluster_key_circular_buffer.get(i),
-                                             i + self.min_internal_abs_idx,
+                    closest_pts.insert(pos, (self.cluster_key_circular_buffer.get(cb_i),
+                                             cb_i + self.min_internal_abs_idx,
                                              dist,
-                                             self.label_circular_buffer.get(i),
-                                             self.data_circular_buffer.get(i),
-                                             self.relevance_circular_buffer.get(i),
-                                             self.true_abs_idx_circular_buffer.get(i)))
+                                             self.label_circular_buffer.get(cb_i),
+                                             self.data_circular_buffer.get(cb_i),
+                                             self.relevance_circular_buffer.get(cb_i),
+                                             self.true_abs_idx_circular_buffer.get(cb_i)))
                     if len(closest_pts) > k:
                         closest_pts.pop()
 
             # search ball trees
             for ball_tree in self.ball_trees:
                 X = X.reshape((1,-1))
-                dists, idxs = ball_tree.query(X, k) # returned value is dist, index
+                dists, bt_idxs = ball_tree.query(X, k) # returned value is dist, index rel. to ball tree 0
                 # for i in range(len(dist)): # len(dist) == 1 since it's a 2D array!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                 # renamed from 'dist' to 'dists' also
-                for i in range(dists.shape[1]):
-                    idx = idxs[0][i] + ball_tree.min_index
-                    dist = dists[0][i]
+                for j in range(dists.shape[1]):
+                    l_idx = bt_idxs[0][j] + ball_tree.min_index # now index rel. to l_pts
+                    cb_idx = l_idx - self.min_internal_abs_idx
+                    dist = dists[0][j]
 
                     # distances = [d for _, __, d, ___, ____, _____, ______ in closest_pts]
                     distances = [d[2] for d in closest_pts]
                     pos = bisect.bisect_left(distances, dist)
 
                     if pos < k:
-                        closest_pts.insert(pos, (self.cluster_key_circular_buffer.get(idx - self.min_internal_abs_idx),
-                                                 ball_tree.min_index + idx,
+                        closest_pts.insert(pos, (self.cluster_key_circular_buffer.get(cb_idx),
+                                                 l_idx,
                                                  dist,
-                                                 self.label_circular_buffer.get(idx - self.min_internal_abs_idx),
-                                                 self.data_circular_buffer.get(idx - self.min_internal_abs_idx),
-                                                 self.relevance_circular_buffer.get(idx - self.min_internal_abs_idx),
-                                                 self.true_abs_idx_circular_buffer.get(idx - self.min_internal_abs_idx)))
+                                                 self.label_circular_buffer.get(cb_idx),
+                                                 self.data_circular_buffer.get(cb_idx),
+                                                 self.relevance_circular_buffer.get(cb_idx),
+                                                 self.true_abs_idx_circular_buffer.get(cb_idx)))
 
                         if len(closest_pts) > k:
                             closest_pts.pop()
 
             # brute force head end
-            for i in range(self.max_internal_abs_idx - (max_idx_covered_by_btree + 1)):
+            num_head_pts = self.max_internal_abs_idx - max_l_idx_covered_by_btree
 
-                dist = np.linalg.norm(X - self.data_circular_buffer.get(i + max_idx_covered_by_btree - self.min_internal_abs_idx))
+            # for i in range(self.max_internal_abs_idx - max_idx_covered_by_btree):
+            #     c_buf_idx = i + max_idx_covered_by_btree - 1
+            for cb_idx in range(max_cb_index_covered_by_btree, max_cb_index_covered_by_btree + num_head_pts):
+                try:
+                    dist = np.linalg.norm(X - self.data_circular_buffer.get(cb_idx))
+                except:
+                    pass
 
         #        distances = [d for _, __, d, ___, ____, _____, ______ in closest_pts]
                 distances = [d[2] for d in closest_pts]
                 pos = bisect.bisect_left(distances, dist)
 
                 if pos < k:
-                    closest_pts.insert(pos, (self.cluster_key_circular_buffer.get(i + max_idx_covered_by_btree - self.min_internal_abs_idx),
-                                             max_idx_covered_by_btree + i,
+                    closest_pts.insert(pos, (self.cluster_key_circular_buffer.get(cb_idx),
+                                             cb_idx + self.min_internal_abs_idx,
                                              dist,
-                                             self.label_circular_buffer.get(i + max_idx_covered_by_btree - self.min_internal_abs_idx),
-                                             self.data_circular_buffer.get(i + max_idx_covered_by_btree - self.min_internal_abs_idx),
-                                             self.relevance_circular_buffer.get(i + max_idx_covered_by_btree - self.min_internal_abs_idx),
-                                             self.true_abs_idx_circular_buffer.get(i + max_idx_covered_by_btree - self.min_internal_abs_idx)))
+                                             self.label_circular_buffer.get(cb_idx),
+                                             self.data_circular_buffer.get(cb_idx),
+                                             self.relevance_circular_buffer.get(cb_idx),
+                                             self.true_abs_idx_circular_buffer.get(cb_idx)))
                     if len(closest_pts) > k:
                         closest_pts.pop()
 
-            num_pts_searched = min_idx_covered_by_btree - self.min_internal_abs_idx + \
-                ball_tree.max_index - ball_tree.min_index + 1 + \
-                self.max_internal_abs_idx - (max_idx_covered_by_btree + 1)
+            num_tail_pts = min_cb_index_covered_by_btree
+            num_ball_trees_pts = self.ball_trees[-1].max_index - self.ball_trees[0].min_index + 1
+            num_head_pts = num_head_pts
+            num_pts_searched = (num_tail_pts, num_ball_trees_pts, num_head_pts)
 
         else: # brute force all points
             for i in range(self.max_internal_abs_idx - self.min_internal_abs_idx + 1):
-                #NOTE THIS SHOULD JUST BE from 0 to max_abs_idx (inclusive) since if min_abs_idx != 0 then we should have ball tree/s
 
                 dist = np.linalg.norm(X - self.data_circular_buffer.get(i))
                 distances = [d for _, __, d, ___, ____, _____, ______ in closest_pts]
@@ -180,7 +200,7 @@ class FiniteBuffer:
                     if len(closest_pts) > k:
                         closest_pts.pop()
 
-            num_pts_searched = self.max_internal_abs_idx - self.min_internal_abs_idx + 1
+            num_pts_searched = (self.max_internal_abs_idx - self.min_internal_abs_idx + 1,0,0)
 
         return closest_pts, num_pts_searched
 

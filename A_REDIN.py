@@ -259,8 +259,8 @@ class ARED:
         comparison_point_info = None
         #                                 0            1                2     3      4     5    6
         # Get k closest points in l_buf [(cluster_key, pt_internal_idx, dist, label, data, rel, true_abs_idx)]
-        # if self.num_pts_streamed == 52918:
-        #     pass
+        if self.num_pts_streamed == 64982:
+            pass
         k_closest_pts, num_pts_searched = self.l_buf.find_closest_pts(data_point, self.k_closest_pts)
 
         if len(k_closest_pts) > 1 and k_closest_pts[0][3] == k_closest_pts[1][3] and k_closest_pts[0][0] != k_closest_pts[1][0]:

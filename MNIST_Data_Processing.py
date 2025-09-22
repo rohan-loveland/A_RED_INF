@@ -79,10 +79,10 @@ def load_and_skew_mnist(sparsity_levels, seed=42, save_path="mnist_replicated_10
 def generate_is_relevant(label_list, relevant_set):
     return [label in relevant_set for label in label_list]
 
-def MNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS):
+def MNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS,seed):
     sparsity_levels = [(1 / int(2 ** n)) for n in range(1, 11)]
 
-    X_skewed, y_skewed, X_full, y_full = load_and_skew_mnist(sparsity_levels, seed=42)
+    X_skewed, y_skewed, X_full, y_full = load_and_skew_mnist(sparsity_levels, seed)
     n_events = len(y_skewed)
     # Step 2: Identify the 2 least common digits
     digit_counts = Counter(y_skewed)

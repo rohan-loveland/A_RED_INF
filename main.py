@@ -4,6 +4,8 @@ DATA_SOURCE: Dataset to run ARED on
 |- EMNIST: EMNIST dataset
 |- P_LOT
 '''
+from pycurl import RANDOM_FILE
+
 # goes with...
 
 '''
@@ -75,7 +77,7 @@ NUM_POINTS_TO_PROCESS: Number of points in dataset to process
 |- -1: process all the data
 |-  0 to inf: process up to that number if data is available
 '''
-NUM_POINTS_TO_PROCESS = 80000#-1
+NUM_POINTS_TO_PROCESS = 100000#-1
 
 '''
 NUM_RUN_TO_AVE: number of runs to average.
@@ -110,11 +112,11 @@ MAKE_GRAPHS
 MAKE_GRAPHS = True
 
 '''
-SEED_OFFSET
+RANDOM_SEED_OFFSET
 |- any integer
 |- a way to vary seed sequence
 '''
-SEED_OFFSET = 5
+RANDOM_SEED_OFFSET = 25
 
 # Imports ===================================
 from Circular_Buffer import *
@@ -150,14 +152,14 @@ if __name__ == '__main__':
         stats.init_for_kappa_loop(kappa)
 
         for seed in range(NUM_RUNS_TO_AVE):
-            seed = seed + SEED_OFFSET
+            seed = seed + RANDOM_SEED_OFFSET
             # Get data and skew and add relevance
             if DATA_SOURCE == "MNIST":
-                X_skewed, y_w_rel = MNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS)
+                X_skewed, y_w_rel = MNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS,seed)
             elif DATA_SOURCE == "EMNIST":
                 X_skewed, y_w_rel = EMNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS)
             elif DATA_SOURCE == "NICE":
-                X_skewed, y_w_rel = generate_synthetic_dataset_with_relevance(N_REL_CLASSES)
+                X_skewed, y_w_rel = generate_synthetic_dataset_with_relevance(N_REL_CLASSES,seed)
 
             # Initialize Oracle and ARED ===================================
             data_stream = Data_Stream(X_skewed, y_w_rel)
@@ -228,15 +230,17 @@ if __name__ == '__main__':
             plt.plot(np.array(num_clusters)/max(num_clusters))
             # plt.plot(np.array(precision)/1.0)
             plt.legend(["time per batch", "num queries per batch", "num_clusters"])
-            plt.show()
             plt.figure()
             #DEBUG ONLY------------------------------------------------
             pt_dists = np.array(pt_dists)
             num_pts_searched_list = np.array(num_pts_searched_list)
-            plt.plot(pt_dists/max(pt_dists)*max(num_pts_searched_list),'bo-') # don't care about scale of this
-            plt.plot(num_pts_searched_list,'ro-') # do care about scale of this!
+            total_num_pts_searched = np.sum(num_pts_searched_list,axis=1)
+            plt.plot(pt_dists/max(pt_dists)*max(total_num_pts_searched),'o-') # don't care about scale of this
+            plt.plot(num_pts_searched_list,'o-') # do care about scale of this!
             plt.legend(["closest pt dists", "num pts searched in l_buf"])
-
+            plt.figure()
+            plot_stacked_area(num_pts_searched_list[:,0], num_pts_searched_list[:,1], num_pts_searched_list[:,2], \
+                              legend_labels=['# tail_pts', '# ball_trees_pts', '# head_pts'])
             plt.show()
 
 

@@ -50,6 +50,10 @@ def generate_synthetic_dataset_with_relevance(n_least_populous, seed=42):
 
     # Generate the dataset
     X, y = make_blobs(n_samples=samples_per_class, centers=centers, cluster_std=1.0, random_state=seed)
+    indices = list(range(len(X)))
+    np.random.shuffle(indices)
+    X = X[indices]
+    y = y[indices]
 
     # Identify the n least populous classes
     # Since samples_per_class is [512, 256, ..., 1], least populous are highest indices
