@@ -82,6 +82,7 @@ NUM_POINTS_TO_PROCESS = 100000#-1
 '''
 NUM_RUN_TO_AVE: number of runs to average.
 |- INT, higher numbers means more runs to average for graphs. 
+|- @WARNING MUST BE GREATER THAN 1.
 '''
 NUM_RUNS_TO_AVE = 1
 
