@@ -163,7 +163,7 @@ class FiniteBuffer:
 
             # --- brute-force head end ---
             num_head_pts = self.max_internal_abs_idx - max_l_idx_covered_by_btree
-            for cb_idx in range(max_cb_index_covered_by_btree, max_cb_index_covered_by_btree + num_head_pts):
+            for cb_idx in range(max_cb_index_covered_by_btree, max_cb_index_covered_by_btree + num_head_pts  + 1):
 
                 dist = np.linalg.norm(X - self.data_circular_buffer.get(cb_idx))
                 distances = [d[2] for d in closest_pts]
@@ -243,7 +243,7 @@ class FiniteBuffer:
 
             # === 3. Convert to relative slice positions ===
             rel_start = abs_min - min_abs_snapshot
-            rel_end = abs_max - min_abs_snapshot
+            rel_end = abs_max - min_abs_snapshot + 1
 
             # === 4. Extract the snapshot window ===
             data_snapshot = full_array[rel_start:rel_end]
