@@ -47,7 +47,6 @@ K_COMP_PTS = 2 # use 2 for baseline
 QS_VAR: Query Strategy Variants
 |- 0: Diameter check
 |- 1: Approx. Ave Single Linkage Average 
-|- 2: Approx. Ave Single Linkage Average w/ o_pt_idxs
 '''
 QS_VAR = 0
 
@@ -77,11 +76,12 @@ NUM_POINTS_TO_PROCESS: Number of points in dataset to process
 |- -1: process all the data
 |-  0 to inf: process up to that number if data is available
 '''
-NUM_POINTS_TO_PROCESS = 150000#-1
+NUM_POINTS_TO_PROCESS = -1
 
 '''
 NUM_RUN_TO_AVE: number of runs to average.
 |- INT, higher numbers means more runs to average for graphs. 
+|- @WARNING MUST BE GREATER THAN 1.
 '''
 NUM_RUNS_TO_AVE = 1
 

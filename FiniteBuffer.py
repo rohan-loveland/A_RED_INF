@@ -47,8 +47,6 @@ class FiniteBuffer:
         self._tree_build_lock = threading.Lock()
         self._building_tree = False  # flag so we don’t start multiple builds
 
-        self.balling = False    # stays false until we complete the first ball tree
-
     def insert_pt(self, X, cluster_key, label, relevance, true_abs_idx):
 
         forgotten_pt_info = None
@@ -95,102 +93,127 @@ class FiniteBuffer:
         return forgotten_pt_cluster_key, forgotten_pt_index, forgotten_pt_relevance, forgotten_pt_true_abs_idx
 
     def find_closest_pts(self, X, k):
-
         closest_pts = []
+        internal_idxes = []
 
         if len(self.ball_trees) != 0:
-            self.balling = True # we've now completed at least 1 ball tree
 
-            # brute force tail end, search ball trees, brute force head end
-            min_l_idx_covered_by_btree = self.ball_trees[0].min_index
-            max_l_idx_covered_by_btree = self.ball_trees[-1].max_index
-            min_cb_index_covered_by_btree = min_l_idx_covered_by_btree - self.min_internal_abs_idx
-            max_cb_index_covered_by_btree = max_l_idx_covered_by_btree - self.min_internal_abs_idx
+            # === Snapshot the trees and bounds while holding the build lock ===
+            with self._tree_build_lock:
+                # copy the list reference so later appends are invisible
+                trees_snapshot = list(self.ball_trees)
+                min_l_idx_covered_by_btree = trees_snapshot[0].min_index
+                max_l_idx_covered_by_btree = trees_snapshot[-1].max_index
 
-            # brute force tail end
-            for cb_i in range(0,min_cb_index_covered_by_btree):
+            # From here on we never look at self.ball_trees again
+            min_cb_index_covered_by_btree = (
+                    min_l_idx_covered_by_btree - self.min_internal_abs_idx
+            )
+            max_cb_index_covered_by_btree = (
+                    max_l_idx_covered_by_btree - self.min_internal_abs_idx
+            )
 
+            # --- brute-force tail end ---
+            for cb_i in range(0, min_cb_index_covered_by_btree):
                 dist = np.linalg.norm(X - self.data_circular_buffer.get(cb_i))
-                # distances = [d for _, __, d, ___, ____, _____, ______ in closest_pts]
                 distances = [d[2] for d in closest_pts]
-
+                l_internal_idx = cb_i + self.min_internal_abs_idx
                 pos = bisect.bisect_left(distances, dist)
                 if pos < k:
-                    closest_pts.insert(pos, (self.cluster_key_circular_buffer.get(cb_i),
-                                             cb_i + self.min_internal_abs_idx,
-                                             dist,
-                                             self.label_circular_buffer.get(cb_i),
-                                             self.data_circular_buffer.get(cb_i),
-                                             self.relevance_circular_buffer.get(cb_i),
-                                             self.true_abs_idx_circular_buffer.get(cb_i)))
+                    #   0            1                2     3      4     5    6
+                    # [(cluster_key, pt_internal_idx, dist, label, data, rel, true_abs_idx)]
+                    closest_pts.insert(
+                        pos,
+                        (
+                            self.cluster_key_circular_buffer.get(cb_i),
+                            l_internal_idx,
+                            dist,
+                            self.label_circular_buffer.get(cb_i),
+                            self.data_circular_buffer.get(cb_i),
+                            self.relevance_circular_buffer.get(cb_i),
+                            self.true_abs_idx_circular_buffer.get(cb_i),
+                        ),
+                    )
+
                     if len(closest_pts) > k:
                         closest_pts.pop()
 
-            # search ball trees
-            for ball_tree in self.ball_trees:
+            # --- search only the snapshotted trees ---
+            X = X.reshape((1, -1))
+            for ball_tree in trees_snapshot:
+                dists, bt_idxs = ball_tree.query(X, k)
 
-                X = X.reshape((1,-1))
-                dists, bt_idxs = ball_tree.query(X, k) # returned value is dist, index rel. to ball tree 0
-                # for i in range(len(dist)): # len(dist) == 1 since it's a 2D array!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                # renamed from 'dist' to 'dists' also
                 for j in range(dists.shape[1]):
-                    l_idx = bt_idxs[0][j] + ball_tree.min_index # now index rel. to l_pts
-                    cb_idx = l_idx - self.min_internal_abs_idx
+                    l_internal_idx = bt_idxs[0][j] + ball_tree.min_index
+                    cb_idx = l_internal_idx - self.min_internal_abs_idx
                     dist = dists[0][j]
-
-                    # distances = [d for _, __, d, ___, ____, _____, ______ in closest_pts]
                     distances = [d[2] for d in closest_pts]
                     pos = bisect.bisect_left(distances, dist)
 
-                    if pos < k:
-                        closest_pts.insert(pos, (self.cluster_key_circular_buffer.get(cb_idx),
-                                                 l_idx,
-                                                 dist,
-                                                 self.label_circular_buffer.get(cb_idx),
-                                                 self.data_circular_buffer.get(cb_idx),
-                                                 self.relevance_circular_buffer.get(cb_idx),
-                                                 self.true_abs_idx_circular_buffer.get(cb_idx)))
+                    if pos < k and l_internal_idx not in internal_idxes:
+                        #   0            1                2     3      4     5    6
+                        # [(cluster_key, pt_internal_idx, dist, label, data, rel, true_abs_idx)]
+                        closest_pts.insert(
+                            pos,
+                            (
+                                self.cluster_key_circular_buffer.get(cb_idx),
+                                l_internal_idx,
+                                dist,
+                                self.label_circular_buffer.get(cb_idx),
+                                self.data_circular_buffer.get(cb_idx),
+                                self.relevance_circular_buffer.get(cb_idx),
+                                self.true_abs_idx_circular_buffer.get(cb_idx),
+                            ),
+                        )
+                        internal_idxes.insert(pos, cb_idx)
 
                         if len(closest_pts) > k:
                             closest_pts.pop()
 
             # brute force head end
             num_head_pts = self.max_internal_abs_idx - max_l_idx_covered_by_btree
-
-            # for i in range(self.max_internal_abs_idx - max_idx_covered_by_btree):
-            #     c_buf_idx = i + max_idx_covered_by_btree - 1
-            for cb_idx in range(max_cb_index_covered_by_btree + 1, max_cb_index_covered_by_btree + num_head_pts):
-
+            for cb_idx in range(max_cb_index_covered_by_btree, max_cb_index_covered_by_btree + num_head_pts  + 1):
                 dist = np.linalg.norm(X - self.data_circular_buffer.get(cb_idx))
-
+                l_internal_idx = cb_idx + self.min_internal_abs_idx
                 distances = [d[2] for d in closest_pts]
                 pos = bisect.bisect_left(distances, dist)
 
                 if pos < k:
-                    closest_pts.insert(pos, (self.cluster_key_circular_buffer.get(cb_idx),
-                                             cb_idx + self.min_internal_abs_idx,
-                                             dist,
-                                             self.label_circular_buffer.get(cb_idx),
-                                             self.data_circular_buffer.get(cb_idx),
-                                             self.relevance_circular_buffer.get(cb_idx),
-                                             self.true_abs_idx_circular_buffer.get(cb_idx)))
+                    #   0            1                2     3      4     5    6
+                    # [(cluster_key, pt_internal_idx, dist, label, data, rel, true_abs_idx)]
+                    closest_pts.insert(
+                        pos,
+                        (
+                            self.cluster_key_circular_buffer.get(cb_idx),
+                            l_internal_idx,
+                            dist,
+                            self.label_circular_buffer.get(cb_idx),
+                            self.data_circular_buffer.get(cb_idx),
+                            self.relevance_circular_buffer.get(cb_idx),
+                            self.true_abs_idx_circular_buffer.get(cb_idx),
+                        ),
+                    )
                     if len(closest_pts) > k:
                         closest_pts.pop()
 
-            num_tail_pts = min_cb_index_covered_by_btree
-            num_ball_trees_pts = self.ball_trees[-1].max_index - self.ball_trees[0].min_index + 1
-            num_head_pts = num_head_pts
-            num_pts_searched = (num_tail_pts, num_ball_trees_pts, num_head_pts)
+            num_pts_searched = (
+                min_cb_index_covered_by_btree,
+                trees_snapshot[-1].max_index - trees_snapshot[0].min_index + 1,
+                num_head_pts,
+            )
 
         else: # brute force all points
             for i in range(self.max_internal_abs_idx - self.min_internal_abs_idx + 1):
                 dist = np.linalg.norm(X - self.data_circular_buffer.get(i))
                 distances = [d for _, __, d, ___, ____, _____, ______ in closest_pts]
+                l_internal_idx = i + self.min_internal_abs_idx
                 pos = bisect.bisect_left(distances, dist)
 
                 if pos < k:
+                    #   0            1                2     3      4     5    6
+                    # [(cluster_key, pt_internal_idx, dist, label, data, rel, true_abs_idx)]
                     closest_pts.insert(pos, (self.cluster_key_circular_buffer.get(i),
-                                                 i + self.min_internal_abs_idx,
+                                                 l_internal_idx,
                                                  dist,
                                                  self.label_circular_buffer.get(i),
                                                  self.data_circular_buffer.get(i),
@@ -229,12 +252,12 @@ class FiniteBuffer:
 
             # === 2. Compute absolute window bounds ===
             window_size = self.ball_tree_interval
-            abs_min = max(min_abs_snapshot, max_abs_snapshot - window_size) # CEHCK HERE
+            abs_min = max(min_abs_snapshot, max_abs_snapshot - window_size)
             abs_max = max_abs_snapshot  # exclusive upper bound
 
             # === 3. Convert to relative slice positions ===
             rel_start = abs_min - min_abs_snapshot
-            rel_end = abs_max - min_abs_snapshot
+            rel_end = abs_max - min_abs_snapshot + 1
 
             # === 4. Extract the snapshot window ===
             data_snapshot = full_array[rel_start:rel_end]
