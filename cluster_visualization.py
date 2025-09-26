@@ -86,4 +86,4 @@ def plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visua
     plt.ylabel('t-SNE Component 2')
     plt.legend()
     plt.grid(True)
-    plt.show()
+    # plt.show()

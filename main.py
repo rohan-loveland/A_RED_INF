@@ -77,7 +77,7 @@ NUM_POINTS_TO_PROCESS: Number of points in dataset to process
 |- -1: process all the data
 |-  0 to inf: process up to that number if data is available
 '''
-NUM_POINTS_TO_PROCESS = 100000#-1
+NUM_POINTS_TO_PROCESS = 80000#-1
 
 '''
 NUM_RUN_TO_AVE: number of runs to average.
@@ -88,7 +88,7 @@ NUM_RUNS_TO_AVE = 1
 '''
 GRAPH_BATCH_SIZE: number of points in batch for stats purposes.
 '''
-GRAPH_BATCH_SIZE = 100
+GRAPH_BATCH_SIZE = 10000
 
 '''
 VERBOSE_FLAGS: Array of control flags to make ARED loud or quite
@@ -211,7 +211,7 @@ if __name__ == '__main__':
                         print(f"Number of clusters: {num_clusters[j-1]}")  # Add cluster count
                         # print(f"Precision: {precision_this_batch}")  # Add cluster count
 
-                    # plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label")
+                    plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label")
                 # end save and print -------------------------------------------------------------
 
                 pt_dist, num_pts_searched = ared.process_point(data_stream.stream_new_data_point())
@@ -225,6 +225,7 @@ if __name__ == '__main__':
 
             batch_times = np.diff(np.array(times))
             batch_queries = np.diff(np.array(num_queries))
+            plt.figure()
             plt.plot(batch_times/np.max(batch_times))
             plt.plot(np.array(batch_queries)/max(batch_queries))
             plt.plot(np.array(num_clusters)/max(num_clusters))
