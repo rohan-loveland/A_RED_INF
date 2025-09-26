@@ -22,6 +22,7 @@ class BallTreeWithIndexes(BallTree):
         super().__init__(X, leaf_size=leaf_size, metric=metric)
         self.max_index = max_index
         self.min_index = min_index
+        self.length = max_index - min_index
 
 class FiniteBuffer:
     def __init__(self, buffer_size: int, ball_tree_ratio: float = 0.8, num_ball_trees: int = 2):
@@ -42,6 +43,8 @@ class FiniteBuffer:
 
         self.max_internal_abs_idx = -1
         self.min_internal_abs_idx = 0
+
+        self.build_up_period = True
 
         # --- threading-related attributes ---
         self._tree_build_lock = threading.Lock()
@@ -68,10 +71,13 @@ class FiniteBuffer:
             self.ball_trees.pop(0)
 
             # if we have a btree     and # ball trees < max # btree                 and max_abs_idx is greater than max index of newest btree + non overlap interval
-        if len(self.ball_trees) != 0 and len(self.ball_trees) < self.num_ball_trees and self.max_internal_abs_idx >= self.ball_trees[-1].max_index + self.non_overlap_interval:
+        if len(self.ball_trees) != 0 and len(self.ball_trees) < self.num_ball_trees and self.max_internal_abs_idx >= self.ball_trees[-1].max_index + self.non_overlap_interval and not self.build_up_period:
             build_ball_tree = True
              # If we have no btrees    and we have as many points as the btree interval
         elif len(self.ball_trees) == 0 and self.ball_tree_interval <= self.max_internal_abs_idx:
+            build_ball_tree = True
+
+        elif self.build_up_period and (len(self.ball_trees) == 0 or self.ball_trees[0].max_index < self.max_internal_abs_idx):
             build_ball_tree = True
 
         # if ball tree is invalid, forget it and start building new tree
@@ -141,7 +147,7 @@ class FiniteBuffer:
             # --- search only the snapshotted trees ---
             X = X.reshape((1, -1))
             for ball_tree in trees_snapshot:
-                dists, bt_idxs = ball_tree.query(X, k)
+                dists, bt_idxs = ball_tree.query(X, min(k, ball_tree.length))
 
                 for j in range(dists.shape[1]):
                     l_internal_idx = bt_idxs[0][j] + ball_tree.min_index
@@ -271,6 +277,14 @@ class FiniteBuffer:
             # === 6. Append finished tree under lock ===
             with self._tree_build_lock:
                 self.ball_trees.append(new_tree)
+
+                if self.ball_tree_interval <= self.max_internal_abs_idx and self.build_up_period:
+                    self.ball_trees.pop(0)
+                    self.build_up_period = False
+
+                elif len(self.ball_trees) > 1 and self.build_up_period:
+                    self.ball_trees.pop(0)
+
 
         finally:
             self._building_tree = False
