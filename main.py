@@ -41,7 +41,7 @@ K_COMP_PTS: Number of points to compare to when looking for relevance
 |- 2 or more: k ARED
 @WARNING: must be 1 or greater
 '''
-K_COMP_PTS = 5
+K_COMP_PTS = 2 # use 2 for baseline
 
 '''
 QS_VAR: Query Strategy Variants
@@ -54,7 +54,7 @@ QS_VAR = 0
 '''
 SM_VAR: Split Method Var 
 |- 0: Voronoi Split
-|- 1: 
+|- 1: eventually 2 component GMM...
 '''
 SM_VAR = 0
 
@@ -70,14 +70,14 @@ window_size: size of the data_window window saved by ARED
 |- int: larger window size means it remembers more data
 |- WARNING: value must be larger than 0
 '''
-DATA_WINDOW_SIZE = 1000
+DATA_WINDOW_SIZE = 1000 # ultimately needs to be driven by anomaly ratio
 
 '''
 NUM_POINTS_TO_PROCESS: Number of points in dataset to process
 |- -1: process all the data
 |-  0 to inf: process up to that number if data is available
 '''
-NUM_POINTS_TO_PROCESS = 80000#-1
+NUM_POINTS_TO_PROCESS = 150000#-1
 
 '''
 NUM_RUN_TO_AVE: number of runs to average.
@@ -88,7 +88,7 @@ NUM_RUNS_TO_AVE = 1
 '''
 GRAPH_BATCH_SIZE: number of points in batch for stats purposes.
 '''
-GRAPH_BATCH_SIZE = 10000
+GRAPH_BATCH_SIZE = 100
 
 '''
 VERBOSE_FLAGS: Array of control flags to make ARED loud or quite
@@ -211,7 +211,7 @@ if __name__ == '__main__':
                         print(f"Number of clusters: {num_clusters[j-1]}")  # Add cluster count
                         # print(f"Precision: {precision_this_batch}")  # Add cluster count
 
-                    plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label")
+                    # plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label")
                 # end save and print -------------------------------------------------------------
 
                 pt_dist, num_pts_searched = ared.process_point(data_stream.stream_new_data_point())
