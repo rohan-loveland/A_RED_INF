@@ -23,6 +23,7 @@ def generate_synthetic_dataset_with_relevance(n_least_populous, seed=42):
     # Start with 512 for class 0, halving each time
     samples_per_class = [500000 // (2 ** i) for i in range(num_classes)]
     print("Samples per class:", samples_per_class)
+    sparsity_levels = np.array(samples_per_class)/sum(samples_per_class)
 
     # Generate random centers with good separation
     np.random.seed(seed)
@@ -64,7 +65,8 @@ def generate_synthetic_dataset_with_relevance(n_least_populous, seed=42):
     relevance = np.isin(y, least_populous_classes).astype(int)
 
     # Concatenate y and relevance into a 2D array
-    y_w_rel = np.column_stack((y, relevance))
+    y_w_rel = [(str(label), bool(rel)) for label, rel in zip(y, relevance)]
+    # y_w_rel = np.column_stack((y, relevance))
 
     # Plot the dataset
     # plt.figure(figsize=(10, 10))
@@ -82,7 +84,7 @@ def generate_synthetic_dataset_with_relevance(n_least_populous, seed=42):
     # plt.grid(True)
     # plt.show()
 
-    return X, y_w_rel
+    return X, y_w_rel, sparsity_levels
 
 
 # Example usage

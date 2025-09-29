@@ -96,4 +96,4 @@ def MNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS,seed):
     relevance_array = generate_is_relevant(y_skewed, set(least_common_digits))
     y_w_rel = list(zip(y_skewed, relevance_array))
 
-    return X_skewed, y_w_rel
+    return X_skewed, y_w_rel, sparsity_levels

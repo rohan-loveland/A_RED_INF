@@ -3,12 +3,9 @@ DATA_SOURCE: Dataset to run ARED on
 |- MNIST: MNIST dataset
 |- EMNIST: EMNIST dataset
 |- P_LOT
-'''
-from pycurl import RANDOM_FILE
 
-# goes with...
+and ...
 
-'''
 N_REL_CLASSES: Specified number of relevant classes
 |- This is the number of classes (starting from sparsest) that are to be considered relevant
 |- MNIST settings:
@@ -20,11 +17,11 @@ N_REL_CLASSES: Specified number of relevant classes
 |- EASY_MODE settings:
 |=== Low relevance: 4 relevant classes ~1.4% of data as relevant`
 '''
-DATA_SOURCE = "MNIST" # NOTE: currently multiplied by 10x to get ~130,000 samples
-N_REL_CLASSES = 4
+# DATA_SOURCE = "MNIST" # NOTE: currently multiplied by 10x to get ~130,000 samples
+# N_REL_CLASSES = 4
 
-# DATA_SOURCE = "EMNIST"
-# N_REL_CLASSES = 10
+DATA_SOURCE = "EMNIST"
+N_REL_CLASSES = 10
 
 # DATA_SOURCE = "NICE"
 # N_REL_CLASSES = 4
@@ -77,7 +74,7 @@ NUM_POINTS_TO_PROCESS: Number of points in dataset to process
 |- -1: process all the data
 |-  0 to inf: process up to that number if data is available
 '''
-NUM_POINTS_TO_PROCESS = 10000#-1
+NUM_POINTS_TO_PROCESS = 80000#-1
 
 '''
 NUM_RUN_TO_AVE: number of runs to average.
@@ -141,6 +138,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('TkAgg')  # or 'Qt5Agg' or 'wxAgg' depending on your system
 from data_visualization import *
+from more_stats import *
 
 from cluster_visualization import plot_clusters_colored_by_label
 
@@ -158,11 +156,11 @@ if __name__ == '__main__':
 
             # Get data and skew and add relevance
             if DATA_SOURCE == "MNIST":
-                X_skewed, y_w_rel = MNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS,seed)
+                X_skewed, y_w_rel, sparsity_levels = MNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS,seed)
             elif DATA_SOURCE == "EMNIST":
                 X_skewed, y_w_rel = EMNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS)
             elif DATA_SOURCE == "NICE":
-                X_skewed, y_w_rel = generate_synthetic_dataset_with_relevance(N_REL_CLASSES,seed)
+                X_skewed, y_w_rel, sparsity_levels = generate_synthetic_dataset_with_relevance(N_REL_CLASSES,seed)
 
 
             # set up confusion matrix
@@ -231,6 +229,11 @@ if __name__ == '__main__':
 
             print(ared.conf_matrix)
             print(np.sum(ared.conf_matrix[:]))
+            precision, recall = calculate_precision_recall(conf_matrix)
+            sparsity_levels = np.array(sparsity_levels).reshape((-1,1))
+            tri_array = np.round(np.hstack((precision, recall, sparsity_levels)),decimals=3)
+            print(tri_array)
+            print(ared.oracle.int_str_label_bidict)
 
             current_time = time.time()
             time_elapsed = current_time - start_time
