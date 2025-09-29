@@ -117,18 +117,7 @@ class Cluster:
             data_points = np.array([l_buf.get_pt_data_abs(idx) for idx in combined_idxs])
 
             # Recompute average nearest-neighbor distance on the union
-            self.comp_distance = self.average_nearest_neighbor_distance(data_points)
-
-    # def update_diameter(self, l_buf):
-    #     largest_distance = 0
-    #     for i in range(len(self.l_pt_idxs)):
-    #         for j in range(i):
-    #             data_l_pt_i = l_buf.get_pt_data_abs(self.l_pt_idxs[i])
-    #             data_l_pt_j = l_buf.get_pt_data_abs(self.l_pt_idxs[j])
-    #             distance = np.linalg.norm(data_l_pt_i - data_l_pt_j)
-    #             if largest_distance < distance:
-    #                 largest_distance = distance
-    #     self.comp_distance = largest_distance
+            self.update_ave_nn_dist(l_buf)
 
     def update_diameter(self, l_buf):
         latest_l_pt_idx = self.l_pt_idxs[-1]
@@ -137,7 +126,7 @@ class Cluster:
         for i in range(len(self.l_pt_idxs)-1): # all except the latest...
                 data_l_pt_i = l_buf.get_pt_data_abs(self.l_pt_idxs[i])
                 distance = np.linalg.norm(data_l_pt_i - latest_pt_data)
-                if largest_distance < distance:
+                if  distance > largest_distance:
                     largest_distance = distance
         # if new distance is > existing diameter, update diameter, otherwise leave alone
         if largest_distance > self.comp_distance:
@@ -149,43 +138,33 @@ class Cluster:
         Compute the average nearest-neighbor distance of all labeled points in the cluster.
         Updated to retrieve data the same way QS_VAR = 0 does (using absolute indices).
         """
-        # MAKE NOT O-N2 OR DIE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
         if len(self.l_pt_idxs) < 2:
             self.comp_distance = 0.0
             return
 
-        # Retrieve data for all labeled points using absolute index accessor,
-        # matching the approach in update_diameter.
-        data_points = np.array([l_buf.get_pt_data_abs(abs_idx) for abs_idx in self.l_pt_idxs])
+        latest_l_pt_idx = self.l_pt_idxs[-1]
+        latest_pt_data = l_buf.get_pt_data_abs(latest_l_pt_idx)
+        data_l_pt_i = l_buf.get_pt_data_abs(self.l_pt_idxs[0])
+        smallest_distance = np.linalg.norm(data_l_pt_i - latest_pt_data)
+        num_pts_in_cluster = len(self.l_pt_idxs)
+        for i in range(num_pts_in_cluster - 1):  # all except the latest...
+            data_l_pt_i = l_buf.get_pt_data_abs(self.l_pt_idxs[i])
+            distance = np.linalg.norm(data_l_pt_i - latest_pt_data)
+            if distance < smallest_distance:
+                smallest_distance = distance
 
-        # Compute and store the average nearest-neighbor distance
-        self.comp_distance = self.average_nearest_neighbor_distance(data_points)
+        # calculate new average
+        self.comp_distance = (self.comp_distance*(num_pts_in_cluster - 1) + smallest_distance)/num_pts_in_cluster
 
-    # for QS_VAR == 2
-    # AI helper function
-    def average_nearest_neighbor_distance(self, X):
-        if len(X) < 2:
-            raise ValueError("At least two points are required to compute nearest neighbor distances.")
-        # Build KDTree for efficient nearest neighbor search
-        tree = KDTree(X)
-        # Query for the two nearest neighbors (including itself)
-        distances, _ = tree.query(X, k=2)
-
-        # Extract the distance to the nearest neighbor (exclude self)
-        nearest_distances = distances[:, 1]
-
-        # Compute and return the average
-        return np.mean(nearest_distances)
 
 """# AREDIN"""
 
 class ARED:
 
-    def __init__(self, oracle, kappa=1.0, l_buf_size=1000, k_closest_pts = 1, QS_VAR = 0, REL_PROC_VAR = 0, SM_VAR=0, VERBOSE_FLAGS = ()):
+    def __init__(self, oracle, conf_matrix, kappa=1.0, l_buf_size=1000, k_closest_pts = 1, QS_VAR = 0, REL_PROC_VAR = 0, SM_VAR=0, VERBOSE_FLAGS = ()):
         self.kappa = kappa
         self.k_closest_pts = k_closest_pts
-        self.l_buf = FiniteBuffer(l_buf_size, .8, 3)
+        self.l_buf = FiniteBuffer(l_buf_size, .8, 2)
         self.subspace_partition = Subspace_Partition(self.l_buf)
         self.oracle = oracle
         self.num_queries = 0
@@ -198,6 +177,7 @@ class ARED:
         self.REL_PROC_VAR = REL_PROC_VAR
         self.SM_VAR = SM_VAR
         self.verbose_flags = VERBOSE_FLAGS
+        self.conf_matrix = conf_matrix
 
 
     def process_first_point(self, data_point):
@@ -217,6 +197,10 @@ class ARED:
 
         if 1 in self.verbose_flags:
             print("new cluster:", 0, [0])
+
+        # update confusion matrix
+        int_label = self.oracle.int_str_label_bidict[label]
+        self.conf_matrix[int_label,int_label] += 1
 
     def merge_clusters(self, cluster_key_a, cluster_key_b):
         # DONE (by Nate Mediocrely)
@@ -359,9 +343,8 @@ class ARED:
         is_anomalous = self.anomalous(data_point, comp_cluster_key, distance)
         is_relevant = (rel_cl_data is not None)
 
-        if is_relevant  or is_anomalous:
+        if is_relevant  or is_anomalous:  # Query!
 
-            # Query!
             new_pt_label, new_pt_relevant = self.query(data_point_abs_idx)
 
             label_is_same = (new_pt_label == comp_cluster_label)
@@ -372,6 +355,16 @@ class ARED:
                 # if self.num_pts_streamed > 80000:
                 #     pass
                 self.split(data_point, data_point_abs_idx, new_pt_label, new_pt_relevant, comp_cluster_key)
+            # update confusion matrix
+            new_pt_label_int = self.oracle.int_str_label_bidict[new_pt_label]
+            self.conf_matrix[new_pt_label_int,new_pt_label_int] += 1
+        else:
+            # update confusion matrix
+            # this is o_pt case, so ARED doesn't actually know label, so we have to "peek" at it
+            actual_new_pt_label = self.oracle.y[data_point_abs_idx][0]
+            actual_new_pt_label_int = self.oracle.int_str_label_bidict[actual_new_pt_label]
+            comp_cluster_label_int = self.oracle.int_str_label_bidict[comp_cluster_label]
+            self.conf_matrix[actual_new_pt_label_int,comp_cluster_label_int] += 1
 
         # DEBUG ONLY -----------------------
         return distance, num_pts_searched

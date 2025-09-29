@@ -20,20 +20,21 @@ N_REL_CLASSES: Specified number of relevant classes
 |- EASY_MODE settings:
 |=== Low relevance: 4 relevant classes ~1.4% of data as relevant`
 '''
-# DATA_SOURCE = "MNIST" # NOTE: currently multiplied by 10x to get ~130,000 samples
-# N_REL_CLASSES = 4
+DATA_SOURCE = "MNIST" # NOTE: currently multiplied by 10x to get ~130,000 samples
+N_REL_CLASSES = 4
 
 # DATA_SOURCE = "EMNIST"
 # N_REL_CLASSES = 10
 
-DATA_SOURCE = "NICE"
-N_REL_CLASSES = 4
+# DATA_SOURCE = "NICE"
+# N_REL_CLASSES = 4
+
 '''
 KAPPAS: Paranoia Parameter
 |- Array of Kappas to run ARED on
 |- Run more than one for graphing purposes
 '''
-KAPPAS = [1] #0.5, , 1.4, 10
+KAPPAS = [0.5] #0.5, , 1.4, 10
 
 '''
 K_COMP_PTS: Number of points to compare to when looking for relevance
@@ -48,7 +49,7 @@ QS_VAR: Query Strategy Variants
 |- 0: Diameter check
 |- 1: Approx. Ave Single Linkage Average 
 '''
-QS_VAR = 0
+QS_VAR = 1
 
 '''
 SM_VAR: Split Method Var 
@@ -76,7 +77,7 @@ NUM_POINTS_TO_PROCESS: Number of points in dataset to process
 |- -1: process all the data
 |-  0 to inf: process up to that number if data is available
 '''
-NUM_POINTS_TO_PROCESS = -1
+NUM_POINTS_TO_PROCESS = 10000#-1
 
 '''
 NUM_RUN_TO_AVE: number of runs to average.
@@ -88,7 +89,7 @@ NUM_RUNS_TO_AVE = 1
 '''
 GRAPH_BATCH_SIZE: number of points in batch for stats purposes.
 '''
-GRAPH_BATCH_SIZE = 100
+GRAPH_BATCH_SIZE = 1000
 
 '''
 VERBOSE_FLAGS: Array of control flags to make ARED loud or quite
@@ -143,8 +144,9 @@ from data_visualization import *
 
 from cluster_visualization import plot_clusters_colored_by_label
 
+
+
 if __name__ == '__main__':
-    # Note: this assumes 10 classes - is totally "MNIST centric"
     stats = Stats()
 
     for kappa in KAPPAS:
@@ -153,6 +155,7 @@ if __name__ == '__main__':
 
         for seed in range(NUM_RUNS_TO_AVE):
             seed = seed + RANDOM_SEED_OFFSET
+
             # Get data and skew and add relevance
             if DATA_SOURCE == "MNIST":
                 X_skewed, y_w_rel = MNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS,seed)
@@ -161,11 +164,16 @@ if __name__ == '__main__':
             elif DATA_SOURCE == "NICE":
                 X_skewed, y_w_rel = generate_synthetic_dataset_with_relevance(N_REL_CLASSES,seed)
 
+
+            # set up confusion matrix
+            num_all_classes = len(np.unique(np.array(y_w_rel)[:, 0]))
+            conf_matrix = np.zeros((num_all_classes, num_all_classes),dtype=int)
+
             # Initialize Oracle and ARED ===================================
             data_stream = Data_Stream(X_skewed, y_w_rel)
             oracle = Oracle(X_skewed, y_w_rel)
 
-            ared = ARED(oracle, kappa, DATA_WINDOW_SIZE, K_COMP_PTS, QS_VAR, REL_PROC_VAR, SM_VAR, VERBOSE_FLAGS)
+            ared = ARED(oracle, conf_matrix, kappa, DATA_WINDOW_SIZE, K_COMP_PTS, QS_VAR, REL_PROC_VAR, SM_VAR, VERBOSE_FLAGS)
 
             if NUM_POINTS_TO_PROCESS == -1:
                 num_points_to_process = data_stream.get_remaining_num_points()
@@ -182,6 +190,7 @@ if __name__ == '__main__':
             times = [start_time]
             num_queries = [ared.num_queries]
             num_clusters = [len(ared.subspace_partition.cluster_dict)]
+            num_labels = [len(ared.subspace_partition.set_of_known_labels)]
             recall = []
             precision = []
 
@@ -199,6 +208,7 @@ if __name__ == '__main__':
                     num_queries.append(ared.num_queries)
                     num_queries_this_batch = num_queries[j] - num_queries[j-1]
                     num_clusters.append(len(ared.subspace_partition.cluster_dict))
+                    num_labels.append(len(ared.subspace_partition.set_of_known_labels))
                     # precision.append(precision_this_batch)
 
                     # num_rel_this_batch_TP = ?????
@@ -218,6 +228,10 @@ if __name__ == '__main__':
                 pt_dists.append(pt_dist)
                 num_pts_searched_list.append(num_pts_searched)
 
+
+            print(ared.conf_matrix)
+            print(np.sum(ared.conf_matrix[:]))
+
             current_time = time.time()
             time_elapsed = current_time - start_time
             print(f"Run took {time_elapsed:.2f} seconds")
@@ -229,8 +243,9 @@ if __name__ == '__main__':
             plt.plot(batch_times/np.max(batch_times))
             plt.plot(np.array(batch_queries)/max(batch_queries))
             plt.plot(np.array(num_clusters)/max(num_clusters))
+            plt.plot(np.array(num_labels))
             # plt.plot(np.array(precision)/1.0)
-            plt.legend(["time per batch", "num queries per batch", "num_clusters"])
+            plt.legend(["time per batch", "num queries per batch", "num_clusters,num_labels"])
             plt.figure()
             #DEBUG ONLY------------------------------------------------
             pt_dists = np.array(pt_dists)
