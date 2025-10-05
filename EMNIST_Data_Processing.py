@@ -3,6 +3,27 @@ import pickle
 import os
 from collections import Counter
 
+EMNIST_LABEL_TO_ASCII = [
+    48, 49, 50, 51, 52, 53, 54, 55, 56, 57,
+    65, 66, 67, 68, 69, 70, 71, 72, 73, 74,
+    75, 76, 77, 78, 79, 80, 81, 82, 83, 84,
+    85, 86, 87, 88, 89, 90,
+    97, 98, 99, 100, 101, 102, 103, 104, 105, 106,
+    107, 108, 109, 110, 111, 112, 113, 114, 115, 116,
+    117, 118, 119, 120, 121, 122
+]
+
+def label_to_char(label):
+    """Convert EMNIST label index (0–61) to corresponding ASCII character."""
+    try:
+        label_int = int(label)
+    except (ValueError, TypeError):
+        raise ValueError(f"Invalid label type for EMNIST: {label} (type {type(label)})")
+
+    if 0 <= label_int < len(EMNIST_LABEL_TO_ASCII):
+        return chr(EMNIST_LABEL_TO_ASCII[label_int])
+    else:
+        raise ValueError(f"Invalid EMNIST label index: {label_int}")
 
 def load_emnist(save_path="emnist.pkl"):
     """
@@ -58,7 +79,7 @@ def EMNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, save_path="emnist.pkl"):
 
     Returns:
         X: EMNIST images, shape (n_samples, 784).
-        y_w_rel: List of (label, relevance) tuples for the dataset.
+        y_w_rel: List of (char_label, relevance) tuples for the dataset.
     """
     # Load the full EMNIST dataset
     X, y = load_emnist(save_path)
@@ -77,17 +98,21 @@ def EMNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, save_path="emnist.pkl"):
     if 0 in VERBOSE_FLAGS:
         print(f"Running ARED on EMNIST dataset with {n_events} events")
         print(f"Least common classes: {least_common_classes} (marked as relevant)")
+        print("Corresponding characters:",
+              [label_to_char(cls) for cls in least_common_classes])
 
     # Generate relevance info
     relevance_array = generate_is_relevant(y, set(least_common_classes))
-    y_w_rel = list(zip(y, relevance_array))
-    # y_w_rel = np.column_stack((y, np.array(relevance_array),))
+
+    # Convert labels to characters
+    y_chars = [label_to_char(label) for label in y]
+
+    # Combine into (char_label, relevance) tuples
+    y_w_rel = list(zip(y_chars, relevance_array))
 
     return X, y_w_rel,sparsity_levels
 
-
 if __name__ == "__main__":
-    # Example usage
     N_REL_CLASSES = 2
     VERBOSE_FLAGS = [0]
     X, y_w_rel = EMNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS)
