@@ -68,6 +68,7 @@ def EMNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, save_path="emnist.pkl"):
     class_counts = Counter(y)
     least_common_classes = [cls for cls, _ in class_counts.most_common()[-N_REL_CLASSES:]]
     lc_class_freqs = [f for _, f in class_counts.most_common()[-N_REL_CLASSES:]]
+    sparsity_levels = [(k,v/n_events) for k,v in class_counts.items()]
     num_relevant_points = sum(lc_class_freqs)
     num_points_total = X.shape[0]
     print(f"Number of classes: {len(set(y))}, number of relevant classes: {N_REL_CLASSES}")
@@ -82,7 +83,7 @@ def EMNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, save_path="emnist.pkl"):
     y_w_rel = list(zip(y, relevance_array))
     # y_w_rel = np.column_stack((y, np.array(relevance_array),))
 
-    return X, y_w_rel
+    return X, y_w_rel,sparsity_levels
 
 
 if __name__ == "__main__":

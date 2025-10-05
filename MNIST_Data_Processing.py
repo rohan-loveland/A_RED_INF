@@ -5,7 +5,7 @@ from collections import Counter
 
 
 # Create skewed subset
-def create_skewed_mnist(X, y, sparsity_levels, seed=42):
+def create_skewed_mnist(X, y, sparsity_levels, seed):
     # Note: sparsity_levels comes in w/ largest value at 0.5, then 0.25, etc. representing ratio of
     # number of points to total
     sparsity_levels = np.array(sparsity_levels)
@@ -31,9 +31,9 @@ def create_skewed_mnist(X, y, sparsity_levels, seed=42):
 
     X_skewed = X[indices]
     y_skewed = y[indices]
-    return X_skewed, y_skewed
+    return X_skewed, y_skewed, digit_order
 
-def load_and_skew_mnist(sparsity_levels, seed=42, save_path="mnist_replicated_10x.pkl"):
+def load_and_skew_mnist(sparsity_levels, seed, save_path="mnist_replicated_10x.pkl"):
     """
     Loads the replicated MNIST dataset (10x duplicated) from a pickle file,
     creates a skewed subset using create_skewed_mnist, and returns both the skewed
@@ -71,10 +71,10 @@ def load_and_skew_mnist(sparsity_levels, seed=42, save_path="mnist_replicated_10
     
     # Create skewed subset
     print(f"Creating skewed subset with sparsity {sparsity_levels}")
-    X_skewed, y_skewed = create_skewed_mnist(X, y, sparsity_levels, seed)
+    X_skewed, y_skewed, digit_order = create_skewed_mnist(X, y, sparsity_levels, seed)
 
     print(f"Skewed dataset shape: {X_skewed.shape}")
-    return X_skewed, y_skewed, X, y
+    return X_skewed, y_skewed, X, y, digit_order
 
 def generate_is_relevant(label_list, relevant_set):
     return [label in relevant_set for label in label_list]
@@ -82,7 +82,7 @@ def generate_is_relevant(label_list, relevant_set):
 def MNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS,seed):
     sparsity_levels = [(1 / int(2 ** n)) for n in range(1, 11)]
 
-    X_skewed, y_skewed, X_full, y_full = load_and_skew_mnist(sparsity_levels, seed)
+    X_skewed, y_skewed, X_full, y_full, digit_order = load_and_skew_mnist(sparsity_levels, seed)
     n_events = len(y_skewed)
     # Step 2: Identify the 2 least common digits
     digit_counts = Counter(y_skewed)
@@ -95,5 +95,7 @@ def MNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS,seed):
     # Generate relevance info
     relevance_array = generate_is_relevant(y_skewed, set(least_common_digits))
     y_w_rel = list(zip(y_skewed, relevance_array))
+
+    sparsity_levels = [(digit_order[n],sparsity_levels[n]) for n in range(len(sparsity_levels))]
 
     return X_skewed, y_w_rel, sparsity_levels

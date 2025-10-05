@@ -27,7 +27,7 @@ N_REL_CLASSES = 10
 # N_REL_CLASSES = 4
 
 '''
-KAPPAS: Paranoia Parameter
+KAPPA'S: Paranoia Parameter
 |- Array of Kappas to run ARED on
 |- Run more than one for graphing purposes
 '''
@@ -57,6 +57,7 @@ SM_VAR = 0
 
 '''
 REL_PROC_VAR: Relevance Processing Variants
+# NOTE: currently unused since there are no o_pts
 |- 0: No relevance processing
 |- 1: Single
 '''
@@ -74,7 +75,7 @@ NUM_POINTS_TO_PROCESS: Number of points in dataset to process
 |- -1: process all the data
 |-  0 to inf: process up to that number if data is available
 '''
-NUM_POINTS_TO_PROCESS = 80000#-1
+NUM_POINTS_TO_PROCESS = 10000#-1
 
 '''
 NUM_RUN_TO_AVE: number of runs to average.
@@ -117,19 +118,18 @@ RANDOM_SEED_OFFSET
 RANDOM_SEED_OFFSET = 25
 
 # Imports ===================================
-from MNIST_Data_Processing import *
-from EMNIST_Data_Processing import *
-from NICE_Data_Processing import *
+
 from Data_Stream import *
 from Oracle import *
 from A_REDIN import *
 from Stats import *
-import time
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('TkAgg')  # or 'Qt5Agg' or 'wxAgg' depending on your system
 from data_visualization import *
 from more_stats import *
+from main_helper_functions import *
+from sklearn.metrics import ConfusionMatrixDisplay
 
 from cluster_visualization import plot_clusters_colored_by_label
 
@@ -143,47 +143,27 @@ if __name__ == '__main__':
         for seed in range(NUM_RUNS_TO_AVE):
             seed = seed + RANDOM_SEED_OFFSET
 
-            # Get data and skew and add relevance
-            if DATA_SOURCE == "MNIST":
-                X_skewed, y_w_rel, sparsity_levels = MNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS,seed)
-            elif DATA_SOURCE == "EMNIST":
-                X_skewed, y_w_rel = EMNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS)
-            elif DATA_SOURCE == "NICE":
-                X_skewed, y_w_rel, sparsity_levels = generate_synthetic_dataset_with_relevance(N_REL_CLASSES,seed)
+            # Get data
+            X_skewed, y_w_rel, sparsity_levels = get_data(DATA_SOURCE,N_REL_CLASSES, VERBOSE_FLAGS, seed)
 
-
-            # set up confusion matrix
-            num_all_classes = len(np.unique(np.array(y_w_rel)[:, 0]))
-            conf_matrix = np.zeros((num_all_classes, num_all_classes),dtype=int)
-
-            # Initialize Oracle and ARED ===================================
+            # Initialize Data Stream, Oracle and ARED ===================================
             data_stream = Data_Stream(X_skewed, y_w_rel)
-            oracle = Oracle(X_skewed, y_w_rel)
-
-            ared = ARED(oracle, conf_matrix, kappa, DATA_WINDOW_SIZE, K_COMP_PTS, QS_VAR, REL_PROC_VAR, SM_VAR, VERBOSE_FLAGS)
-
             if NUM_POINTS_TO_PROCESS == -1:
                 num_points_to_process = data_stream.get_remaining_num_points()
             else:
-                num_points_to_process = NUM_POINTS_TO_PROCESS - 1
+                num_points_to_process = NUM_POINTS_TO_PROCESS
 
-            start_time = time.time()
+            oracle = Oracle(X_skewed, y_w_rel)
+
+            num_all_classes = len(np.unique(np.array(y_w_rel)[:, 0]))
+            conf_matrix = np.zeros((num_all_classes, num_all_classes), dtype=int)
+            ared = ARED(oracle, conf_matrix, kappa, DATA_WINDOW_SIZE, K_COMP_PTS, QS_VAR, REL_PROC_VAR, SM_VAR, VERBOSE_FLAGS)
+
+            start_time, times, num_queries, num_clusters, num_labels, recall, precision, \
+                pt_dists, num_pts_searched_list, num_queries_last_batch = set_up_stats(ared,y_w_rel)
             # Stream and Process data =========================================
             ared.process_first_point(data_stream.stream_new_data_point())
             ared.num_queries = 1 # already processed first point
-
-            num_queries_last_batch = 0
-
-            times = [start_time]
-            num_queries = [ared.num_queries]
-            num_clusters = [len(ared.subspace_partition.cluster_dict)]
-            num_labels = [len(ared.subspace_partition.set_of_known_labels)]
-            recall = []
-            precision = []
-
-            # DEBUG ONLY
-            pt_dists = []
-            num_pts_searched_list = []
 
             for i in range(1, num_points_to_process):
 
@@ -219,10 +199,16 @@ if __name__ == '__main__':
             print(ared.conf_matrix)
             print(np.sum(ared.conf_matrix[:]))
             precision, recall = calculate_precision_recall(conf_matrix)
-            sparsity_levels = np.array(sparsity_levels).reshape((-1,1))
-            tri_array = np.round(np.hstack((precision, recall, sparsity_levels)),decimals=3)
-            print(tri_array)
+            sparsity_labels = [l for l,_ in sparsity_levels]
+            sparsity_numbers = [n for _,n in sparsity_levels]
+            quad_list = [(sparsity_labels[n],sparsity_numbers[n],precision[n,0],recall[n,0]) for n in range(len(sparsity_numbers))]
+            print(quad_list)
             print(ared.oracle.int_str_label_bidict)
+            # Create ConfusionMatrixDisplay object
+            disp = ConfusionMatrixDisplay(confusion_matrix=conf_matrix, display_labels=sparsity_labels)
+            disp.plot(cmap='Blues', values_format='d')
+            plt.title("Confusion Matrix")
+            plt.show()
 
             current_time = time.time()
             time_elapsed = current_time - start_time

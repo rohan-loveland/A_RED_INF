@@ -15,8 +15,8 @@ def calculate_precision_recall(confusion_matrix):
     n_classes = cm.shape[0]
 
     # Initialize arrays for precision and recall
-    precision = np.zeros((n_classes, 1))
-    recall = np.zeros((n_classes, 1))
+    precision = np.zeros((n_classes, 1,))
+    recall = np.zeros((n_classes, 1,))
 
     for i in range(n_classes):
         # True positives: diagonal element
