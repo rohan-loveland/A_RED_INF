@@ -37,7 +37,7 @@ def plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visua
         for idx in indices:
             if idx < len(X_skewed):
                 points.append(X_skewed[idx])
-                labels.append(y_w_rel[idx])
+                labels.append(y_w_rel[idx][0])
                 cluster_ids.append(cluster_id)
 
     if not points:

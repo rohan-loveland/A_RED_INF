@@ -167,26 +167,26 @@ if __name__ == '__main__':
                     print(f"Points queried in this batch: {num_queries[j] - num_queries[j-1]}, Query Rate: {(num_queries[j] - num_queries[j-1]) / GRAPH_BATCH_SIZE * 100}%")
                     print(f"Number of clusters: {num_clusters[j-1]}")  # Add cluster count
 
-                # plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label")
+                plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label")
             # end save and print -------------------------------------------------------------
 
             pt_dist, num_pts_searched = ared.process_point(data_stream.stream_new_data_point())
             pt_dists.append(pt_dist)
             num_pts_searched_list.append(num_pts_searched)
 
-        # conf_matrix = conf_matrices[-1]
-        # print(ared.conf_matrix)
-        # print(np.sum(ared.conf_matrix[:]))
-        # precision, recall = calculate_precision_recall_all_classes(conf_matrix)
-        # sparsity_labels = [l for l,_ in sparsity_levels]
-        # sparsity_numbers = [n for _,n in sparsity_levels]
-        # quad_list = [(sparsity_labels[n],sparsity_numbers[n],precision[n],recall[n]) for n in range(len(sparsity_numbers))]
-        # print(quad_list)
-        # print(ared.oracle.int_str_label_bidict)
-        # # Create ConfusionMatrixDisplay object
-        # disp = ConfusionMatrixDisplay(confusion_matrix=conf_matrix, display_labels=sparsity_labels)
-        # disp.plot(cmap='Blues', values_format='d')
-        # plt.title("Confusion Matrix")
+        conf_matrix = conf_matrices[-1]
+        print(ared.conf_matrix)
+        print(np.sum(ared.conf_matrix[:]))
+        precision, recall = calculate_precision_recall_all_classes(conf_matrix)
+        sparsity_labels = [l for l,_ in sparsity_levels]
+        sparsity_numbers = [n for _,n in sparsity_levels]
+        quad_list = [(sparsity_labels[n],sparsity_numbers[n],precision[n],recall[n]) for n in range(len(sparsity_numbers))]
+        print(quad_list)
+        print(ared.oracle.int_str_label_bidict)
+        # Create ConfusionMatrixDisplay object
+        disp = ConfusionMatrixDisplay(confusion_matrix=conf_matrix, display_labels=sparsity_labels)
+        disp.plot(cmap='Blues', values_format='d')
+        plt.title("Confusion Matrix")
 
         # current_time = time.time()
         # time_elapsed = current_time - start_time
