@@ -1,6 +1,6 @@
 import numpy as np
 
-def calculate_precision_recall(confusion_matrix):
+def calculate_precision_recall_all_classes(confusion_matrix):
     """
     Calculate precision and recall for each class from an nxn confusion matrix.
 
@@ -15,8 +15,8 @@ def calculate_precision_recall(confusion_matrix):
     n_classes = cm.shape[0]
 
     # Initialize arrays for precision and recall
-    precision = np.zeros((n_classes, 1,))
-    recall = np.zeros((n_classes, 1,))
+    precision = np.zeros((n_classes,))
+    recall = np.zeros((n_classes,))
 
     for i in range(n_classes):
         # True positives: diagonal element
@@ -29,10 +29,10 @@ def calculate_precision_recall(confusion_matrix):
         false_negatives = np.sum(cm[i, :]) - true_positives
 
         # Precision = TP / (TP + FP)
-        precision[i, 0] = true_positives / (true_positives + false_positives) if (true_positives + false_positives) > 0 else 0.0
+        precision[i] = true_positives / (true_positives + false_positives) if (true_positives + false_positives) > 0 else 0.0
 
         # Recall = TP / (TP + FN)
-        recall[i, 0] = true_positives / (true_positives + false_negatives) if (true_positives + false_negatives) > 0 else 0.0
+        recall[i] = true_positives / (true_positives + false_negatives) if (true_positives + false_negatives) > 0 else 0.0
 
     return precision, recall
 
@@ -45,7 +45,7 @@ if __name__ == "__main__":
         [2, 1, 12]
     ])
 
-    precision, recall = calculate_precision_recall(sample_cm)
+    precision, recall = calculate_precision_recall_all_classes(sample_cm)
 
     print("Precision per class:")
     print(precision)

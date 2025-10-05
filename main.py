@@ -1,5 +1,6 @@
 '''
 DATA_SOURCE: Dataset to run ARED on
+|- NICE: Nice dataset - synthetic data with well separated Gaussian clusters
 |- MNIST: MNIST dataset
 |- EMNIST: EMNIST dataset
 |- P_LOT
@@ -9,29 +10,30 @@ and ...
 N_REL_CLASSES: Specified number of relevant classes
 |- This is the number of classes (starting from sparsest) that are to be considered relevant
 |- MNIST settings:
-|=== High relevance: 8 relevant classes ~25% of data as relevant
-|=== Low relevance: 4 relevant classes ~1.4% of data as relevant`
+|=== High Relevant Class Representation (HRCR): 8 relevant classes ~25% of data as relevant
+|=== Low Relevant Class Representation (LRCR): 4 relevant classes ~1.4% of data as relevant`
 |- EMNIST settings:
-|=== High relevance: 40 relevant classes ~25% of data as relevant
-|=== Low relevance: 10 relevant classes ~1.4% of data as relevant`
-|- EASY_MODE settings:
+|=== HRCR 40 relevant classes ~25% of data as relevant
+|=== LRCR: 10 relevant classes ~1.4% of data as relevant`
+|- NICE settings:
 |=== Low relevance: 4 relevant classes ~1.4% of data as relevant`
 '''
 # DATA_SOURCE = "MNIST" # NOTE: currently multiplied by 10x to get ~130,000 samples
 # N_REL_CLASSES = 4
 
-DATA_SOURCE = "EMNIST"
-N_REL_CLASSES = 10
+# DATA_SOURCE = "EMNIST"
+# N_REL_CLASSES = 10
 
-# DATA_SOURCE = "NICE"
-# N_REL_CLASSES = 4
-
+DATA_SOURCE = "NICE"
+N_REL_CLASSES = 4
 '''
-KAPPA'S: Paranoia Parameter
-|- Array of Kappas to run ARED on
-|- Run more than one for graphing purposes
+KAPPA: Paranoia Parameter
+(single value for now)
 '''
-KAPPAS = [0.5] #0.5, , 1.4, 10
+KAPPA = 0.5 #0.5, , 1.4, 10
+# # KAPPAS = [0.5] #0.5, , 1.4, 10
+# |- Array of Kappas to run ARED on
+# |- Run more than one for graphing purposes
 
 '''
 K_COMP_PTS: Number of points to compare to when looking for relevance
@@ -134,106 +136,83 @@ from sklearn.metrics import ConfusionMatrixDisplay
 from cluster_visualization import plot_clusters_colored_by_label
 
 if __name__ == '__main__':
-    stats = Stats()
 
-    for kappa in KAPPAS:
+        # Get data ===================================================
+        X_skewed, y_w_rel, sparsity_levels = get_data(DATA_SOURCE,N_REL_CLASSES, VERBOSE_FLAGS, RANDOM_SEED_OFFSET)
 
-        stats.init_for_kappa_loop(kappa)
+        # Initialize Data Stream, Oracle and ARED ===================================
+        data_stream = Data_Stream(X_skewed, y_w_rel)
+        oracle = Oracle(X_skewed, y_w_rel)
+        ared = ARED(oracle, KAPPA, DATA_WINDOW_SIZE, K_COMP_PTS, QS_VAR, REL_PROC_VAR, SM_VAR, VERBOSE_FLAGS)
+        start_time, times, num_queries, num_clusters, num_labels, pt_dists, num_pts_searched_list, conf_matrices, \
+            num_queries_last_batch = set_up_stats(ared)
 
-        for seed in range(NUM_RUNS_TO_AVE):
-            seed = seed + RANDOM_SEED_OFFSET
+        # Stream and Process data =========================================
+        ared.process_first_point(data_stream.stream_new_data_point())
+        ared.num_queries = 1 # already processed first point
 
-            # Get data
-            X_skewed, y_w_rel, sparsity_levels = get_data(DATA_SOURCE,N_REL_CLASSES, VERBOSE_FLAGS, seed)
+        if NUM_POINTS_TO_PROCESS == -1:
+            NUM_POINTS_TO_PROCESS = data_stream.get_remaining_num_points()
+        for i in range(1, NUM_POINTS_TO_PROCESS):
+            # save and print per batch ---------------------------------------------------------------------
+            if i % GRAPH_BATCH_SIZE == 0:
+                j = i//GRAPH_BATCH_SIZE # count of number of batches
+                times.append(time.time())
+                num_queries.append(ared.num_queries)
+                num_clusters.append(len(ared.subspace_partition.cluster_dict))
+                num_labels.append(len(ared.subspace_partition.set_of_known_labels))
+                conf_matrices.append(ared.conf_matrix)
+                if 0 in VERBOSE_FLAGS:
+                    print(f"Processing point {i}... (last {GRAPH_BATCH_SIZE} points took {times[j]- times[j-1]:.2f} seconds)")
+                    print(f"Points queried in this batch: {num_queries[j] - num_queries[j-1]}, Query Rate: {(num_queries[j] - num_queries[j-1]) / GRAPH_BATCH_SIZE * 100}%")
+                    print(f"Number of clusters: {num_clusters[j-1]}")  # Add cluster count
 
-            # Initialize Data Stream, Oracle and ARED ===================================
-            data_stream = Data_Stream(X_skewed, y_w_rel)
-            if NUM_POINTS_TO_PROCESS == -1:
-                num_points_to_process = data_stream.get_remaining_num_points()
-            else:
-                num_points_to_process = NUM_POINTS_TO_PROCESS
+                # plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label")
+            # end save and print -------------------------------------------------------------
 
-            oracle = Oracle(X_skewed, y_w_rel)
+            pt_dist, num_pts_searched = ared.process_point(data_stream.stream_new_data_point())
+            pt_dists.append(pt_dist)
+            num_pts_searched_list.append(num_pts_searched)
 
-            num_all_classes = len(np.unique(np.array(y_w_rel)[:, 0]))
-            conf_matrix = np.zeros((num_all_classes, num_all_classes), dtype=int)
-            ared = ARED(oracle, conf_matrix, kappa, DATA_WINDOW_SIZE, K_COMP_PTS, QS_VAR, REL_PROC_VAR, SM_VAR, VERBOSE_FLAGS)
+        # conf_matrix = conf_matrices[-1]
+        # print(ared.conf_matrix)
+        # print(np.sum(ared.conf_matrix[:]))
+        # precision, recall = calculate_precision_recall_all_classes(conf_matrix)
+        # sparsity_labels = [l for l,_ in sparsity_levels]
+        # sparsity_numbers = [n for _,n in sparsity_levels]
+        # quad_list = [(sparsity_labels[n],sparsity_numbers[n],precision[n],recall[n]) for n in range(len(sparsity_numbers))]
+        # print(quad_list)
+        # print(ared.oracle.int_str_label_bidict)
+        # # Create ConfusionMatrixDisplay object
+        # disp = ConfusionMatrixDisplay(confusion_matrix=conf_matrix, display_labels=sparsity_labels)
+        # disp.plot(cmap='Blues', values_format='d')
+        # plt.title("Confusion Matrix")
 
-            start_time, times, num_queries, num_clusters, num_labels, recall, precision, \
-                pt_dists, num_pts_searched_list, num_queries_last_batch = set_up_stats(ared,y_w_rel)
-            # Stream and Process data =========================================
-            ared.process_first_point(data_stream.stream_new_data_point())
-            ared.num_queries = 1 # already processed first point
-
-            for i in range(1, num_points_to_process):
-
-                # save and print per batch ---------------------------------------------------------------------
-                if i % GRAPH_BATCH_SIZE == 0:
-                    j = i//GRAPH_BATCH_SIZE # count of number of batches
-                    times.append(time.time())
-                    time_elapsed =  times[j]- times[j-1]
-                    num_queries.append(ared.num_queries)
-                    num_queries_this_batch = num_queries[j] - num_queries[j-1]
-                    num_clusters.append(len(ared.subspace_partition.cluster_dict))
-                    num_labels.append(len(ared.subspace_partition.set_of_known_labels))
-                    # precision.append(precision_this_batch)
-
-                    # num_rel_this_batch_TP = ?????
-                    # num_rel_this_batch_P = ????
-                    # precision_this_batch = num_rel_this_batch_TP/num_rel_this_batch_P
-                    # num_rel_this_batch_streamed = ????????????????
-                    if 0 in VERBOSE_FLAGS:
-                        print(f"Processing point {i}... (last {GRAPH_BATCH_SIZE} points took {time_elapsed:.2f} seconds)")
-                        print(f"Points queried in this batch: {num_queries_this_batch}, Query Rate: {num_queries_this_batch / GRAPH_BATCH_SIZE * 100}%")
-                        print(f"Number of clusters: {num_clusters[j-1]}")  # Add cluster count
-                        # print(f"Precision: {precision_this_batch}")  # Add cluster count
-
-                    # plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label")
-                # end save and print -------------------------------------------------------------
-
-                pt_dist, num_pts_searched = ared.process_point(data_stream.stream_new_data_point())
-                pt_dists.append(pt_dist)
-                num_pts_searched_list.append(num_pts_searched)
-
-
-            print(ared.conf_matrix)
-            print(np.sum(ared.conf_matrix[:]))
-            precision, recall = calculate_precision_recall(conf_matrix)
-            sparsity_labels = [l for l,_ in sparsity_levels]
-            sparsity_numbers = [n for _,n in sparsity_levels]
-            quad_list = [(sparsity_labels[n],sparsity_numbers[n],precision[n,0],recall[n,0]) for n in range(len(sparsity_numbers))]
-            print(quad_list)
-            print(ared.oracle.int_str_label_bidict)
-            # Create ConfusionMatrixDisplay object
-            disp = ConfusionMatrixDisplay(confusion_matrix=conf_matrix, display_labels=sparsity_labels)
-            disp.plot(cmap='Blues', values_format='d')
-            plt.title("Confusion Matrix")
-
-            current_time = time.time()
-            time_elapsed = current_time - start_time
-            print(f"Run took {time_elapsed:.2f} seconds")
-            print("ARED COMPLETE")
-
-            batch_times = np.diff(np.array(times))
-            batch_queries = np.diff(np.array(num_queries))
-            plt.figure()
-            plt.plot(batch_times/np.max(batch_times))
-            plt.plot(np.array(batch_queries)/max(batch_queries))
-            plt.plot(np.array(num_clusters)/max(num_clusters))
-            plt.plot(np.array(num_labels))
-            # plt.plot(np.array(precision)/1.0)
-            plt.legend(["time per batch", "num queries per batch", "num_clusters,num_labels"])
-            plt.figure()
-            #DEBUG ONLY------------------------------------------------
-            pt_dists = np.array(pt_dists)
-            num_pts_searched_list = np.array(num_pts_searched_list)
-            total_num_pts_searched = np.sum(num_pts_searched_list,axis=1)
-            plt.plot(pt_dists/max(pt_dists)*max(total_num_pts_searched),'o-') # don't care about scale of this
-            plt.plot(num_pts_searched_list,'o-') # do care about scale of this!
-            plt.legend(["closest pt dists", "num pts searched in l_buf"])
-            plt.figure()
-            plot_stacked_area(num_pts_searched_list[:,0], num_pts_searched_list[:,1], num_pts_searched_list[:,2], \
-                              legend_labels=['# tail_pts', '# ball_trees_pts', '# head_pts'])
-            plt.show()
+        # current_time = time.time()
+        # time_elapsed = current_time - start_time
+        # print(f"Run took {time_elapsed:.2f} seconds")
+        # print("ARED COMPLETE")
+        #
+        # batch_times = np.diff(np.array(times))
+        # batch_queries = np.diff(np.array(num_queries))
+        # plt.figure()
+        # plt.plot(batch_times/np.max(batch_times))
+        # plt.plot(np.array(batch_queries)/max(batch_queries))
+        # plt.plot(np.array(num_clusters)/max(num_clusters))
+        # plt.plot(np.array(num_labels))
+        # # plt.plot(np.array(precision)/1.0)
+        # plt.legend(["time per batch", "num queries per batch", "num_clusters,num_labels"])
+        # plt.figure()
+        # #DEBUG ONLY------------------------------------------------
+        # pt_dists = np.array(pt_dists)
+        # num_pts_searched_list = np.array(num_pts_searched_list)
+        # total_num_pts_searched = np.sum(num_pts_searched_list,axis=1)
+        # plt.plot(pt_dists/max(pt_dists)*max(total_num_pts_searched),'o-') # don't care about scale of this
+        # plt.plot(num_pts_searched_list,'o-') # do care about scale of this!
+        # plt.legend(["closest pt dists", "num pts searched in l_buf"])
+        # plt.figure()
+        # plot_stacked_area(num_pts_searched_list[:,0], num_pts_searched_list[:,1], num_pts_searched_list[:,2], \
+        #                   legend_labels=['# tail_pts', '# ball_trees_pts', '# head_pts'])
+        plt.show()
 
 

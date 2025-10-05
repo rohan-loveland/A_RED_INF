@@ -161,7 +161,7 @@ class Cluster:
 
 class ARED:
 
-    def __init__(self, oracle, conf_matrix, kappa=1.0, l_buf_size=1000, k_closest_pts = 1, QS_VAR = 0, REL_PROC_VAR = 0, SM_VAR=0, VERBOSE_FLAGS = ()):
+    def __init__(self, oracle, kappa=1.0, l_buf_size=1000, k_closest_pts = 1, QS_VAR = 0, REL_PROC_VAR = 0, SM_VAR=0, VERBOSE_FLAGS = ()):
         self.kappa = kappa
         self.k_closest_pts = k_closest_pts
         self.l_buf = FiniteBuffer(l_buf_size, .8, 2)
@@ -177,7 +177,8 @@ class ARED:
         self.REL_PROC_VAR = REL_PROC_VAR
         self.SM_VAR = SM_VAR
         self.verbose_flags = VERBOSE_FLAGS
-        self.conf_matrix = conf_matrix
+        self.conf_matrix = np.zeros((oracle.num_classes, oracle.num_classes), dtype=int)
+
 
 
     def process_first_point(self, data_point):
@@ -352,8 +353,6 @@ class ARED:
                 self.add_l_pt_to_existing_cl(data_point_abs_idx, data_point, comp_cluster_key)
                 # this adds pt to l_buf and updates appropriate cluster in subspace partition
             else:
-                # if self.num_pts_streamed > 80000:
-                #     pass
                 self.split(data_point, data_point_abs_idx, new_pt_label, new_pt_relevant, comp_cluster_key)
             # update confusion matrix
             new_pt_label_int = self.oracle.int_str_label_bidict[new_pt_label]

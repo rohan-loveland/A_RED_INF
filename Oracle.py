@@ -7,6 +7,7 @@ class Oracle:
     self.X = X #[[data]]
     self.y = y #[[label, relevant]]
     labels_only = np.array(y)[:,0]
+    self.num_classes = len(np.unique(labels_only))
     self.int_str_label_bidict = self.create_label_bidict(labels_only)
 
   def create_label_bidict(self,labels):
