@@ -208,7 +208,6 @@ if __name__ == '__main__':
             disp = ConfusionMatrixDisplay(confusion_matrix=conf_matrix, display_labels=sparsity_labels)
             disp.plot(cmap='Blues', values_format='d')
             plt.title("Confusion Matrix")
-            plt.show()
 
             current_time = time.time()
             time_elapsed = current_time - start_time

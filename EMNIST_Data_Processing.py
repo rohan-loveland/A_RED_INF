@@ -83,6 +83,8 @@ def EMNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, save_path="emnist.pkl"):
     """
     # Load the full EMNIST dataset
     X, y = load_emnist(save_path)
+    # Convert labels to characters
+    y = [label_to_char(label) for label in y]
     n_events = len(y)
 
     # Identify the N_REL_CLASSES least common classes
@@ -98,17 +100,15 @@ def EMNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, save_path="emnist.pkl"):
     if 0 in VERBOSE_FLAGS:
         print(f"Running ARED on EMNIST dataset with {n_events} events")
         print(f"Least common classes: {least_common_classes} (marked as relevant)")
-        print("Corresponding characters:",
-              [label_to_char(cls) for cls in least_common_classes])
+
 
     # Generate relevance info
     relevance_array = generate_is_relevant(y, set(least_common_classes))
 
-    # Convert labels to characters
-    y_chars = [label_to_char(label) for label in y]
+
 
     # Combine into (char_label, relevance) tuples
-    y_w_rel = list(zip(y_chars, relevance_array))
+    y_w_rel = list(zip(y, relevance_array))
 
     return X, y_w_rel,sparsity_levels
 
