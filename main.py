@@ -30,7 +30,7 @@ N_REL_CLASSES = 4
 KAPPA: Paranoia Parameter
 (single value for now)
 '''
-KAPPA = 0.5 #0.5, , 1.4, 10
+KAPPA = 1 #0.5, , 1.4, 10
 # # KAPPAS = [0.5] #0.5, , 1.4, 10
 # |- Array of Kappas to run ARED on
 # |- Run more than one for graphing purposes
@@ -48,7 +48,7 @@ QS_VAR: Query Strategy Variants
 |- 0: Diameter check
 |- 1: Approx. Ave Single Linkage Average 
 '''
-QS_VAR = 1
+QS_VAR = 0
 
 '''
 SM_VAR: Split Method Var 
