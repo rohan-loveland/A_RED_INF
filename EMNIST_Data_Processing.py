@@ -110,7 +110,7 @@ def EMNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, save_path="emnist.pkl"):
     # Combine into (char_label, relevance) tuples
     y_w_rel = list(zip(y, relevance_array))
 
-    return X, y_w_rel,sparsity_levels
+    return X, y_w_rel,sparsity_levels, least_common_classes
 
 if __name__ == "__main__":
     N_REL_CLASSES = 2

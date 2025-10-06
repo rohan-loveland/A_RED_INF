@@ -85,7 +85,7 @@ def generate_synthetic_dataset_with_relevance(n_least_populous, seed=42):
     # plt.grid(True)
     # plt.show()
 
-    return X, y_w_rel, sparsity_levels
+    return X, y_w_rel, sparsity_levels, least_populous_classes
 
 
 # Example usage

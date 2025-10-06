@@ -199,6 +199,8 @@ class ARED:
         if 1 in self.verbose_flags:
             print("new cluster:", 0, [0])
 
+        self.num_queries = 1
+
         # update confusion matrix
         int_label = self.oracle.int_str_label_bidict[label]
         self.conf_matrix[int_label,int_label] += 1

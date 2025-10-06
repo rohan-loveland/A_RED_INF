@@ -18,19 +18,19 @@ N_REL_CLASSES: Specified number of relevant classes
 |- NICE settings:
 |=== Low relevance: 4 relevant classes ~1.4% of data as relevant`
 '''
-# DATA_SOURCE = "MNIST" # NOTE: currently multiplied by 10x to get ~130,000 samples
-# N_REL_CLASSES = 4
+DATA_SOURCE = "MNIST" # NOTE: currently multiplied by 10x to get ~130,000 samples
+N_REL_CLASSES = 4
 
 # DATA_SOURCE = "EMNIST"
 # N_REL_CLASSES = 10
 
-DATA_SOURCE = "NICE"
-N_REL_CLASSES = 4
+# DATA_SOURCE = "NICE"
+# N_REL_CLASSES = 4
 '''
 KAPPA: Paranoia Parameter
 (single value for now)
 '''
-KAPPA = 1 #0.5, , 1.4, 10
+KAPPA = 0.5#, , 1.4, 10
 # # KAPPAS = [0.5] #0.5, , 1.4, 10
 # |- Array of Kappas to run ARED on
 # |- Run more than one for graphing purposes
@@ -41,7 +41,7 @@ K_COMP_PTS: Number of points to compare to when looking for relevance
 |- 2 or more: k ARED
 @WARNING: must be 1 or greater
 '''
-K_COMP_PTS = 2 # use 2 for baseline
+K_COMP_PTS = 1 # use 1 for baseline
 
 '''
 QS_VAR: Query Strategy Variants
@@ -138,7 +138,7 @@ from cluster_visualization import plot_clusters_colored_by_label
 if __name__ == '__main__':
 
         # Get data ===================================================
-        X_skewed, y_w_rel, sparsity_levels = get_data(DATA_SOURCE,N_REL_CLASSES, VERBOSE_FLAGS, RANDOM_SEED_OFFSET)
+        X_skewed, y_w_rel, sparsity_levels,rel_classes = get_data(DATA_SOURCE,N_REL_CLASSES, VERBOSE_FLAGS, RANDOM_SEED_OFFSET)
 
         # Initialize Data Stream, Oracle and ARED ===================================
         data_stream = Data_Stream(X_skewed, y_w_rel)
@@ -149,7 +149,6 @@ if __name__ == '__main__':
 
         # Stream and Process data =========================================
         ared.process_first_point(data_stream.stream_new_data_point())
-        ared.num_queries = 1 # already processed first point
 
         if NUM_POINTS_TO_PROCESS == -1:
             NUM_POINTS_TO_PROCESS = data_stream.get_remaining_num_points()
@@ -167,14 +166,15 @@ if __name__ == '__main__':
                     print(f"Points queried in this batch: {num_queries[j] - num_queries[j-1]}, Query Rate: {(num_queries[j] - num_queries[j-1]) / GRAPH_BATCH_SIZE * 100}%")
                     print(f"Number of clusters: {num_clusters[j-1]}")  # Add cluster count
 
-                plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label")
+                # plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label")
             # end save and print -------------------------------------------------------------
 
             pt_dist, num_pts_searched = ared.process_point(data_stream.stream_new_data_point())
             pt_dists.append(pt_dist)
             num_pts_searched_list.append(num_pts_searched)
 
-        conf_matrix = conf_matrices[-1]
+        conf_matrix = conf_matrices[-1] # final matrix
+        q_rate = num_queries[-1]/NUM_POINTS_TO_PROCESS
         print(ared.conf_matrix)
         print(np.sum(ared.conf_matrix[:]))
         precision, recall = calculate_precision_recall_all_classes(conf_matrix)
@@ -183,6 +183,13 @@ if __name__ == '__main__':
         quad_list = [(sparsity_labels[n],sparsity_numbers[n],precision[n],recall[n]) for n in range(len(sparsity_numbers))]
         print(quad_list)
         print(ared.oracle.int_str_label_bidict)
+
+        for c in rel_classes:
+            n = ared.oracle.int_str_label_bidict[c]
+            print(c,n,sparsity_numbers[n],precision[n],recall[n])
+        print(f"q_rate: {q_rate}")
+
+
         # Create ConfusionMatrixDisplay object
         disp = ConfusionMatrixDisplay(confusion_matrix=conf_matrix, display_labels=sparsity_labels)
         disp.plot(cmap='Blues', values_format='d')

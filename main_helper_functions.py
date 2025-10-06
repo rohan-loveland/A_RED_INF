@@ -5,13 +5,13 @@ from NICE_Data_Processing import *
 
 def get_data(data_source,N_REL_CLASSES, VERBOSE_FLAGS, seed):
     if data_source == "MNIST":
-        X_skewed, y_w_rel, sparsity_levels = MNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, seed)
+        X_skewed, y_w_rel, sparsity_levels, rel_classes = MNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, seed)
     elif data_source == "EMNIST":
-        X_skewed, y_w_rel, sparsity_levels = EMNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS)
+        X_skewed, y_w_rel, sparsity_levels, rel_classes = EMNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS)
     elif data_source == "NICE":
-        X_skewed, y_w_rel, sparsity_levels = generate_synthetic_dataset_with_relevance(N_REL_CLASSES, seed)
+        X_skewed, y_w_rel, sparsity_levels, rel_classes = generate_synthetic_dataset_with_relevance(N_REL_CLASSES, seed)
 
-    return X_skewed, y_w_rel, sparsity_levels
+    return X_skewed, y_w_rel, sparsity_levels, rel_classes
 
 def set_up_stats(ared):
     start_time = time.time()

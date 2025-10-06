@@ -86,16 +86,16 @@ def MNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS,seed):
     n_events = len(y_skewed)
     # Step 2: Identify the 2 least common digits
     digit_counts = Counter(y_skewed)
-    least_common_digits = [digit for digit, _ in digit_counts.most_common()[-N_REL_CLASSES:]]
+    relevant_classes = [digit for digit, _ in digit_counts.most_common()[-N_REL_CLASSES:]]
 
     if 0 in VERBOSE_FLAGS:
         print(f"Running ARED on skewed MNIST dataset with {n_events} events")
-        print(f"Least common digits: {least_common_digits} (marked as relevant)")
+        print(f"Least common digits: {relevant_classes} (marked as relevant)")
 
     # Generate relevance info
-    relevance_array = generate_is_relevant(y_skewed, set(least_common_digits))
+    relevance_array = generate_is_relevant(y_skewed, set(relevant_classes))
     y_w_rel = list(zip(y_skewed, relevance_array))
 
     sparsity_levels = [(digit_order[n],sparsity_levels[n]) for n in range(len(sparsity_levels))]
 
-    return X_skewed, y_w_rel, sparsity_levels
+    return X_skewed, y_w_rel, sparsity_levels, relevant_classes
