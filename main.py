@@ -18,19 +18,23 @@ N_REL_CLASSES: Specified number of relevant classes
 |- NICE settings:
 |=== Low relevance: 4 relevant classes ~1.4% of data as relevant`
 '''
-DATA_SOURCE = "MNIST" # NOTE: currently multiplied by 10x to get ~130,000 samples
-N_REL_CLASSES = 4
+# DATA_SOURCE = "MNIST" # NOTE: currently multiplied by 10x to get ~130,000 samples
+# N_REL_CLASSES = 4
 
 # DATA_SOURCE = "EMNIST"
 # N_REL_CLASSES = 10
 
-# DATA_SOURCE = "NICE"
+DATA_SOURCE = "NICE"
+N_REL_CLASSES = 4
+
+# DATA_SOURCE = "PARKING_LOT"
 # N_REL_CLASSES = 4
+
 '''
 KAPPA: Paranoia Parameter
 (single value for now)
 '''
-KAPPA = 0.5#, , 1.4, 10
+KAPPA = 1 #0.5, , 1.4, 10
 # # KAPPAS = [0.5] #0.5, , 1.4, 10
 # |- Array of Kappas to run ARED on
 # |- Run more than one for graphing purposes
@@ -110,7 +114,7 @@ MAKE_GRAPHS
 |- True: make graphs
 |- False: do not make graphs
 '''
-MAKE_GRAPHS = True
+MAKE_GRAPHS = False
 
 '''
 RANDOM_SEED_OFFSET
@@ -134,6 +138,7 @@ from main_helper_functions import *
 from sklearn.metrics import ConfusionMatrixDisplay
 
 from cluster_visualization import plot_clusters_colored_by_label
+from cluster_visualization import ClusterEvolutionPlotter
 
 if __name__ == '__main__':
 
@@ -147,12 +152,23 @@ if __name__ == '__main__':
         start_time, times, num_queries, num_clusters, num_labels, pt_dists, num_pts_searched_list, conf_matrices, \
             num_queries_last_batch = set_up_stats(ared)
 
+        evo_plotter = ClusterEvolutionPlotter()
+        build_up_flag_evo_plotter = False # Flag used to only add the full l_buf to the subgraph once
+
         # Stream and Process data =========================================
         ared.process_first_point(data_stream.stream_new_data_point())
 
         if NUM_POINTS_TO_PROCESS == -1:
             NUM_POINTS_TO_PROCESS = data_stream.get_remaining_num_points()
         for i in range(1, NUM_POINTS_TO_PROCESS):
+
+            if i == 100:
+                evo_plotter.add_snapshot(ared, X_skewed, y_w_rel, "a) First 100 Points")
+
+            if i > 1000 and not ared.l_buf.build_up_period and not build_up_flag_evo_plotter:
+                evo_plotter.add_snapshot(ared, X_skewed, y_w_rel, "b) Labeled Buffer Full")
+                build_up_flag_evo_plotter = True
+
             # save and print per batch ---------------------------------------------------------------------
             if i % GRAPH_BATCH_SIZE == 0:
                 j = i//GRAPH_BATCH_SIZE # count of number of batches
@@ -166,13 +182,22 @@ if __name__ == '__main__':
                     print(f"Points queried in this batch: {num_queries[j] - num_queries[j-1]}, Query Rate: {(num_queries[j] - num_queries[j-1]) / GRAPH_BATCH_SIZE * 100}%")
                     print(f"Number of clusters: {num_clusters[j-1]}")  # Add cluster count
 
-                # plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label")
+                if MAKE_GRAPHS:
+                    plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label")
+
+
             # end save and print -------------------------------------------------------------
 
             pt_dist, num_pts_searched = ared.process_point(data_stream.stream_new_data_point())
             pt_dists.append(pt_dist)
             num_pts_searched_list.append(num_pts_searched)
 
+        evo_plotter.add_snapshot(ared, X_skewed, y_w_rel, "c) with Forgetting")
+        evo_plotter.plot()
+
+        print("ARED DONE")
+
+        conf_matrix = conf_matrices[-1]
         conf_matrix = conf_matrices[-1] # final matrix
         q_rate = num_queries[-1]/NUM_POINTS_TO_PROCESS
         print(ared.conf_matrix)
