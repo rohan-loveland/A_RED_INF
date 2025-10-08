@@ -84,7 +84,7 @@ def MNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS,seed):
 
     X_skewed, y_skewed, X_full, y_full, digit_order = load_and_skew_mnist(sparsity_levels, seed)
     n_events = len(y_skewed)
-    # Step 2: Identify the 2 least common digits
+    # Step 2: Identify the N_REL_CLASSES least common digits
     digit_counts = Counter(y_skewed)
     relevant_classes = [digit for digit, _ in digit_counts.most_common()[-N_REL_CLASSES:]]
 

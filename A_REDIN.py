@@ -167,6 +167,7 @@ class ARED:
         self.l_buf = FiniteBuffer(l_buf_size, .8, 2)
         self.subspace_partition = Subspace_Partition(self.l_buf)
         self.oracle = oracle
+        self.num_correct_queries = 0
         self.num_queries = 0
         self.anom_queries = 0 # queries arising from kappa comparison - NOT IMPLEMENTED YET
         self.rel_queries = 0 # queries arising from relevance assignment- NOT IMPLEMENTED YET
@@ -199,7 +200,6 @@ class ARED:
         if 1 in self.verbose_flags:
             print("new cluster:", 0, [0])
 
-        self.num_queries = 1
 
         # update confusion matrix
         int_label = self.oracle.int_str_label_bidict[label]
@@ -285,9 +285,18 @@ class ARED:
         return distance * self.kappa > cluster.comp_distance
 
     def query(self, abs_data_index):
-        # return (label, relevance) from oracle
+        (label, relevance) = self.oracle.answer_query(abs_data_index)
+        # query is "correct" if we a) discovered a new class, or b) are querying a relevant class
+        if label not in self.subspace_partition.set_of_known_labels:
+            new_class_flag = True
+        else:
+            new_class_flag = False
+        relevance_flag = relevance
+        if new_class_flag or relevance_flag:
+            self.num_correct_queries += 1
         self.num_queries += 1
-        return self.oracle.answer_query(abs_data_index)
+
+        return (label, relevance)
 
     def update_structs_w_new_pt(self, abs_idx, data_point, cluster_key, label, relevance):
         # do maintenance by adding pt to l_buf, forgetting from subspace_partition if necessary

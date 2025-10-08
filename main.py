@@ -18,14 +18,14 @@ N_REL_CLASSES: Specified number of relevant classes
 |- NICE settings:
 |=== Low relevance: 4 relevant classes ~1.4% of data as relevant`
 '''
-# DATA_SOURCE = "MNIST" # NOTE: currently multiplied by 10x to get ~130,000 samples
-# N_REL_CLASSES = 4
+DATA_SOURCE = "MNIST" # NOTE: currently multiplied by 10x to get ~130,000 samples
+N_REL_CLASSES = 4
 
 # DATA_SOURCE = "EMNIST"
 # N_REL_CLASSES = 10
 
-DATA_SOURCE = "NICE"
-N_REL_CLASSES = 4
+# DATA_SOURCE = "NICE"
+# N_REL_CLASSES = 4
 
 # DATA_SOURCE = "PARKING_LOT"
 # N_REL_CLASSES = 4
@@ -74,14 +74,14 @@ window_size: size of the data_window window saved by ARED
 |- int: larger window size means it remembers more data
 |- WARNING: value must be larger than 0
 '''
-DATA_WINDOW_SIZE = 1000 # ultimately needs to be driven by anomaly ratio
+DATA_WINDOW_SIZE = 2500 # ultimately needs to be driven by anomaly ratio
 
 '''
 NUM_POINTS_TO_PROCESS: Number of points in dataset to process
 |- -1: process all the data
 |-  0 to inf: process up to that number if data is available
 '''
-NUM_POINTS_TO_PROCESS = 10000#-1
+NUM_POINTS_TO_PROCESS = 100000#-1
 
 '''
 NUM_RUN_TO_AVE: number of runs to average.
@@ -149,41 +149,45 @@ if __name__ == '__main__':
         data_stream = Data_Stream(X_skewed, y_w_rel)
         oracle = Oracle(X_skewed, y_w_rel)
         ared = ARED(oracle, KAPPA, DATA_WINDOW_SIZE, K_COMP_PTS, QS_VAR, REL_PROC_VAR, SM_VAR, VERBOSE_FLAGS)
-        start_time, times, num_queries, num_clusters, num_labels, pt_dists, num_pts_searched_list, conf_matrices, \
+        start_time, times, num_correct_queries, num_queries, num_clusters, num_labels, pt_dists, num_pts_searched_list, conf_matrices, \
             num_queries_last_batch = set_up_stats(ared)
 
-        evo_plotter = ClusterEvolutionPlotter()
-        build_up_flag_evo_plotter = False # Flag used to only add the full l_buf to the subgraph once
+        # evo_plotter = ClusterEvolutionPlotter()
+        # build_up_flag_evo_plotter = False # Flag used to only add the full l_buf to the subgraph once
 
         # Stream and Process data =========================================
         ared.process_first_point(data_stream.stream_new_data_point())
 
         if NUM_POINTS_TO_PROCESS == -1:
             NUM_POINTS_TO_PROCESS = data_stream.get_remaining_num_points()
-        for i in range(1, NUM_POINTS_TO_PROCESS):
+        for i in range(1, NUM_POINTS_TO_PROCESS+1): # the +1 gives us an extra point, but makes the batch
+            # arithmetic work out to include last batch by having last sample # end in 0
 
-            if i == 100:
-                evo_plotter.add_snapshot(ared, X_skewed, y_w_rel, "a) First 100 Points")
+            # if i == 100:
+            #     evo_plotter.add_snapshot(ared, X_skewed, y_w_rel, "a) First 100 Points")
 
-            if i > 1000 and not ared.l_buf.build_up_period and not build_up_flag_evo_plotter:
-                evo_plotter.add_snapshot(ared, X_skewed, y_w_rel, "b) Labeled Buffer Full")
-                build_up_flag_evo_plotter = True
+            # if i > 1000 and not ared.l_buf.build_up_period and not build_up_flag_evo_plotter:
+            #     evo_plotter.add_snapshot(ared, X_skewed, y_w_rel, "b) Labeled Buffer Full")
+            #     build_up_flag_evo_plotter = True
 
             # save and print per batch ---------------------------------------------------------------------
             if i % GRAPH_BATCH_SIZE == 0:
                 j = i//GRAPH_BATCH_SIZE # count of number of batches
+                print(i)
                 times.append(time.time())
+                num_correct_queries.append(ared.num_correct_queries)
                 num_queries.append(ared.num_queries)
                 num_clusters.append(len(ared.subspace_partition.cluster_dict))
                 num_labels.append(len(ared.subspace_partition.set_of_known_labels))
-                conf_matrices.append(ared.conf_matrix)
+                conf_matrices.append(ared.conf_matrix.copy())
                 if 0 in VERBOSE_FLAGS:
-                    print(f"Processing point {i}... (last {GRAPH_BATCH_SIZE} points took {times[j]- times[j-1]:.2f} seconds)")
-                    print(f"Points queried in this batch: {num_queries[j] - num_queries[j-1]}, Query Rate: {(num_queries[j] - num_queries[j-1]) / GRAPH_BATCH_SIZE * 100}%")
-                    print(f"Number of clusters: {num_clusters[j-1]}")  # Add cluster count
+                    if j > 1:
+                        print(f"Processing point {i}... (last {GRAPH_BATCH_SIZE} points took {times[j]- times[j-1]:.2f} seconds)")
+                        print(f"Points queried in this batch: {num_queries[j-1] - num_queries[j-2]}")
+                        print(f"Number of clusters: {num_clusters[j-1]}")  # Add cluster count
 
-                if MAKE_GRAPHS:
-                    plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label")
+                # if MAKE_GRAPHS:
+                #     plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label")
 
 
             # end save and print -------------------------------------------------------------
@@ -192,33 +196,49 @@ if __name__ == '__main__':
             pt_dists.append(pt_dist)
             num_pts_searched_list.append(num_pts_searched)
 
-        evo_plotter.add_snapshot(ared, X_skewed, y_w_rel, "c) with Forgetting")
-        evo_plotter.plot()
+        # evo_plotter.add_snapshot(ared, X_skewed, y_w_rel, "c) with Forgetting")
+        # evo_plotter.plot()
 
         print("ARED DONE")
 
-        conf_matrix = conf_matrices[-1]
-        conf_matrix = conf_matrices[-1] # final matrix
-        q_rate = num_queries[-1]/NUM_POINTS_TO_PROCESS
-        print(ared.conf_matrix)
-        print(np.sum(ared.conf_matrix[:]))
-        precision, recall = calculate_precision_recall_all_classes(conf_matrix)
-        sparsity_labels = [l for l,_ in sparsity_levels]
-        sparsity_numbers = [n for _,n in sparsity_levels]
-        quad_list = [(sparsity_labels[n],sparsity_numbers[n],precision[n],recall[n]) for n in range(len(sparsity_numbers))]
-        print(quad_list)
-        print(ared.oracle.int_str_label_bidict)
+        rel_recall_ave_list = []
+        query_precision_list = []
+        rel_individual_recalls = []
 
+        sparsity_labels = [l for l, _ in sparsity_levels]
+        sparsity_numbers = [n for _, n in sparsity_levels]
+        precision, recall = calculate_precision_recall_all_classes(conf_matrices[0])
+        rel_recall_ave = 0
         for c in rel_classes:
             n = ared.oracle.int_str_label_bidict[c]
-            print(c,n,sparsity_numbers[n],precision[n],recall[n])
-        print(f"q_rate: {q_rate}")
+            rel_individual_recalls.append((c,n,sparsity_numbers[n],recall[n],))
+            rel_recall_ave += recall[n]
+        rel_recall_ave /= len(rel_classes)
+        rel_recall_ave_list.append(rel_recall_ave)
+        query_precision_list.append(num_correct_queries[0]/num_queries[0])
+
+        conf_array = np.array(conf_matrices) # final matrix
+
+        for b in range(1,len(conf_matrices)):
+            this_batch_conf_matrix = conf_array[b] - conf_array[b-1]
+            precision, recall = calculate_precision_recall_all_classes(this_batch_conf_matrix)
+            rel_recall_ave = 0
+            for c in rel_classes:
+                n = ared.oracle.int_str_label_bidict[c]
+                rel_individual_recalls.append((c, n, sparsity_numbers[n], recall[n],))
+                rel_recall_ave += recall[n]
+            rel_recall_ave /= len(rel_classes)
+            rel_recall_ave_list.append(rel_recall_ave)
+            query_precision_list.append(num_correct_queries[b] / num_queries[b])
 
 
-        # Create ConfusionMatrixDisplay object
-        disp = ConfusionMatrixDisplay(confusion_matrix=conf_matrix, display_labels=sparsity_labels)
-        disp.plot(cmap='Blues', values_format='d')
-        plt.title("Confusion Matrix")
+        print(query_precision_list,rel_recall_ave_list)
+        batch_num_pts = list(range(GRAPH_BATCH_SIZE,NUM_POINTS_TO_PROCESS+1,GRAPH_BATCH_SIZE))
+        plt.figure(figsize=(10,5))
+        plt.plot(batch_num_pts,rel_recall_ave_list)
+        plt.plot(batch_num_pts,query_precision_list)
+        plt.grid()
+        plt.legend(("relevant_recall","query_precision"))
 
         # current_time = time.time()
         # time_elapsed = current_time - start_time

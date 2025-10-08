@@ -22,9 +22,10 @@ def set_up_stats(ared):
     num_queries_last_batch = 0
 
     times = [start_time]
-    num_queries = [ared.num_queries]
-    num_clusters = [len(ared.subspace_partition.cluster_dict)]
-    num_labels = [len(ared.subspace_partition.set_of_known_labels)]
+    num_correct_queries = []
+    num_queries = []
+    num_clusters = []#[len(ared.subspace_partition.cluster_dict)] # should probably start out empty?
+    num_labels = []#[len(ared.subspace_partition.set_of_known_labels)] # should probably start out empty?
     conf_matrices = []
 
 
@@ -32,4 +33,4 @@ def set_up_stats(ared):
     pt_dists = []
     num_pts_searched_list = []
 
-    return start_time, times, num_queries, num_clusters, num_labels, conf_matrices, pt_dists, num_pts_searched_list, num_queries_last_batch
+    return start_time, times, num_correct_queries, num_queries, num_clusters, num_labels, conf_matrices, pt_dists, num_pts_searched_list, num_queries_last_batch
