@@ -81,7 +81,7 @@ NUM_POINTS_TO_PROCESS: Number of points in dataset to process
 |- -1: process all the data
 |-  0 to inf: process up to that number if data is available
 '''
-NUM_POINTS_TO_PROCESS = 100000#-1
+NUM_POINTS_TO_PROCESS = 10000#-1
 
 '''
 NUM_RUN_TO_AVE: number of runs to average.
@@ -201,44 +201,18 @@ if __name__ == '__main__':
 
         print("ARED DONE")
 
-        rel_recall_ave_list = []
-        query_precision_list = []
-        rel_individual_recalls = []
 
-        sparsity_labels = [l for l, _ in sparsity_levels]
-        sparsity_numbers = [n for _, n in sparsity_levels]
-        precision, recall = calculate_precision_recall_all_classes(conf_matrices[0])
-        rel_recall_ave = 0
-        for c in rel_classes:
-            n = ared.oracle.int_str_label_bidict[c]
-            rel_individual_recalls.append((c,n,sparsity_numbers[n],recall[n],))
-            rel_recall_ave += recall[n]
-        rel_recall_ave /= len(rel_classes)
-        rel_recall_ave_list.append(rel_recall_ave)
-        query_precision_list.append(num_correct_queries[0]/num_queries[0])
+        PLOT_FLAG = True
+        rel_recall_ave_list, query_precision_list, rel_individual_recalls = \
+            calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes, ared, num_correct_queries, \
+                                     num_queries, PLOT_FLAG, GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS)
 
-        conf_array = np.array(conf_matrices) # final matrix
-
-        for b in range(1,len(conf_matrices)):
-            this_batch_conf_matrix = conf_array[b] - conf_array[b-1]
-            precision, recall = calculate_precision_recall_all_classes(this_batch_conf_matrix)
-            rel_recall_ave = 0
-            for c in rel_classes:
-                n = ared.oracle.int_str_label_bidict[c]
-                rel_individual_recalls.append((c, n, sparsity_numbers[n], recall[n],))
-                rel_recall_ave += recall[n]
-            rel_recall_ave /= len(rel_classes)
-            rel_recall_ave_list.append(rel_recall_ave)
-            query_precision_list.append(num_correct_queries[b] / num_queries[b])
+        batch_num_pts = list(range(GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS + 1, GRAPH_BATCH_SIZE))
+        plt.figure(figsize=(10, 5))
+        plt.plot(batch_num_pts,num_clusters)
+        plt.legend(("number of clusters",))
 
 
-        print(query_precision_list,rel_recall_ave_list)
-        batch_num_pts = list(range(GRAPH_BATCH_SIZE,NUM_POINTS_TO_PROCESS+1,GRAPH_BATCH_SIZE))
-        plt.figure(figsize=(10,5))
-        plt.plot(batch_num_pts,rel_recall_ave_list)
-        plt.plot(batch_num_pts,query_precision_list)
-        plt.grid()
-        plt.legend(("relevant_recall","query_precision"))
 
         # current_time = time.time()
         # time_elapsed = current_time - start_time

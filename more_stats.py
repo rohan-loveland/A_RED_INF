@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 def calculate_precision_recall_all_classes(confusion_matrix):
     """
@@ -35,6 +36,51 @@ def calculate_precision_recall_all_classes(confusion_matrix):
         recall[i] = true_positives / (true_positives + false_negatives) if (true_positives + false_negatives) > 0 else 0.0
 
     return precision, recall
+
+def calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes, ared, num_correct_queries, \
+                                     num_queries, plot_flag, GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS):
+    rel_recall_ave_list = []
+    query_precision_list = []
+    rel_individual_recalls = []
+
+    sparsity_labels = [l for l, _ in sparsity_levels]
+    sparsity_numbers = [n for _, n in sparsity_levels]
+    precision, recall = calculate_precision_recall_all_classes(conf_matrices[0])
+    rel_recall_ave = 0
+    for c in rel_classes:
+        n = ared.oracle.int_str_label_bidict[c]
+        rel_individual_recalls.append((c, n, sparsity_numbers[n], recall[n],))
+        rel_recall_ave += recall[n]
+    rel_recall_ave /= len(rel_classes)
+    rel_recall_ave_list.append(rel_recall_ave)
+    query_precision_list.append(num_correct_queries[0] / num_queries[0])
+
+    conf_array = np.array(conf_matrices)  # final matrix
+
+    for b in range(1, len(conf_matrices)):
+        this_batch_conf_matrix = conf_array[b] - conf_array[b - 1]
+        precision, recall = calculate_precision_recall_all_classes(this_batch_conf_matrix)
+        rel_recall_ave = 0
+        for c in rel_classes:
+            n = ared.oracle.int_str_label_bidict[c]
+            rel_individual_recalls.append((c, n, sparsity_numbers[n], recall[n],))
+            rel_recall_ave += recall[n]
+        rel_recall_ave /= len(rel_classes)
+        rel_recall_ave_list.append(rel_recall_ave)
+        query_precision_list.append(num_correct_queries[b] / num_queries[b])
+
+    if plot_flag:
+        batch_num_pts = list(range(GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS + 1, GRAPH_BATCH_SIZE))
+        plt.figure(figsize=(10, 5))
+        plt.plot(batch_num_pts, rel_recall_ave_list)
+        plt.plot(batch_num_pts, query_precision_list)
+        plt.grid()
+        plt.legend(("relevant_recall", "query_precision"))
+
+    return rel_recall_ave_list, query_precision_list, rel_individual_recalls
+
+
+
 
 # Example usage
 if __name__ == "__main__":
