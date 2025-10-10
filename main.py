@@ -18,8 +18,8 @@ N_REL_CLASSES: Specified number of relevant classes
 |- NICE settings:
 |=== Low relevance: 4 relevant classes ~1.4% of data as relevant`
 '''
-DATA_SOURCE = "MNIST" # NOTE: currently multiplied by 10x to get ~130,000 samples
-N_REL_CLASSES = 4
+# DATA_SOURCE = "MNIST" # NOTE: currently multiplied by 10x to get ~130,000 samples
+# N_REL_CLASSES = 4
 
 # DATA_SOURCE = "EMNIST"
 # N_REL_CLASSES = 3
@@ -27,8 +27,8 @@ N_REL_CLASSES = 4
 # DATA_SOURCE = "NICE"
 # N_REL_CLASSES = 4
 
-# DATA_SOURCE = "PARKING_LOT"
-# N_REL_CLASSES = 4
+DATA_SOURCE = "PARKING_LOT"
+N_REL_CLASSES = 4
 
 '''
 KAPPA: Paranoia Parameter
@@ -167,8 +167,12 @@ if __name__ == '__main__':
         # Stream and Process data =========================================
         ared.process_first_point(data_stream.stream_new_data_point())
 
+        dataset_size = len(X_skewed)
         if NUM_POINTS_TO_PROCESS == -1:
             NUM_POINTS_TO_PROCESS = data_stream.get_remaining_num_points()
+        else:
+            NUM_POINTS_TO_PROCESS = min(NUM_POINTS_TO_PROCESS, dataset_size-1)
+
         for i in range(1, NUM_POINTS_TO_PROCESS+1): # the +1 gives us an extra point, but makes the batch
             # arithmetic work out to include last batch by having last sample # end in 0
 
