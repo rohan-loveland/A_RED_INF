@@ -14,7 +14,7 @@ N_REL_CLASSES: Specified number of relevant classes
 |=== Low Relevant Class Representation (LRCR): 4 relevant classes ~1.4% of data as relevant`
 |- EMNIST settings:
 |=== HRCR 40 relevant classes ~25% of data as relevant
-|=== LRCR: 10 relevant classes ~1.4% of data as relevant`
+|=== LRCR: 3 relevant classes ~1% of data as relevant`
 |- NICE settings:
 |=== Low relevance: 4 relevant classes ~1.4% of data as relevant`
 '''
@@ -22,7 +22,7 @@ DATA_SOURCE = "MNIST" # NOTE: currently multiplied by 10x to get ~130,000 sample
 N_REL_CLASSES = 4
 
 # DATA_SOURCE = "EMNIST"
-# N_REL_CLASSES = 10
+# N_REL_CLASSES = 3
 
 # DATA_SOURCE = "NICE"
 # N_REL_CLASSES = 4
@@ -45,14 +45,14 @@ K_COMP_PTS: Number of points to compare to when looking for relevance
 |- 2 or more: k ARED
 @WARNING: must be 1 or greater
 '''
-K_COMP_PTS = 1 # use 1 for baseline
+K_COMP_PTS = 2 # use 1 for baseline
 
 '''
 QS_VAR: Query Strategy Variants
 |- 0: Diameter check
 |- 1: Approx. Ave Single Linkage Average 
 '''
-QS_VAR = 0
+QS_VAR = 1
 
 '''
 SM_VAR: Split Method Var 
@@ -70,18 +70,27 @@ REL_PROC_VAR: Relevance Processing Variants
 REL_PROC_VAR = 0
 
 '''
+NGHBHOOD_MERGE: Neighborhood Merge Variants
+|- if selected, if a split is going to occur, then check if 2nd closest neighbor cluster
+|- has same label as newly queried point, and merge with that cluster instead
+|- False: No neighborhood merge
+|- True: Neighborhood merge
+'''
+NGHBHOOD_MERGE = True
+
+'''
 window_size: size of the data_window window saved by ARED
 |- int: larger window size means it remembers more data
 |- WARNING: value must be larger than 0
 '''
-DATA_WINDOW_SIZE = 2500 # ultimately needs to be driven by anomaly ratio
+DATA_WINDOW_SIZE = 1000 # ultimately needs to be driven by anomaly ratio
 
 '''
 NUM_POINTS_TO_PROCESS: Number of points in dataset to process
 |- -1: process all the data
 |-  0 to inf: process up to that number if data is available
 '''
-NUM_POINTS_TO_PROCESS = 10000#-1
+NUM_POINTS_TO_PROCESS = 20000#-1
 
 '''
 NUM_RUN_TO_AVE: number of runs to average.
@@ -148,7 +157,7 @@ if __name__ == '__main__':
         # Initialize Data Stream, Oracle and ARED ===================================
         data_stream = Data_Stream(X_skewed, y_w_rel)
         oracle = Oracle(X_skewed, y_w_rel)
-        ared = ARED(oracle, KAPPA, DATA_WINDOW_SIZE, K_COMP_PTS, QS_VAR, REL_PROC_VAR, SM_VAR, VERBOSE_FLAGS)
+        ared = ARED(oracle, KAPPA, DATA_WINDOW_SIZE, K_COMP_PTS, QS_VAR, REL_PROC_VAR, SM_VAR, NGHBHOOD_MERGE, VERBOSE_FLAGS)
         start_time, times, num_correct_queries, num_queries, num_clusters, num_labels, pt_dists, num_pts_searched_list, conf_matrices, \
             num_queries_last_batch = set_up_stats(ared)
 
@@ -207,17 +216,21 @@ if __name__ == '__main__':
             calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes, ared, num_correct_queries, \
                                      num_queries, PLOT_FLAG, GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS)
 
+        # Plot # clusters
         batch_num_pts = list(range(GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS + 1, GRAPH_BATCH_SIZE))
         plt.figure(figsize=(10, 5))
         plt.plot(batch_num_pts,num_clusters)
+        plt.grid()
         plt.legend(("number of clusters",))
 
+        print(ared.conf_matrix)
 
 
-        # current_time = time.time()
-        # time_elapsed = current_time - start_time
-        # print(f"Run took {time_elapsed:.2f} seconds")
-        # print("ARED COMPLETE")
+
+        current_time = time.time()
+        time_elapsed = current_time - start_time
+        print(f"Run took {time_elapsed:.2f} seconds")
+        print("ARED COMPLETE")
         #
         # batch_times = np.diff(np.array(times))
         # batch_queries = np.diff(np.array(num_queries))

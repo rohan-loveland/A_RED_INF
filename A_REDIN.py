@@ -161,9 +161,9 @@ class Cluster:
 
 class ARED:
 
-    def __init__(self, oracle, kappa=1.0, l_buf_size=1000, k_closest_pts = 1, QS_VAR = 0, REL_PROC_VAR = 0, SM_VAR=0, VERBOSE_FLAGS = ()):
+    def __init__(self, oracle, kappa, l_buf_size, K_COMP_PTS, QS_VAR, REL_PROC_VAR, SM_VAR, NGHBHOOD_MERGE, VERBOSE_FLAGS):
         self.kappa = kappa
-        self.k_closest_pts = k_closest_pts
+        self.K_COMP_PTS = K_COMP_PTS
         self.l_buf = FiniteBuffer(l_buf_size, .8, 2)
         self.subspace_partition = Subspace_Partition(self.l_buf)
         self.oracle = oracle
@@ -177,6 +177,7 @@ class ARED:
         self.QS_VAR = QS_VAR # {0: diameter, 1: Ave Single Link Dist in Cluster
         self.REL_PROC_VAR = REL_PROC_VAR
         self.SM_VAR = SM_VAR
+        self.NGHBHOOD_MERGE = NGHBHOOD_MERGE
         self.verbose_flags = VERBOSE_FLAGS
         self.conf_matrix = np.zeros((oracle.num_classes, oracle.num_classes), dtype=int)
 
@@ -246,10 +247,11 @@ class ARED:
         relevant_point_info = None
         #                                 0            1                2     3      4     5    6
         # Get k closest points in l_buf [(cluster_key, pt_internal_idx, dist, label, data, rel, true_abs_idx)]
-        k_closest_pts, num_pts_searched = self.l_buf.find_closest_pts(data_point, self.k_closest_pts)
+        k_closest_pts, num_pts_searched = self.l_buf.find_closest_pts(data_point, self.K_COMP_PTS)
 
         if len(k_closest_pts) > 1 and k_closest_pts[0][3] == k_closest_pts[1][3] and k_closest_pts[0][0] != k_closest_pts[1][0]:
-        # i.e. if we have more than one point, and the closest points have the same label, and they're not in the same cluster...
+        # i.e. if we have more than one point, and the closest points have the same label, and they're not in the same cluster -
+        #  merge!
             if k_closest_pts[0][0] < k_closest_pts[1][0]:
                 keep_idx, merge_idx = 0, 1
             else:
@@ -274,7 +276,7 @@ class ARED:
                 break
 
         # No relevant cluster in top-k, return closest overall
-        return comparison_point_info, relevant_point_info, num_pts_searched # 0            1                 2     3      4     5          6
+        return comparison_point_info, relevant_point_info, num_pts_searched, k_closest_pts # 0            1                 2     3      4     5          6
                                     # [(cluster_key, pt_internal_idx, dist, label, data, rel, true_abs_idx)]
 
 
@@ -348,23 +350,33 @@ class ARED:
         # START DETERMINE COMPARISON CLUSTER
         #  0              1                2         3      4     5          6
         #  cluster_key,   pt_internal_idx, dist,     label, data, rel,       true_abs_idxz
-        comp_cl_data, rel_cl_data, num_pts_searched = self.determine_comparison_cluster(data_point)
+        comp_cl_data, rel_cl_data, num_pts_searched, k_closest_pts = self.determine_comparison_cluster(data_point)
         comp_cluster_key, pt_internal_idx, distance, label, data, relevance, true_abs_idx = comp_cl_data
         comp_cluster_label = self.subspace_partition.cluster_dict[comp_cluster_key].label
 
         is_anomalous = self.anomalous(data_point, comp_cluster_key, distance)
-        is_relevant = (rel_cl_data is not None)
+        comp_cl_is_relevant = (rel_cl_data is not None)
 
-        if is_relevant  or is_anomalous:  # Query!
-
+        if comp_cl_is_relevant or is_anomalous:
+            # Query!
             new_pt_label, new_pt_relevant = self.query(data_point_abs_idx)
 
             label_is_same = (new_pt_label == comp_cluster_label)
             if label_is_same:  # if not a new label
                 self.add_l_pt_to_existing_cl(data_point_abs_idx, data_point, comp_cluster_key)
                 # this adds pt to l_buf and updates appropriate cluster in subspace partition
-            else:
-                self.split(data_point, data_point_abs_idx, new_pt_label, new_pt_relevant, comp_cluster_key)
+            else: # new pt label different from comp. cluster
+                if self.K_COMP_PTS > 1 and self.NGHBHOOD_MERGE and len(k_closest_pts) > 1:
+                    #                     0            1                2     3      4     5    6
+                    # k closest points [(cluster_key, pt_internal_idx, dist, label, data, rel, true_abs_idx)]
+                    second_cluster_label = k_closest_pts[1][3]
+                    if new_pt_label == second_cluster_label:
+                        second_cluster_key = k_closest_pts[1][0]
+                        self.add_l_pt_to_existing_cl(data_point_abs_idx, data_point, second_cluster_key)
+                        # this adds pt to l_buf and updates appropriate cluster in subspace partition
+                        print("NEIGHBORHOOD MERGE!")
+                else:
+                    self.split(data_point, data_point_abs_idx, new_pt_label, new_pt_relevant, comp_cluster_key)
             # update confusion matrix
             new_pt_label_int = self.oracle.int_str_label_bidict[new_pt_label]
             self.conf_matrix[new_pt_label_int,new_pt_label_int] += 1
