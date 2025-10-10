@@ -5,7 +5,7 @@ import cv2
 from collections import Counter
 
 
-def parking_lot_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, seed):
+def parking_lot_setup_for_main(VERBOSE_FLAGS, seed):
     # === Load Dataset ===
     features_path = "./Parking_Lot_Data/features.pkl"
     labels_path = "./Parking_Lot_Data/labels.csv"
@@ -29,18 +29,19 @@ def parking_lot_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, seed):
     # Get label counts
     label_counts = Counter(y)
 
-    # Least common labels (for relevance)
-    least_common_labels = [label for label, _ in label_counts.most_common()[-N_REL_CLASSES:]]
+    # Define relevant labels
+    relevant_labels = ["sticks", "cigarette", "costco card", "library card", "paperclip", "zone"]
 
     if 0 in VERBOSE_FLAGS:
         print(f"Running on parking lot dataset with {n_events} events")
-        print(f"Least common labels: {least_common_labels} (marked as relevant)")
+        print(f"All found labels: {list(label_counts.keys())}")
+        print(f"Relevant labels: {relevant_labels}")
 
     # Generate relevance info
-    relevance_array = [label in set(least_common_labels) for label in y]
+    relevance_array = [label in set(relevant_labels) for label in y]
     y_w_rel = list(zip(y, relevance_array))
 
     # Sparsity levels: number of points in each class from highest to lowest
     sparsity_levels = label_counts.most_common()
 
-    return X, y_w_rel, sparsity_levels
+    return X, y_w_rel, sparsity_levels, relevant_labels
