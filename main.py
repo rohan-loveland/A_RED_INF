@@ -21,14 +21,17 @@ N_REL_CLASSES: Specified number of relevant classes
 # DATA_SOURCE = "MNIST" # NOTE: currently multiplied by 10x to get ~130,000 samples
 # N_REL_CLASSES = 4
 
+DATA_SOURCE = "MNIST_2D" # NOTE: currently multiplied by 10x to get ~130,000 samples
+N_REL_CLASSES = 4
+
 # DATA_SOURCE = "EMNIST"
 # N_REL_CLASSES = 3
 
 # DATA_SOURCE = "NICE"
 # N_REL_CLASSES = 4
 
-DATA_SOURCE = "PARKING_LOT"
-N_REL_CLASSES = 4
+# DATA_SOURCE = "PARKING_LOT"
+# N_REL_CLASSES = 4
 
 '''
 KAPPA: Paranoia Parameter
@@ -40,19 +43,11 @@ KAPPA = 1 #0.5, , 1.4, 10
 # |- Run more than one for graphing purposes
 
 '''
-K_COMP_PTS: Number of points to compare to when looking for relevance
-|- 1: Standard ARED
-|- 2 or more: k ARED
-@WARNING: must be 1 or greater
-'''
-K_COMP_PTS = 2 # use 1 for baseline
-
-'''
 QS_VAR: Query Strategy Variants
 |- 0: Diameter check
 |- 1: Approx. Ave Single Linkage Average 
 '''
-QS_VAR = 1
+QS_VAR = 0
 
 '''
 SM_VAR: Split Method Var 
@@ -70,13 +65,32 @@ REL_PROC_VAR: Relevance Processing Variants
 REL_PROC_VAR = 0
 
 '''
+K_COMP_PTS: Number of points to compare to when looking for relevance
+|- 1: Standard ARED
+|- 2 or more: k ARED
+@WARNING: must be 1 or greater
+'''
+K_COMP_PTS = 2 # use 1 for baseline
+
+'''
 NGHBHOOD_MERGE: Neighborhood Merge Variants
 |- if selected, if a split is going to occur, then check if 2nd closest neighbor cluster
 |- has same label as newly queried point, and merge with that cluster instead
+|- NOTE: K_COMP_PTS must be >= 2 for this
 |- False: No neighborhood merge
 |- True: Neighborhood merge
 '''
 NGHBHOOD_MERGE = True
+
+'''
+SINGLETON_MERGE: Neighborhood Merge Variants
+|- if selected, periodically merge singleton clusters w/ K_COMP_PTS nearest neighbor clusters
+|- NOTE: K_COMP_PTS must be >= 2 for this
+|- False: No singleton merge
+|- True: singleton merge
+'''
+SINGLETON_MERGE = True
+
 
 '''
 window_size: size of the data_window window saved by ARED
@@ -90,7 +104,7 @@ NUM_POINTS_TO_PROCESS: Number of points in dataset to process
 |- -1: process all the data
 |-  0 to inf: process up to that number if data is available
 '''
-NUM_POINTS_TO_PROCESS = 20000#-1
+NUM_POINTS_TO_PROCESS = 10000#-1
 
 '''
 NUM_RUN_TO_AVE: number of runs to average.
@@ -161,8 +175,8 @@ if __name__ == '__main__':
         start_time, times, num_correct_queries, num_queries, num_clusters, num_labels, pt_dists, num_pts_searched_list, conf_matrices, \
             num_queries_last_batch = set_up_stats(ared)
 
-        # evo_plotter = ClusterEvolutionPlotter()
-        # build_up_flag_evo_plotter = False # Flag used to only add the full l_buf to the subgraph once
+        evo_plotter = ClusterEvolutionPlotter()
+        build_up_flag_evo_plotter = False # Flag used to only add the full l_buf to the subgraph once
 
         # Stream and Process data =========================================
         ared.process_first_point(data_stream.stream_new_data_point())
@@ -176,12 +190,12 @@ if __name__ == '__main__':
         for i in range(1, NUM_POINTS_TO_PROCESS+1): # the +1 gives us an extra point, but makes the batch
             # arithmetic work out to include last batch by having last sample # end in 0
 
-            # if i == 100:
-            #     evo_plotter.add_snapshot(ared, X_skewed, y_w_rel, "a) First 100 Points")
+            if i == 100:
+                evo_plotter.add_snapshot(ared, X_skewed, y_w_rel, "a) First 100 Points")
 
-            # if i > 1000 and not ared.l_buf.build_up_period and not build_up_flag_evo_plotter:
-            #     evo_plotter.add_snapshot(ared, X_skewed, y_w_rel, "b) Labeled Buffer Full")
-            #     build_up_flag_evo_plotter = True
+            if i > 1000 and not ared.l_buf.build_up_period and not build_up_flag_evo_plotter:
+                evo_plotter.add_snapshot(ared, X_skewed, y_w_rel, "b) Labeled Buffer Full")
+                build_up_flag_evo_plotter = True
 
             # save and print per batch ---------------------------------------------------------------------
             if i % GRAPH_BATCH_SIZE == 0:
@@ -199,8 +213,8 @@ if __name__ == '__main__':
                         print(f"Points queried in this batch: {num_queries[j-1] - num_queries[j-2]}")
                         print(f"Number of clusters: {num_clusters[j-1]}")  # Add cluster count
 
-                # if MAKE_GRAPHS:
-                #     plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label")
+                if MAKE_GRAPHS:
+                    plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label")
 
 
             # end save and print -------------------------------------------------------------
@@ -209,8 +223,8 @@ if __name__ == '__main__':
             pt_dists.append(pt_dist)
             num_pts_searched_list.append(num_pts_searched)
 
-        # evo_plotter.add_snapshot(ared, X_skewed, y_w_rel, "c) with Forgetting")
-        # evo_plotter.plot()
+        evo_plotter.add_snapshot(ared, X_skewed, y_w_rel, "c) with Forgetting")
+        evo_plotter.plot()
 
         print("ARED DONE")
 

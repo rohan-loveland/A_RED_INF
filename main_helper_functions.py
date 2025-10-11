@@ -1,5 +1,6 @@
 import time
 from MNIST_Data_Processing import *
+from MNIST_2D_Data_Processing import *
 from EMNIST_Data_Processing import *
 from NICE_Data_Processing import *
 from Parking_Lot_Data_Processing import *
@@ -7,6 +8,8 @@ from Parking_Lot_Data_Processing import *
 def get_data(data_source, N_REL_CLASSES, VERBOSE_FLAGS, seed):
     if data_source == "MNIST":
         X_skewed, y_w_rel, sparsity_levels, rel_classes = MNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, seed)
+    elif data_source == "MNIST_2D":
+        X_skewed, y_w_rel, sparsity_levels, rel_classes = MNIST_2D_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, seed)
     elif data_source == "EMNIST":
         X_skewed, y_w_rel, sparsity_levels, rel_classes = EMNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS)
     elif data_source == "NICE":

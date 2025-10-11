@@ -60,6 +60,7 @@ def generate_synthetic_dataset_with_relevance(n_least_populous, seed=42):
     # Identify the n least populous classes
     # Since samples_per_class is [512, 256, ..., 1], least populous are highest indices
     least_populous_classes = list(range(num_classes - n_least_populous, num_classes))
+    least_populous_classes = [str(d) for d in least_populous_classes]
     print(f"Least populous classes (marked as relevant): {least_populous_classes}")
 
     # Generate relevance vector (1 for least populous classes, 0 otherwise)

@@ -375,6 +375,8 @@ class ARED:
                         self.add_l_pt_to_existing_cl(data_point_abs_idx, data_point, second_cluster_key)
                         # this adds pt to l_buf and updates appropriate cluster in subspace partition
                         print("NEIGHBORHOOD MERGE!")
+                    else:
+                        self.split(data_point, data_point_abs_idx, new_pt_label, new_pt_relevant, comp_cluster_key)
                 else:
                     self.split(data_point, data_point_abs_idx, new_pt_label, new_pt_relevant, comp_cluster_key)
             # update confusion matrix
