@@ -37,7 +37,7 @@ def create_skewed_mnist(X, y, sparsity_levels, seed):
     y_skewed = y[indices]
     return X_skewed, y_skewed, digit_order
 
-def load_and_skew_mnist(sparsity_levels, seed, save_path="mnist_replicated_10x.pkl"):
+def load_and_skew_mnist(sparsity_levels, seed, save_path="mnist_full.pkl"):
     """
     Loads the replicated MNIST dataset (10x duplicated) from a pickle file,
     creates a skewed subset using create_skewed_mnist, and returns both the skewed
@@ -57,13 +57,13 @@ def load_and_skew_mnist(sparsity_levels, seed, save_path="mnist_replicated_10x.p
                                "Please generate it first using the previous script.")
 
     # Load the replicated MNIST dataset
-    print(f"Loading replicated MNIST from {save_path}...")
+    print(f"Loading MNIST from {save_path}...")
     with open(save_path, "rb") as file:
         data = pickle.load(file)
     
     # Extract images and labels
-    X = data['images']  # Shape: (700000, 28, 28)
-    y = data['labels']  # Shape: (700000,)
+    X = data[0]  # Shape: (700000, 28, 28)
+    y = data[1]  # Shape: (700000,)
     
     # Reshape images to (n_samples, 784) to match original code's expectation
     X = X.reshape(X.shape[0], -1)  # Shape: (700000, 784)

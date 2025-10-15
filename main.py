@@ -18,11 +18,11 @@ N_REL_CLASSES: Specified number of relevant classes
 |- NICE settings:
 |=== Low relevance: 4 relevant classes ~1.4% of data as relevant`
 '''
-DATA_SOURCE = "MNIST" # NOTE: currently multiplied by 10x to get ~130,000 samples
-N_REL_CLASSES = 4
-
-# DATA_SOURCE = "MNIST_2D" # NOTE: currently multiplied by 10x to get ~130,000 samples
+# DATA_SOURCE = "MNIST" # NOTE: currently multiplied by 10x to get ~130,000 samples
 # N_REL_CLASSES = 4
+
+DATA_SOURCE = "MNIST_2D"
+N_REL_CLASSES = 4
 
 # DATA_SOURCE = "EMNIST"
 # N_REL_CLASSES = 3
@@ -37,7 +37,7 @@ N_REL_CLASSES = 4
 KAPPA: Paranoia Parameter
 (single value for now)
 '''
-KAPPA = 1 #0.5, , 1.4, 10
+KAPPA = 0.75 # , 1.4, 10
 # # KAPPAS = [0.5] #0.5, , 1.4, 10
 # |- Array of Kappas to run ARED on
 # |- Run more than one for graphing purposes
@@ -70,7 +70,7 @@ K_COMP_PTS: Number of points to compare to when looking for relevance
 |- 2 or more: k ARED
 @WARNING: must be 1 or greater
 '''
-K_COMP_PTS = 2 # use 1 for baseline
+K_COMP_PTS = 5 # use 1 for baseline
 
 '''
 NGHBHOOD_MERGE: Neighborhood Merge Variants
@@ -81,7 +81,7 @@ NGHBHOOD_MERGE: Neighborhood Merge Variants
 |- False: No neighborhood merge
 |- True: Neighborhood merge
 '''
-NGHBHOOD_MERGE = False
+NGHBHOOD_MERGE = True
 
 '''
 SINGLETON_MERGE: Neighborhood Merge Variants
@@ -90,7 +90,7 @@ SINGLETON_MERGE: Neighborhood Merge Variants
 |- False: No singleton merge
 |- True: singleton merge
 '''
-SINGLETON_MERGE = False
+SINGLETON_MERGE = True
 
 '''
 window_size: size of the data_window window saved by ARED
