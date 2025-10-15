@@ -161,7 +161,7 @@ class Cluster:
 
 class ARED:
 
-    def __init__(self, oracle, kappa, l_buf_size, K_COMP_PTS, QS_VAR, REL_PROC_VAR, SM_VAR, NGHBHOOD_MERGE, VERBOSE_FLAGS):
+    def __init__(self, oracle, kappa, l_buf_size, K_COMP_PTS, QS_VAR, REL_PROC_VAR, SM_VAR, NGHBHOOD_MERGE, SINGLETON_MERGE,VERBOSE_FLAGS):
         self.kappa = kappa
         self.K_COMP_PTS = K_COMP_PTS
         self.l_buf = FiniteBuffer(l_buf_size, .8, 2)
@@ -178,6 +178,7 @@ class ARED:
         self.REL_PROC_VAR = REL_PROC_VAR
         self.SM_VAR = SM_VAR
         self.NGHBHOOD_MERGE = NGHBHOOD_MERGE
+        self.SINGLETON_MERGE = SINGLETON_MERGE
         self.verbose_flags = VERBOSE_FLAGS
         self.conf_matrix = np.zeros((oracle.num_classes, oracle.num_classes), dtype=int)
 
@@ -206,9 +207,59 @@ class ARED:
         int_label = self.oracle.int_str_label_bidict[label]
         self.conf_matrix[int_label,int_label] += 1
 
-
     def singleton_merge(self):
-        # go through clusters in subspace partition looking for
+        """
+        Periodically merge singleton clusters (len(l_pt_idxs) == 1) with nearest neighbor clusters
+        that share the same label. Updates cluster keys in l_buf and subspace partition.
+        """
+        if not self.SINGLETON_MERGE or self.K_COMP_PTS < 2:
+            if 5 in self.verbose_flags:
+                print("Singleton merge skipped: SINGLETON_MERGE=False or K_COMP_PTS<2")
+            return
+
+        # Identify singleton clusters
+        singleton_keys = [key for key, cluster in self.subspace_partition.cluster_dict.items()
+                          if len(cluster.l_pt_idxs) == 1]
+
+        if 5 in self.verbose_flags:
+            print(f"Singleton merge: Found {len(singleton_keys)} singleton clusters: {singleton_keys}")
+
+        for singleton_key in singleton_keys:
+            if singleton_key not in self.subspace_partition.cluster_dict:
+                continue  # Cluster may have been merged/removed already
+
+            cluster = self.subspace_partition.cluster_dict[singleton_key]
+            singleton_idx = cluster.l_pt_idxs[0]  # Singleton's only point (absolute index)
+            singleton_label = cluster.label
+            singleton_data = self.l_buf.get_pt_data_abs(singleton_idx)
+
+            if singleton_data is None:
+                if 5 in self.verbose_flags:
+                    print(f"Singleton {singleton_key} point {singleton_idx} no longer in buffer, skipping")
+                continue
+
+            # Find K_COMP_PTS closest points
+            # Format: [(cluster_key, pt_internal_idx, dist, label, data, rel, true_abs_idx)]
+            k_closest_pts, _ = self.l_buf.find_closest_pts(singleton_data, self.K_COMP_PTS)
+
+            # Look for a matching label in the closest points' clusters
+            for pt_info in k_closest_pts:
+                neighbor_cluster_key = pt_info[0]
+                neighbor_label = pt_info[3]
+
+                # Skip if same cluster or cluster no longer exists
+                if neighbor_cluster_key == singleton_key or neighbor_cluster_key not in self.subspace_partition.cluster_dict:
+                    continue
+
+                # Merge if labels match
+                if neighbor_label == singleton_label:
+                    if 5 in self.verbose_flags:
+                        print(f"Merging singleton cluster {singleton_key} into cluster {neighbor_cluster_key} "
+                              f"(label: {singleton_label})")
+
+                    # Merge clusters (updates l_buf cluster keys and comp_distance)
+                    self.merge_clusters(neighbor_cluster_key, singleton_key)
+                    break  # Stop after first merge to avoid merging same singleton multiple times
 
     def merge_clusters(self, cluster_key_a, cluster_key_b):
         # DONE (by Nate Mediocrely)
@@ -253,9 +304,10 @@ class ARED:
         # Get k closest points in l_buf [(cluster_key, pt_internal_idx, dist, label, data, rel, true_abs_idx)]
         k_closest_pts, num_pts_searched = self.l_buf.find_closest_pts(data_point, self.K_COMP_PTS)
 
-        if len(k_closest_pts) > 1 and k_closest_pts[0][3] == k_closest_pts[1][3] and k_closest_pts[0][0] != k_closest_pts[1][0]:
-        # i.e. if we've already processed more than one point overall, and the 2 closest points have the same label,
-        # and they're not in the same cluster - merge those clusters!
+        if self.NGHBHOOD_MERGE and len(k_closest_pts) > 1 and k_closest_pts[0][3] == k_closest_pts[1][3] and k_closest_pts[0][0] != k_closest_pts[1][0]:
+        # i.e. if we're doing neighborhood merging and we've already processed more than one point overall,
+        # and the 2 closest points have the same label,
+        # and they're not in the same cluster - merge the 2 closest clusters!
             if k_closest_pts[0][0] < k_closest_pts[1][0]:
                 keep_idx, merge_idx = 0, 1
             else:

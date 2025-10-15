@@ -81,7 +81,7 @@ NGHBHOOD_MERGE: Neighborhood Merge Variants
 |- False: No neighborhood merge
 |- True: Neighborhood merge
 '''
-NGHBHOOD_MERGE = True
+NGHBHOOD_MERGE = False
 
 '''
 SINGLETON_MERGE: Neighborhood Merge Variants
@@ -90,9 +90,7 @@ SINGLETON_MERGE: Neighborhood Merge Variants
 |- False: No singleton merge
 |- True: singleton merge
 '''
-SINGLETON_MERGE = True
-# NOTE - NOT IMPLEMENTED YET!!!
-
+SINGLETON_MERGE = False
 
 '''
 window_size: size of the data_window window saved by ARED
@@ -106,7 +104,7 @@ NUM_POINTS_TO_PROCESS: Number of points in dataset to process
 |- -1: process all the data
 |-  0 to inf: process up to that number if data is available
 '''
-NUM_POINTS_TO_PROCESS = 10000#-1
+NUM_POINTS_TO_PROCESS = 25000#-1
 
 '''
 NUM_RUN_TO_AVE: number of runs to average.
@@ -121,7 +119,7 @@ GRAPH_BATCH_SIZE: number of points in batch for stats purposes.
 GRAPH_BATCH_SIZE = 100
 
 '''
-VERBOSE_FLAGS: Array of control flags to make ARED loud or quite
+VERBOSE_FLAGS: Array of control flags to make ARED loud or quiet
 |- Array, containing verbose flags for different types of messages
 |- Example: VERBOSE_FLAGS = [0, 1, 2]
 |- Put these numbers in the array to change which parts of ARED are very loud
@@ -132,7 +130,7 @@ VERBOSE_FLAGS: Array of control flags to make ARED loud or quite
 |- 4: Prints the forgotten_abs_index and forgotten_point_cluster_id during subspace_partition_maintenance 
 |- 5: Prints information about cluster merging 
 '''
-VERBOSE_FLAGS = [0] #example setting [1, 2] for two verbose level control flags
+VERBOSE_FLAGS = [0,5] #example setting [1, 2] for two verbose level control flags
 
 '''
 MAKE_GRAPHS
@@ -173,7 +171,7 @@ if __name__ == '__main__':
         # Initialize Data Stream, Oracle and ARED ===================================
         data_stream = Data_Stream(X_skewed, y_w_rel)
         oracle = Oracle(X_skewed, y_w_rel)
-        ared = ARED(oracle, KAPPA, DATA_WINDOW_SIZE, K_COMP_PTS, QS_VAR, REL_PROC_VAR, SM_VAR, NGHBHOOD_MERGE, VERBOSE_FLAGS)
+        ared = ARED(oracle, KAPPA, DATA_WINDOW_SIZE, K_COMP_PTS, QS_VAR, REL_PROC_VAR, SM_VAR, NGHBHOOD_MERGE, SINGLETON_MERGE, VERBOSE_FLAGS)
         start_time, times, num_correct_queries, num_queries, num_clusters, num_labels, pt_dists, num_pts_searched_list, conf_matrices, \
             num_queries_last_batch = set_up_stats(ared)
 
@@ -217,6 +215,8 @@ if __name__ == '__main__':
 
                 if MAKE_GRAPHS:
                     plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label")
+                if SINGLETON_MERGE:
+                    ared.singleton_merge()
 
 
             # end save and print -------------------------------------------------------------
