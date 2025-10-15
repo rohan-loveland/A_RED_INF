@@ -206,6 +206,10 @@ class ARED:
         int_label = self.oracle.int_str_label_bidict[label]
         self.conf_matrix[int_label,int_label] += 1
 
+
+    def singleton_merge(self):
+        # go through clusters in subspace partition looking for
+
     def merge_clusters(self, cluster_key_a, cluster_key_b):
         # DONE (by Nate Mediocrely)
 
@@ -250,8 +254,8 @@ class ARED:
         k_closest_pts, num_pts_searched = self.l_buf.find_closest_pts(data_point, self.K_COMP_PTS)
 
         if len(k_closest_pts) > 1 and k_closest_pts[0][3] == k_closest_pts[1][3] and k_closest_pts[0][0] != k_closest_pts[1][0]:
-        # i.e. if we have more than one point, and the closest points have the same label, and they're not in the same cluster -
-        #  merge!
+        # i.e. if we've already processed more than one point overall, and the 2 closest points have the same label,
+        # and they're not in the same cluster - merge those clusters!
             if k_closest_pts[0][0] < k_closest_pts[1][0]:
                 keep_idx, merge_idx = 0, 1
             else:
@@ -271,13 +275,15 @@ class ARED:
 
         # Check for relevance in k the closest points
         for pt in k_closest_pts:
-            if pt[5]: # if pt[5] is true
+            if pt[5]: # if pt[5] - relevance label - is true
                 relevant_point_info = pt
                 break
 
         # No relevant cluster in top-k, return closest overall
-        return comparison_point_info, relevant_point_info, num_pts_searched, k_closest_pts # 0            1                 2     3      4     5          6
-                                    # [(cluster_key, pt_internal_idx, dist, label, data, rel, true_abs_idx)]
+        return comparison_point_info, relevant_point_info, num_pts_searched, k_closest_pts
+        # for k_closest_pts indices...
+        #    0            1                 2     3      4     5          6
+        # [(cluster_key, pt_internal_idx, dist, label, data, rel, true_abs_idx)]
 
 
     def anomalous(self, data_point, cluster_key, distance):
@@ -374,7 +380,7 @@ class ARED:
                         second_cluster_key = k_closest_pts[1][0]
                         self.add_l_pt_to_existing_cl(data_point_abs_idx, data_point, second_cluster_key)
                         # this adds pt to l_buf and updates appropriate cluster in subspace partition
-                        print("NEIGHBORHOOD MERGE!")
+                        # print("NEIGHBORHOOD MERGE!")
                     else:
                         self.split(data_point, data_point_abs_idx, new_pt_label, new_pt_relevant, comp_cluster_key)
                 else:

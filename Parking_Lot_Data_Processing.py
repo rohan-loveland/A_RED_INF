@@ -43,5 +43,8 @@ def parking_lot_setup_for_main(VERBOSE_FLAGS, seed):
 
     # Sparsity levels: number of points in each class from highest to lowest
     sparsity_levels = label_counts.most_common()
-
+    total_count = 0
+    for _, l_count in sparsity_levels:
+        total_count += l_count
+    sparsity_levels = [(label, l_count/total_count) for label, l_count in sparsity_levels]
     return X, y_w_rel, sparsity_levels, relevant_labels

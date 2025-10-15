@@ -18,11 +18,11 @@ N_REL_CLASSES: Specified number of relevant classes
 |- NICE settings:
 |=== Low relevance: 4 relevant classes ~1.4% of data as relevant`
 '''
-# DATA_SOURCE = "MNIST" # NOTE: currently multiplied by 10x to get ~130,000 samples
-# N_REL_CLASSES = 4
-
-DATA_SOURCE = "MNIST_2D" # NOTE: currently multiplied by 10x to get ~130,000 samples
+DATA_SOURCE = "MNIST" # NOTE: currently multiplied by 10x to get ~130,000 samples
 N_REL_CLASSES = 4
+
+# DATA_SOURCE = "MNIST_2D" # NOTE: currently multiplied by 10x to get ~130,000 samples
+# N_REL_CLASSES = 4
 
 # DATA_SOURCE = "EMNIST"
 # N_REL_CLASSES = 3
@@ -47,7 +47,7 @@ QS_VAR: Query Strategy Variants
 |- 0: Diameter check
 |- 1: Approx. Ave Single Linkage Average 
 '''
-QS_VAR = 0
+QS_VAR = 1
 
 '''
 SM_VAR: Split Method Var 
@@ -77,6 +77,7 @@ NGHBHOOD_MERGE: Neighborhood Merge Variants
 |- if selected, if a split is going to occur, then check if 2nd closest neighbor cluster
 |- has same label as newly queried point, and merge with that cluster instead
 |- NOTE: K_COMP_PTS must be >= 2 for this
+|- NOTE: currently this is only implemented for top 2
 |- False: No neighborhood merge
 |- True: Neighborhood merge
 '''
@@ -90,6 +91,7 @@ SINGLETON_MERGE: Neighborhood Merge Variants
 |- True: singleton merge
 '''
 SINGLETON_MERGE = True
+# NOTE - NOT IMPLEMENTED YET!!!
 
 
 '''
@@ -116,7 +118,7 @@ NUM_RUNS_TO_AVE = 1
 '''
 GRAPH_BATCH_SIZE: number of points in batch for stats purposes.
 '''
-GRAPH_BATCH_SIZE = 1000
+GRAPH_BATCH_SIZE = 100
 
 '''
 VERBOSE_FLAGS: Array of control flags to make ARED loud or quite

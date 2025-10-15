@@ -104,6 +104,6 @@ def MNIST_2D_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS,seed):
 
     X_skewed = X_skewed[:10000]
     tsne = TSNE(n_components=2, random_state=42, perplexity=min(30, len(X_skewed) - 1))
-    X_skewed_2d = tsne.fit_transform(X_skewed)
+    X_skewed = tsne.fit_transform(X_skewed)
     y_w_rel = y_w_rel[:10000]
     return X_skewed, y_w_rel, sparsity_levels, relevant_classes

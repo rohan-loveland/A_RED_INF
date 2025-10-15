@@ -70,6 +70,7 @@ def calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes,
         query_precision_list.append(num_correct_queries[b] / num_queries[b])
 
     if plot_flag:
+        # would be nice at some point to show individual recalls, with line widths indicating sparsity level
         batch_num_pts = list(range(GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS + 1, GRAPH_BATCH_SIZE))
         plt.figure(figsize=(10, 5))
         plt.plot(batch_num_pts, rel_recall_ave_list)
