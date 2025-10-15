@@ -258,10 +258,7 @@ class ClusterEvolutionPlotter:
             cluster_centroids[cid] = np.mean(cluster_points, axis=0)
 
         # --- Voronoi using single-linkage (all points as sites) ---
-        all_sites = points_2d  # each point is a Voronoi site
-        site_to_cluster = cluster_ids  # mapping site index to cluster ID
-
-        # Add dummy points for bounded Voronoi
+        all_sites = points_2d
         x_min, y_min = all_sites.min(axis=0)
         x_max, y_max = all_sites.max(axis=0)
         data_range = np.ptp(all_sites, axis=0)
@@ -400,6 +397,111 @@ class ClusterEvolutionPlotter:
         # --- Save as PDF if path is provided ---
         if save_pdf_path is not None:
             fig.savefig(save_pdf_path, format='pdf', bbox_inches='tight')
+            print(f"Plot saved as PDF: {save_pdf_path}")
+
+        plt.show(block=False)
+
+    def _get_color_for_label(self, label):
+        """Get or assign a color for a label, updating label_colors."""
+        if label not in self.label_colors:
+            color = self._label_color_map(self._next_label_color_idx % 20)
+            self.label_colors[label] = color
+            self._next_label_color_idx += 1
+        return self.label_colors[label]
+
+    def plot_dataset(self, X, y, title="Dataset Visualization", save_pdf_path=None):
+        """
+        Plot a dataset (X, y) with a Voronoi overlay, using colors from label_colors.
+        Assigns new colors for unseen labels.
+
+        Parameters:
+        - X: ndarray of shape (n_samples, n_features), the data points.
+        - y: ndarray of shape (n_samples,) or (n_samples, 1), or list of lists, the labels.
+        - title: str, title for the plot.
+        - save_pdf_path: str, optional path to save the plot as a PDF.
+        """
+        # --- Ensure inputs are numpy arrays ---
+        X = np.array(X)
+
+        # --- Handle y's structure ---
+        y = np.array(y)
+        if y.ndim == 2 and y.shape[1] == 1:
+            y = y.flatten()  # Convert (n_samples, 1) to (n_samples,)
+        elif y.ndim == 2:
+            # If y is 2D with multiple columns, assume first column contains labels
+            y = np.array([row[0] for row in y])
+
+        # --- Validate input shapes ---
+        if X.shape[0] != y.shape[0]:
+            raise ValueError(f"X and y have mismatched number of samples: X has {X.shape[0]}, y has {y.shape[0]}")
+
+        # --- t-SNE projection if necessary ---
+        if X.shape[1] > 2:
+            tsne = TSNE(n_components=2, random_state=42, perplexity=min(30, len(X) - 1))
+            points_2d = tsne.fit_transform(X)
+        else:
+            points_2d = X
+
+        # --- Initialize figure ---
+        fig, ax = plt.subplots(figsize=(8, 6))
+
+        # --- Voronoi setup (bounded) ---
+        all_sites = points_2d
+        x_min, y_min = all_sites.min(axis=0)
+        x_max, y_max = all_sites.max(axis=0)
+        data_range = np.ptp(all_sites, axis=0)
+        extension_length = 2 * np.max(data_range)
+        dummy_points = np.array([
+            [x_min - extension_length, y_min - extension_length],
+            [x_min - extension_length, y_max + extension_length],
+            [x_max + extension_length, y_min - extension_length],
+            [x_max + extension_length, y_max + extension_length],
+        ])
+        vor = Voronoi(np.vstack((all_sites, dummy_points)))
+
+        # --- Draw Voronoi boundaries between different labels ---
+        if len(np.unique(y)) >= 2:
+            for r, simplex in enumerate(vor.ridge_vertices):
+                i, j = vor.ridge_points[r]
+                if i >= len(y) or j >= len(y):  # Skip dummy points
+                    continue
+                if y[i] == y[j]:  # Skip boundaries within the same label
+                    continue
+                simplex = np.asarray(simplex)
+                if np.all(simplex >= 0):  # Valid region
+                    start, end = vor.vertices[simplex]
+                    ax.plot([start[0], end[0]], [start[1], end[1]],
+                            color='black', linestyle='--', linewidth=1, alpha=0.7, zorder=4)
+
+        # --- Scatter points colored by label ---
+        unique_labels = np.unique(y)
+        for lbl in unique_labels:
+            mask = y == lbl
+            if mask.sum() == 0:
+                continue  # Skip empty masks
+            ax.scatter(points_2d[mask, 0], points_2d[mask, 1],
+                       color=self._get_color_for_label(lbl),
+                       s=25, alpha=0.8, edgecolors='none', zorder=5, label=str(lbl))
+
+        # --- Adjust view ---
+        margin = 0.1 * np.max(data_range)
+        ax.set_xlim(points_2d[:, 0].min() - margin, points_2d[:, 0].max() + margin)
+        ax.set_ylim(points_2d[:, 1].min() - margin, points_2d[:, 1].max() + margin)
+        ax.set_aspect("equal", "box")
+        ax.grid(True, linestyle=":", alpha=0.4)
+
+        # --- Add legend ---
+        #ax.legend(title="Labels", loc="best")
+
+        # --- Title below ---
+        ax.set_xlabel(title, fontsize=14, labelpad=15)
+
+        plt.tight_layout()
+        plt.subplots_adjust(bottom=0.2)
+
+        # --- Optional PDF saving ---
+        if save_pdf_path is not None:
+            fig.savefig(save_pdf_path, format="pdf", bbox_inches="tight")
             print(f"Plot saved as PDF: {save_pdf_path}")
 
         plt.show(block=False)

@@ -18,18 +18,18 @@ N_REL_CLASSES: Specified number of relevant classes
 |- NICE settings:
 |=== Low relevance: 4 relevant classes ~1.4% of data as relevant`
 '''
-DATA_SOURCE = "MNIST" # NOTE: currently multiplied by 10x to get ~130,000 samples
-N_REL_CLASSES = 4
-
-# DATA_SOURCE = "MNIST_2D" # NOTE: currently multiplied by 10x to get ~130,000 samples
+# DATA_SOURCE = "MNIST" # NOTE: currently multiplied by 10x to get ~130,000 samples
 # N_REL_CLASSES = 4
+
+DATA_SOURCE = "MNIST_2D" # NOTE: currently multiplied by 10x to get ~130,000 samples
+N_REL_CLASSES = 4
 
 # DATA_SOURCE = "EMNIST"
 # N_REL_CLASSES = 3
 
 # DATA_SOURCE = "NICE"
 # N_REL_CLASSES = 4
-
+#
 # DATA_SOURCE = "PARKING_LOT"
 # N_REL_CLASSES = 4
 
@@ -47,7 +47,7 @@ QS_VAR: Query Strategy Variants
 |- 0: Diameter check
 |- 1: Approx. Ave Single Linkage Average 
 '''
-QS_VAR = 1
+QS_VAR = 0
 
 '''
 SM_VAR: Split Method Var 
@@ -81,7 +81,7 @@ NGHBHOOD_MERGE: Neighborhood Merge Variants
 |- False: No neighborhood merge
 |- True: Neighborhood merge
 '''
-NGHBHOOD_MERGE = False
+NGHBHOOD_MERGE = True
 
 '''
 SINGLETON_MERGE: Neighborhood Merge Variants
@@ -90,7 +90,7 @@ SINGLETON_MERGE: Neighborhood Merge Variants
 |- False: No singleton merge
 |- True: singleton merge
 '''
-SINGLETON_MERGE = False
+SINGLETON_MERGE = True
 
 '''
 window_size: size of the data_window window saved by ARED
@@ -104,7 +104,7 @@ NUM_POINTS_TO_PROCESS: Number of points in dataset to process
 |- -1: process all the data
 |-  0 to inf: process up to that number if data is available
 '''
-NUM_POINTS_TO_PROCESS = 25000#-1
+NUM_POINTS_TO_PROCESS = -1
 
 '''
 NUM_RUN_TO_AVE: number of runs to average.
@@ -116,7 +116,7 @@ NUM_RUNS_TO_AVE = 1
 '''
 GRAPH_BATCH_SIZE: number of points in batch for stats purposes.
 '''
-GRAPH_BATCH_SIZE = 100
+GRAPH_BATCH_SIZE = 1000
 
 '''
 VERBOSE_FLAGS: Array of control flags to make ARED loud or quiet
@@ -227,6 +227,7 @@ if __name__ == '__main__':
 
         evo_plotter.add_snapshot(ared, X_skewed, y_w_rel, "c) with Forgetting")
         evo_plotter.plot()
+        evo_plotter.plot_dataset(X_skewed, y_w_rel)
 
         print("ARED DONE")
 
