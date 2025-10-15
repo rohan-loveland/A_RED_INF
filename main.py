@@ -24,6 +24,9 @@ N_REL_CLASSES: Specified number of relevant classes
 DATA_SOURCE = "MNIST_2D"
 N_REL_CLASSES = 4
 
+DATA_SOURCE = "MNIST_2D" # NOTE: currently multiplied by 10x to get ~130,000 samples
+N_REL_CLASSES = 4
+
 # DATA_SOURCE = "EMNIST"
 # N_REL_CLASSES = 3
 
@@ -37,7 +40,7 @@ N_REL_CLASSES = 4
 KAPPA: Paranoia Parameter
 (single value for now)
 '''
-KAPPA = 0.75 # , 1.4, 10
+KAPPA = 1 #0.5, , 1.4, 10
 # # KAPPAS = [0.5] #0.5, , 1.4, 10
 # |- Array of Kappas to run ARED on
 # |- Run more than one for graphing purposes
@@ -70,7 +73,7 @@ K_COMP_PTS: Number of points to compare to when looking for relevance
 |- 2 or more: k ARED
 @WARNING: must be 1 or greater
 '''
-K_COMP_PTS = 5 # use 1 for baseline
+K_COMP_PTS = 2 # use 1 for baseline
 
 '''
 NGHBHOOD_MERGE: Neighborhood Merge Variants
@@ -104,7 +107,7 @@ NUM_POINTS_TO_PROCESS: Number of points in dataset to process
 |- -1: process all the data
 |-  0 to inf: process up to that number if data is available
 '''
-NUM_POINTS_TO_PROCESS = 25000#-1
+NUM_POINTS_TO_PROCESS = -1
 
 '''
 NUM_RUN_TO_AVE: number of runs to average.
@@ -116,7 +119,7 @@ NUM_RUNS_TO_AVE = 1
 '''
 GRAPH_BATCH_SIZE: number of points in batch for stats purposes.
 '''
-GRAPH_BATCH_SIZE = 100
+GRAPH_BATCH_SIZE = 1000
 
 '''
 VERBOSE_FLAGS: Array of control flags to make ARED loud or quiet
@@ -227,6 +230,7 @@ if __name__ == '__main__':
 
         evo_plotter.add_snapshot(ared, X_skewed, y_w_rel, "c) with Forgetting")
         evo_plotter.plot()
+        evo_plotter.plot_dataset(X_skewed, y_w_rel)
 
         print("ARED DONE")
 
