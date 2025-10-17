@@ -24,9 +24,6 @@ N_REL_CLASSES: Specified number of relevant classes
 DATA_SOURCE = "MNIST_2D"
 N_REL_CLASSES = 4
 
-DATA_SOURCE = "MNIST_2D" # NOTE: currently multiplied by 10x to get ~130,000 samples
-N_REL_CLASSES = 4
-
 # DATA_SOURCE = "EMNIST"
 # N_REL_CLASSES = 3
 
@@ -109,12 +106,12 @@ NUM_POINTS_TO_PROCESS: Number of points in dataset to process
 '''
 NUM_POINTS_TO_PROCESS = -1
 
-'''
-NUM_RUN_TO_AVE: number of runs to average.
-|- INT, higher numbers means more runs to average for graphs. 
-|- @WARNING MUST BE GREATER THAN 1.
-'''
-NUM_RUNS_TO_AVE = 1
+# '''
+# NUM_RUN_TO_AVE: number of runs to average.
+# |- INT, higher numbers means more runs to average for graphs.
+# |- @WARNING MUST BE GREATER THAN 1.
+# '''
+# NUM_RUNS_TO_AVE = 1
 
 '''
 GRAPH_BATCH_SIZE: number of points in batch for stats purposes.
@@ -133,14 +130,14 @@ VERBOSE_FLAGS: Array of control flags to make ARED loud or quiet
 |- 4: Prints the forgotten_abs_index and forgotten_point_cluster_id during subspace_partition_maintenance 
 |- 5: Prints information about cluster merging 
 '''
-VERBOSE_FLAGS = [0,5] #example setting [1, 2] for two verbose level control flags
+VERBOSE_FLAGS = [0] #example setting [1, 2] for two verbose level control flags
 
 '''
 MAKE_GRAPHS
 |- True: make graphs
 |- False: do not make graphs
 '''
-MAKE_GRAPHS = False
+MAKE_GRAPHS = True
 
 '''
 RANDOM_SEED_OFFSET
@@ -236,6 +233,7 @@ if __name__ == '__main__':
 
 
         PLOT_FLAG = True
+        print("num_correct_queries:", num_correct_queries, "num_queries:", num_queries)
         rel_recall_ave_list, query_precision_list, rel_individual_recalls = \
             calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes, ared, num_correct_queries, \
                                      num_queries, PLOT_FLAG, GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS)
