@@ -102,5 +102,6 @@ def MNIST_2D_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS,seed):
 
     sparsity_levels = [(digit_order[n],sparsity_levels[n]) for n in range(len(sparsity_levels))]
 
-    tsne = TSNE(n_components=2, random_state=42, perplexity=min(30, len(X_skewed) - 1))
+    tsne = TSNE(n_components=2, random_state=seed, perplexity=min(30, len(X_skewed) - 1))
+    X_skewed = tsne.fit_transform(X_skewed)
     return X_skewed, y_w_rel, sparsity_levels, relevant_classes
