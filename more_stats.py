@@ -76,8 +76,8 @@ def calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes,
         batch_num_pts = list(range(GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS + 1, GRAPH_BATCH_SIZE))
         plt.figure(figsize=(10, 5))
         plt.plot(batch_num_pts, rel_recall_ave_list)
-        for n in range(len(rel_individual_recalls)):
-            plt.plot(batch_num_pts, rel_individual_recalls[n])
+        # for n in range(len(rel_individual_recalls)):
+        #     plt.plot(batch_num_pts, rel_individual_recalls[n])
         plt.plot(batch_num_pts, query_precision_list)
         plt.grid()
         plt.legend(("average_relevant_recall","relevant_recall_0","relevant_recall_1", \
