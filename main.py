@@ -21,8 +21,8 @@ N_REL_CLASSES: Specified number of relevant classes
 # DATA_SOURCE = "MNIST" # NOTE: currently multiplied by 10x to get ~130,000 samples
 # N_REL_CLASSES = 4
 
-# DATA_SOURCE = "MNIST_2D"
-# N_REL_CLASSES = 4
+DATA_SOURCE = "MNIST_2D"
+N_REL_CLASSES = 4
 
 # DATA_SOURCE = "EMNIST"
 # N_REL_CLASSES = 3
@@ -30,8 +30,8 @@ N_REL_CLASSES: Specified number of relevant classes
 # DATA_SOURCE = "NICE"
 # N_REL_CLASSES = 4
 
-DATA_SOURCE = "PARKING_LOT"
-N_REL_CLASSES = 4
+# DATA_SOURCE = "PARKING_LOT"
+# N_REL_CLASSES = 4
 
 '''
 KAPPA: Paranoia Parameter
@@ -116,7 +116,7 @@ NUM_POINTS_TO_PROCESS = -1
 '''
 GRAPH_BATCH_SIZE: number of points in batch for stats purposes.
 '''
-GRAPH_BATCH_SIZE = 1000
+GRAPH_BATCH_SIZE = 250
 
 '''
 VERBOSE_FLAGS: Array of control flags to make ARED loud or quiet
@@ -138,6 +138,7 @@ MAKE_GRAPHS
 |- False: do not make graphs
 '''
 MAKE_GRAPHS = True
+MAKE_EVO_GRAPHS = False
 
 '''
 RANDOM_SEED_OFFSET
@@ -174,8 +175,9 @@ if __name__ == '__main__':
         start_time, times, num_correct_queries, num_queries, num_clusters, num_labels, pt_dists, num_pts_searched_list, conf_matrices, \
             num_queries_last_batch = set_up_stats(ared)
 
-        evo_plotter = ClusterEvolutionPlotter()
-        build_up_flag_evo_plotter = False # Flag used to only add the full l_buf to the subgraph once
+        if MAKE_EVO_GRAPHS:
+            evo_plotter = ClusterEvolutionPlotter()
+            build_up_flag_evo_plotter = False # Flag used to only add the full l_buf to the subgraph once
 
         # Stream and Process data =========================================
         ared.process_first_point(data_stream.stream_new_data_point())
@@ -189,12 +191,12 @@ if __name__ == '__main__':
         for i in range(1, NUM_POINTS_TO_PROCESS+1): # the +1 gives us an extra point, but makes the batch
             # arithmetic work out to include last batch by having last sample # end in 0
 
-            if i == 100:
-                evo_plotter.add_snapshot(ared, X_skewed, y_w_rel, "a) First 100 Points")
-
-            if i > 1000 and not ared.l_buf.build_up_period and not build_up_flag_evo_plotter:
-                evo_plotter.add_snapshot(ared, X_skewed, y_w_rel, "b) Labeled Buffer Full")
-                build_up_flag_evo_plotter = True
+            if MAKE_EVO_GRAPHS:
+                if i == 100:
+                    evo_plotter.add_snapshot(ared, X_skewed, y_w_rel, "a) First 100 Points")
+                elif i > 1000 and not ared.l_buf.build_up_period and not build_up_flag_evo_plotter:
+                    evo_plotter.add_snapshot(ared, X_skewed, y_w_rel, "b) Labeled Buffer Full")
+                    build_up_flag_evo_plotter = True
 
             # save and print per batch ---------------------------------------------------------------------
             if i % GRAPH_BATCH_SIZE == 0:
@@ -212,8 +214,9 @@ if __name__ == '__main__':
                         print(f"Points queried in this batch: {num_queries[j-1] - num_queries[j-2]}")
                         print(f"Number of clusters: {num_clusters[j-1]}")  # Add cluster count
 
-                if MAKE_GRAPHS:
+                if MAKE_EVO_GRAPHS:
                     evo_plotter.plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label")
+
                 if SINGLETON_MERGE:
                     ared.singleton_merge()
 
@@ -224,9 +227,10 @@ if __name__ == '__main__':
             pt_dists.append(pt_dist)
             num_pts_searched_list.append(num_pts_searched)
 
-        evo_plotter.add_snapshot(ared, X_skewed, y_w_rel, "c) with Forgetting")
-        evo_plotter.plot()
-        evo_plotter.plot_dataset(X_skewed, y_w_rel)
+        if MAKE_EVO_GRAPHS:
+            evo_plotter.add_snapshot(ared, X_skewed, y_w_rel, "c) with Forgetting")
+            evo_plotter.plot()
+            evo_plotter.plot_dataset(X_skewed, y_w_rel)
 
         print("ARED DONE")
 
