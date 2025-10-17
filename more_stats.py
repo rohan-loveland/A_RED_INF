@@ -41,15 +41,17 @@ def calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes,
                                      num_queries, plot_flag, GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS):
     rel_recall_ave_list = []
     query_precision_list = []
-    rel_individual_recalls = []
+    rel_class_info = [None]*len(rel_classes)
+    rel_individual_recalls = [None]*len(rel_classes)
 
     sparsity_labels = [l for l, _ in sparsity_levels]
     sparsity_numbers = [n for _, n in sparsity_levels]
     precision, recall = calculate_precision_recall_all_classes(conf_matrices[0])
     rel_recall_ave = 0
-    for c in rel_classes:
+    for i,c in enumerate(rel_classes):
         n = ared.oracle.int_str_label_bidict[c]
-        rel_individual_recalls.append((c, n, sparsity_numbers[n], recall[n],))
+        rel_class_info[i] = [(c, n, sparsity_numbers[n],)]
+        rel_individual_recalls[i]=[recall[n]]
         rel_recall_ave += recall[n]
     rel_recall_ave /= len(rel_classes)
     rel_recall_ave_list.append(rel_recall_ave)
@@ -61,9 +63,9 @@ def calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes,
         this_batch_conf_matrix = conf_array[b] - conf_array[b - 1]
         precision, recall = calculate_precision_recall_all_classes(this_batch_conf_matrix)
         rel_recall_ave = 0
-        for c in rel_classes:
+        for i,c in enumerate(rel_classes):
             n = ared.oracle.int_str_label_bidict[c]
-            rel_individual_recalls.append((c, n, sparsity_numbers[n], recall[n],))
+            rel_individual_recalls[i].append(recall[n])
             rel_recall_ave += recall[n]
         rel_recall_ave /= len(rel_classes)
         rel_recall_ave_list.append(rel_recall_ave)
@@ -74,9 +76,12 @@ def calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes,
         batch_num_pts = list(range(GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS + 1, GRAPH_BATCH_SIZE))
         plt.figure(figsize=(10, 5))
         plt.plot(batch_num_pts, rel_recall_ave_list)
+        for n in range(len(rel_individual_recalls)):
+            plt.plot(batch_num_pts, rel_individual_recalls[n])
         plt.plot(batch_num_pts, query_precision_list)
         plt.grid()
-        plt.legend(("relevant_recall", "query_precision"))
+        plt.legend(("average_relevant_recall","relevant_recall_0","relevant_recall_1", \
+                    "relevant_recall_2","relevant_recall_3", "query_precision"))
 
     return rel_recall_ave_list, query_precision_list, rel_individual_recalls
 
