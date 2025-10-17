@@ -6,175 +6,6 @@ from shapely.ops import unary_union
 from scipy.spatial import Voronoi
 import copy
 
-def plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label", save_pdf_path="cluster_visualization"):
-    """
-    Visualizes clusters using the same style as ClusterEvolutionPlotter subplots:
-    - merged circular cluster regions
-    - Voronoi competition boundaries
-    - dashed lines to centroids
-    - consistent color scheme
-    """
-    cluster_dict = ared.subspace_partition.cluster_dict
-    if not cluster_dict:
-        print("No clusters to visualize.")
-        return
-
-    # --- Collect data from ARED clusters ---
-    points, labels, cluster_ids, cluster_comp_dists = [], [], [], []
-    for cluster_id, cluster in cluster_dict.items():
-        if not hasattr(cluster, "l_pt_idxs"):
-            continue
-        indices = cluster.l_pt_idxs
-        for idx in indices:
-            if idx < len(X_skewed):
-                points.append(X_skewed[idx])
-                labels.append(y_w_rel[idx][0])
-                cluster_ids.append(cluster_id)
-                cluster_comp_dists.append(getattr(cluster, "comp_distance", 1.0))
-
-    if not points:
-        print("No points to visualize.")
-        return
-
-    points = np.array(points)
-    labels = np.array(labels)
-    cluster_ids = np.array(cluster_ids)
-    cluster_comp_dists = np.array(cluster_comp_dists)
-
-    # --- t-SNE projection if necessary ---
-    if points.shape[1] > 2:
-        tsne = TSNE(n_components=2, random_state=42, perplexity=min(30, len(points)-1))
-        points_2d = tsne.fit_transform(points)
-    else:
-        points_2d = points
-
-    # --- Initialize figure ---
-    fig, ax = plt.subplots(figsize=(8, 6))
-
-    # --- Compute cluster centroids ---
-    cluster_centroids = {}
-    for cid in np.unique(cluster_ids):
-        cluster_points = points_2d[cluster_ids == cid]
-        cluster_centroids[cid] = np.mean(cluster_points, axis=0)
-
-    # --- Voronoi setup (bounded) ---
-    all_sites = points_2d
-    x_min, y_min = all_sites.min(axis=0)
-    x_max, y_max = all_sites.max(axis=0)
-    data_range = np.ptp(all_sites, axis=0)
-    extension_length = 2 * np.max(data_range)
-    dummy_points = np.array([
-        [x_min - extension_length, y_min - extension_length],
-        [x_min - extension_length, y_max + extension_length],
-        [x_max + extension_length, y_min - extension_length],
-        [x_max + extension_length, y_max + extension_length],
-    ])
-    vor = Voronoi(np.vstack((all_sites, dummy_points)))
-
-    # --- Build cluster Voronoi polygons ---
-    cluster_voronoi_poly = {cid: [] for cid in np.unique(cluster_ids)}
-    for i, cid in enumerate(cluster_ids):
-        region_index = vor.point_region[i]
-        vertices = vor.regions[region_index]
-        if -1 in vertices or len(vertices) == 0:
-            cluster_voronoi_poly[cid].append(None)
-        else:
-            cluster_voronoi_poly[cid].append(Polygon(vor.vertices[vertices]))
-
-    # --- Base radius relative to dataset scale ---
-    base_radius = 0.05 * np.linalg.norm(data_range)
-
-    # --- Color mapping by label ---
-    cmap = plt.cm.get_cmap("tab20")
-    unique_labels = np.unique(labels)
-    label_to_color = {lbl: cmap(i % 20) for i, lbl in enumerate(unique_labels)}
-
-    # --- Draw clusters ---
-    for cid in np.unique(cluster_ids):
-        mask = cluster_ids == cid
-        cluster_points = points_2d[mask]
-        cluster_comp_dist = cluster_comp_dists[mask]
-        cluster_labels = labels[mask]
-
-        unique_cluster_labels, counts = np.unique(cluster_labels, return_counts=True)
-        dominant_label = unique_cluster_labels[np.argmax(counts)]
-        cluster_color = label_to_color[dominant_label]
-
-        # Create merged circular boundary
-        circles = [
-            Point(p[0], p[1]).buffer(cd / max(getattr(ared, "kappa", 1.0), 1e-6) * base_radius, resolution=64)
-            for p, cd in zip(cluster_points, cluster_comp_dist)
-        ]
-        merged_shape = unary_union(circles)
-
-        # Clip with Voronoi regions
-        polys = []
-        for poly in cluster_voronoi_poly[cid]:
-            if poly is not None:
-                polys.append(merged_shape.intersection(poly))
-        merged_shape = unary_union(polys)
-
-        # Fill merged shape
-        polygons = [merged_shape] if merged_shape.geom_type == "Polygon" else getattr(merged_shape, "geoms", [])
-        for poly in polygons:
-            if not poly.is_empty:
-                x, y = poly.exterior.xy
-                ax.fill(x, y, color=cluster_color, alpha=0.25, zorder=0)
-
-        # Dashed lines to centroid
-        centroid = cluster_centroids[cid]
-        for p in cluster_points:
-            ax.plot([p[0], centroid[0]], [p[1], centroid[1]],
-                    color=cluster_color, linestyle='--', linewidth=0.8, alpha=0.5, zorder=1)
-
-        # Annotate cluster ID
-        ax.text(
-            centroid[0], centroid[1], f"C{cid}",
-            fontsize=11, weight="bold", ha="center", va="center",
-            bbox=dict(facecolor="white", alpha=0.6, edgecolor="none", boxstyle="round,pad=0.3"),
-            zorder=10
-        )
-
-    # --- Voronoi boundaries between clusters ---
-    if len(cluster_ids) >= 2:
-        for r, simplex in enumerate(vor.ridge_vertices):
-            i, j = vor.ridge_points[r]
-            if i >= len(cluster_ids) or j >= len(cluster_ids):
-                continue
-            if cluster_ids[i] == cluster_ids[j]:
-                continue
-            simplex = np.asarray(simplex)
-            if np.all(simplex >= 0):
-                start, end = vor.vertices[simplex]
-                ax.plot([start[0], end[0]], [start[1], end[1]],
-                        color='black', linestyle='--', linewidth=1, alpha=0.7, zorder=4)
-
-    # --- Scatter points ---
-    for lbl in np.unique(labels):
-        mask = labels == lbl
-        ax.scatter(points_2d[mask, 0], points_2d[mask, 1],
-                   color=label_to_color[lbl], s=25, alpha=0.8, edgecolors='none', zorder=5)
-
-    # --- Adjust view ---
-    margin = 0.1 * np.max(data_range)
-    ax.set_xlim(points_2d[:, 0].min() - margin, points_2d[:, 0].max() + margin)
-    ax.set_ylim(points_2d[:, 1].min() - margin, points_2d[:, 1].max() + margin)
-    ax.set_aspect("equal", "box")
-    ax.grid(True, linestyle=":", alpha=0.4)
-
-    # --- Title below ---
-    ax.set_xlabel(title, fontsize=14, labelpad=15)
-
-    plt.tight_layout()
-    plt.subplots_adjust(bottom=0.2)
-
-    # --- Optional PDF saving ---
-    if save_pdf_path is not None:
-        fig.savefig(save_pdf_path, format="pdf", bbox_inches="tight")
-        print(f"Plot saved as PDF: {save_pdf_path}")
-
-    plt.show(block=False)
-
 class ClusterEvolutionPlotter:
     def __init__(self):
         self.snapshots = []  # List of extracted snapshots
@@ -401,14 +232,6 @@ class ClusterEvolutionPlotter:
 
         plt.show(block=False)
 
-    def _get_color_for_label(self, label):
-        """Get or assign a color for a label, updating label_colors."""
-        if label not in self.label_colors:
-            color = self._label_color_map(self._next_label_color_idx % 20)
-            self.label_colors[label] = color
-            self._next_label_color_idx += 1
-        return self.label_colors[label]
-
     def plot_dataset(self, X, y, title="Dataset Visualization", save_pdf_path=None):
         """
         Plot a dataset (X, y) with a Voronoi overlay, using colors from label_colors.
@@ -492,6 +315,170 @@ class ClusterEvolutionPlotter:
 
         # --- Add legend ---
         #ax.legend(title="Labels", loc="best")
+
+        # --- Title below ---
+        ax.set_xlabel(title, fontsize=14, labelpad=15)
+
+        plt.tight_layout()
+        plt.subplots_adjust(bottom=0.2)
+
+        # --- Optional PDF saving ---
+        if save_pdf_path is not None:
+            fig.savefig(save_pdf_path, format="pdf", bbox_inches="tight")
+            print(f"Plot saved as PDF: {save_pdf_path}")
+
+        plt.show(block=False)
+
+    def plot_clusters_colored_by_label(self, ared, X_skewed, y_w_rel, title="Cluster Visualization by Label", save_pdf_path="cluster_visualization"):
+        """
+        Visualizes clusters using the same style as ClusterEvolutionPlotter subplots:
+        - merged circular cluster regions
+        - Voronoi competition boundaries
+        - dashed lines to centroids
+        - consistent color scheme
+        """
+        cluster_dict = ared.subspace_partition.cluster_dict
+        if not cluster_dict:
+            print("No clusters to visualize.")
+            return
+
+        # --- Collect data from ARED clusters ---
+        points, labels, cluster_ids, cluster_comp_dists = [], [], [], []
+        for cluster_id, cluster in cluster_dict.items():
+            if not hasattr(cluster, "l_pt_idxs"):
+                continue
+            indices = cluster.l_pt_idxs
+            for idx in indices:
+                if idx < len(X_skewed):
+                    points.append(X_skewed[idx])
+                    labels.append(y_w_rel[idx][0])
+                    cluster_ids.append(cluster_id)
+                    cluster_comp_dists.append(getattr(cluster, "comp_distance", 1.0))
+
+        if not points:
+            print("No points to visualize.")
+            return
+
+        points = np.array(points)
+        labels = np.array(labels)
+        cluster_ids = np.array(cluster_ids)
+        cluster_comp_dists = np.array(cluster_comp_dists)
+
+        # --- t-SNE projection if necessary ---
+        if points.shape[1] > 2:
+            tsne = TSNE(n_components=2, random_state=42, perplexity=min(30, len(points)-1))
+            points_2d = tsne.fit_transform(points)
+        else:
+            points_2d = points
+
+        # --- Initialize figure ---
+        fig, ax = plt.subplots(figsize=(8, 6))
+
+        # --- Compute cluster centroids ---
+        cluster_centroids = {}
+        for cid in np.unique(cluster_ids):
+            cluster_points = points_2d[cluster_ids == cid]
+            cluster_centroids[cid] = np.mean(cluster_points, axis=0)
+
+        # --- Voronoi setup (bounded) ---
+        all_sites = points_2d
+        x_min, y_min = all_sites.min(axis=0)
+        x_max, y_max = all_sites.max(axis=0)
+        data_range = np.ptp(all_sites, axis=0)
+        extension_length = 2 * np.max(data_range)
+        dummy_points = np.array([
+            [x_min - extension_length, y_min - extension_length],
+            [x_min - extension_length, y_max + extension_length],
+            [x_max + extension_length, y_min - extension_length],
+            [x_max + extension_length, y_max + extension_length],
+        ])
+        vor = Voronoi(np.vstack((all_sites, dummy_points)))
+
+        # --- Build cluster Voronoi polygons ---
+        cluster_voronoi_poly = {cid: [] for cid in np.unique(cluster_ids)}
+        for i, cid in enumerate(cluster_ids):
+            region_index = vor.point_region[i]
+            vertices = vor.regions[region_index]
+            if -1 in vertices or len(vertices) == 0:
+                cluster_voronoi_poly[cid].append(None)
+            else:
+                cluster_voronoi_poly[cid].append(Polygon(vor.vertices[vertices]))
+
+        # --- Base radius relative to dataset scale ---
+        base_radius = 0.05 * np.linalg.norm(data_range)
+
+        # --- Draw clusters ---
+        for cid in np.unique(cluster_ids):
+            mask = cluster_ids == cid
+            cluster_points = points_2d[mask]
+            cluster_comp_dist = cluster_comp_dists[mask]
+            cluster_labels = labels[mask]
+
+            unique_cluster_labels, counts = np.unique(cluster_labels, return_counts=True)
+            dominant_label = unique_cluster_labels[np.argmax(counts)]
+            cluster_color = self._get_color_for_label(dominant_label)
+
+            # Create merged circular boundary
+            circles = [
+                Point(p[0], p[1]).buffer(cd / max(getattr(ared, "kappa", 1.0), 1e-6) * base_radius, resolution=64)
+                for p, cd in zip(cluster_points, cluster_comp_dist)
+            ]
+            merged_shape = unary_union(circles)
+
+            # Clip with Voronoi regions
+            polys = []
+            for poly in cluster_voronoi_poly[cid]:
+                if poly is not None:
+                    polys.append(merged_shape.intersection(poly))
+            merged_shape = unary_union(polys)
+
+            # Fill merged shape
+            polygons = [merged_shape] if merged_shape.geom_type == "Polygon" else getattr(merged_shape, "geoms", [])
+            for poly in polygons:
+                if not poly.is_empty:
+                    x, y = poly.exterior.xy
+                    ax.fill(x, y, color=cluster_color, alpha=0.25, zorder=0)
+
+            # Dashed lines to centroid
+            centroid = cluster_centroids[cid]
+            for p in cluster_points:
+                ax.plot([p[0], centroid[0]], [p[1], centroid[1]],
+                        color=cluster_color, linestyle='--', linewidth=0.8, alpha=0.5, zorder=1)
+
+            # Annotate cluster ID
+            ax.text(
+                centroid[0], centroid[1], f"C{cid}",
+                fontsize=11, weight="bold", ha="center", va="center",
+                bbox=dict(facecolor="white", alpha=0.6, edgecolor="none", boxstyle="round,pad=0.3"),
+                zorder=10
+            )
+
+        # --- Voronoi boundaries between clusters ---
+        if len(cluster_ids) >= 2:
+            for r, simplex in enumerate(vor.ridge_vertices):
+                i, j = vor.ridge_points[r]
+                if i >= len(cluster_ids) or j >= len(cluster_ids):
+                    continue
+                if cluster_ids[i] == cluster_ids[j]:
+                    continue
+                simplex = np.asarray(simplex)
+                if np.all(simplex >= 0):
+                    start, end = vor.vertices[simplex]
+                    ax.plot([start[0], end[0]], [start[1], end[1]],
+                            color='black', linestyle='--', linewidth=1, alpha=0.7, zorder=4)
+
+        # --- Scatter points ---
+        for lbl in np.unique(labels):
+            mask = labels == lbl
+            ax.scatter(points_2d[mask, 0], points_2d[mask, 1],
+                       color=self._get_color_for_label(lbl), s=25, alpha=0.8, edgecolors='none', zorder=5)
+
+        # --- Adjust view ---
+        margin = 0.1 * np.max(data_range)
+        ax.set_xlim(points_2d[:, 0].min() - margin, points_2d[:, 0].max() + margin)
+        ax.set_ylim(points_2d[:, 1].min() - margin, points_2d[:, 1].max() + margin)
+        ax.set_aspect("equal", "box")
+        ax.grid(True, linestyle=":", alpha=0.4)
 
         # --- Title below ---
         ax.set_xlabel(title, fontsize=14, labelpad=15)

@@ -160,7 +160,6 @@ from more_stats import *
 from main_helper_functions import *
 from sklearn.metrics import ConfusionMatrixDisplay
 
-from cluster_visualization import plot_clusters_colored_by_label
 from cluster_visualization import ClusterEvolutionPlotter
 
 if __name__ == '__main__':
@@ -214,7 +213,7 @@ if __name__ == '__main__':
                         print(f"Number of clusters: {num_clusters[j-1]}")  # Add cluster count
 
                 if MAKE_GRAPHS:
-                    plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label")
+                    evo_plotter.plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label")
                 if SINGLETON_MERGE:
                     ared.singleton_merge()
 
