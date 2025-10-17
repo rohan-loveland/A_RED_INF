@@ -161,8 +161,16 @@ class ClusterEvolutionPlotter:
                 zorder=10
             )
 
+        # --- Scatter points colored by label ---
+        for lbl in np.unique(labels):
+            mask = labels == lbl
+            ax.scatter(points_2d[mask, 0], points_2d[mask, 1],
+                       color=self._get_color_for_label(lbl),
+                       s=25, alpha=0.8, edgecolors='none', zorder=5)
+
         # --- Voronoi boundaries ---
         if len(cluster_ids) >= 2:
+            # Draw AFTER scatter points, with very high zorder
             for r, simplex in enumerate(vor.ridge_vertices):
                 i, j = vor.ridge_points[r]
                 if i >= len(cluster_ids) or j >= len(cluster_ids):
@@ -172,15 +180,16 @@ class ClusterEvolutionPlotter:
                 simplex = np.asarray(simplex)
                 if np.all(simplex >= 0):
                     start, end = vor.vertices[simplex]
-                    ax.plot([start[0], end[0]], [start[1], end[1]],
-                            color='black', linestyle='--', linewidth=1, alpha=0.7, zorder=4)
-
-        # --- Scatter points colored by label ---
-        for lbl in np.unique(labels):
-            mask = labels == lbl
-            ax.scatter(points_2d[mask, 0], points_2d[mask, 1],
-                       color=self._get_color_for_label(lbl),
-                       s=25, alpha=0.8, edgecolors='none', zorder=5)
+                    line = plt.Line2D(
+                        [start[0], end[0]],
+                        [start[1], end[1]],
+                        color='black',
+                        linestyle='--',
+                        linewidth=1.4,
+                        alpha=0.95,
+                        zorder=1000,  # draw over everything else
+                    )
+                    ax.add_artist(line)
 
         # --- Adjust view ---
         margin = 0.1 * np.max(data_range)
@@ -282,29 +291,30 @@ class ClusterEvolutionPlotter:
         ])
         vor = Voronoi(np.vstack((all_sites, dummy_points)))
 
-        # --- Draw Voronoi boundaries between different labels ---
-        if len(np.unique(y)) >= 2:
-            for r, simplex in enumerate(vor.ridge_vertices):
-                i, j = vor.ridge_points[r]
-                if i >= len(y) or j >= len(y):  # Skip dummy points
-                    continue
-                if y[i] == y[j]:  # Skip boundaries within the same label
-                    continue
-                simplex = np.asarray(simplex)
-                if np.all(simplex >= 0):  # Valid region
-                    start, end = vor.vertices[simplex]
-                    ax.plot([start[0], end[0]], [start[1], end[1]],
-                            color='black', linestyle='--', linewidth=1, alpha=0.7, zorder=4)
-
         # --- Scatter points colored by label ---
         unique_labels = np.unique(y)
         for lbl in unique_labels:
             mask = y == lbl
             if mask.sum() == 0:
-                continue  # Skip empty masks
+                continue
             ax.scatter(points_2d[mask, 0], points_2d[mask, 1],
                        color=self._get_color_for_label(lbl),
                        s=25, alpha=0.8, edgecolors='none', zorder=5, label=str(lbl))
+
+        # --- Draw Voronoi boundaries between different labels ---
+        if len(np.unique(y)) >= 2:
+            for r, simplex in enumerate(vor.ridge_vertices):
+                i, j = vor.ridge_points[r]
+                if i >= len(y) or j >= len(y):
+                    continue
+                if y[i] == y[j]:
+                    continue
+                simplex = np.asarray(simplex)
+                if np.all(simplex >= 0):
+                    start, end = vor.vertices[simplex]
+                    ax.plot([start[0], end[0]], [start[1], end[1]],
+                            color='black', linestyle='--', linewidth=1.4,
+                            alpha=0.95, zorder=1000)  # high zorder so borders overlay points
 
         # --- Adjust view ---
         margin = 0.1 * np.max(data_range)
@@ -453,6 +463,12 @@ class ClusterEvolutionPlotter:
                 zorder=10
             )
 
+        # --- Scatter points ---
+        for lbl in np.unique(labels):
+            mask = labels == lbl
+            ax.scatter(points_2d[mask, 0], points_2d[mask, 1],
+                       color=self._get_color_for_label(lbl), s=25, alpha=0.8, edgecolors='none', zorder=5)
+
         # --- Voronoi boundaries between clusters ---
         if len(cluster_ids) >= 2:
             for r, simplex in enumerate(vor.ridge_vertices):
@@ -465,13 +481,8 @@ class ClusterEvolutionPlotter:
                 if np.all(simplex >= 0):
                     start, end = vor.vertices[simplex]
                     ax.plot([start[0], end[0]], [start[1], end[1]],
-                            color='black', linestyle='--', linewidth=1, alpha=0.7, zorder=4)
-
-        # --- Scatter points ---
-        for lbl in np.unique(labels):
-            mask = labels == lbl
-            ax.scatter(points_2d[mask, 0], points_2d[mask, 1],
-                       color=self._get_color_for_label(lbl), s=25, alpha=0.8, edgecolors='none', zorder=5)
+                            color='black', linestyle='--', linewidth=1.4,
+                            alpha=0.95, zorder=1000)  # always above scatter
 
         # --- Adjust view ---
         margin = 0.1 * np.max(data_range)
