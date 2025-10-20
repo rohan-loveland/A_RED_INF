@@ -37,7 +37,7 @@ N_REL_CLASSES = 3
 KAPPA: Paranoia Parameter
 (single value for now)
 '''
-KAPPA = .1 #0.5, , 1.4, 10
+KAPPA = 0.1
 # # KAPPAS = [0.5] #0.5, , 1.4, 10
 # |- Array of Kappas to run ARED on
 # |- Run more than one for graphing purposes
@@ -47,7 +47,7 @@ QS_VAR: Query Strategy Variants
 |- 0: Diameter check
 |- 1: Approx. Ave Single Linkage Average 
 '''
-QS_VAR = 1
+QS_VAR = 0
 
 '''
 SM_VAR: Split Method Var 
@@ -104,7 +104,7 @@ NUM_POINTS_TO_PROCESS: Number of points in dataset to process
 |- -1: process all the data
 |-  0 to inf: process up to that number if data is available
 '''
-NUM_POINTS_TO_PROCESS = 150000#-1
+NUM_POINTS_TO_PROCESS = 10000#-1
 
 # '''
 # NUM_RUN_TO_AVE: number of runs to average.
@@ -116,7 +116,7 @@ NUM_POINTS_TO_PROCESS = 150000#-1
 '''
 GRAPH_BATCH_SIZE: number of points in batch for stats purposes.
 '''
-GRAPH_BATCH_SIZE = 1000
+GRAPH_BATCH_SIZE = 500
 
 '''
 VERBOSE_FLAGS: Array of control flags to make ARED loud or quiet
