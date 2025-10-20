@@ -21,11 +21,11 @@ N_REL_CLASSES: Specified number of relevant classes
 # DATA_SOURCE = "MNIST" # NOTE: currently multiplied by 10x to get ~130,000 samples
 # N_REL_CLASSES = 4
 
-DATA_SOURCE = "MNIST_2D"
-N_REL_CLASSES = 4
+# DATA_SOURCE = "MNIST_2D"
+# N_REL_CLASSES = 4
 
-# DATA_SOURCE = "EMNIST"
-# N_REL_CLASSES = 3
+DATA_SOURCE = "EMNIST"
+N_REL_CLASSES = 3
 
 # DATA_SOURCE = "NICE"
 # N_REL_CLASSES = 4
@@ -37,7 +37,7 @@ N_REL_CLASSES = 4
 KAPPA: Paranoia Parameter
 (single value for now)
 '''
-KAPPA = 5#, , 1.4, 10
+KAPPA = .1 #0.5, , 1.4, 10
 # # KAPPAS = [0.5] #0.5, , 1.4, 10
 # |- Array of Kappas to run ARED on
 # |- Run more than one for graphing purposes
@@ -47,7 +47,7 @@ QS_VAR: Query Strategy Variants
 |- 0: Diameter check
 |- 1: Approx. Ave Single Linkage Average 
 '''
-QS_VAR = 0
+QS_VAR = 1
 
 '''
 SM_VAR: Split Method Var 
@@ -97,14 +97,14 @@ window_size: size of the data_window window saved by ARED
 |- int: larger window size means it remembers more data
 |- WARNING: value must be larger than 0
 '''
-DATA_WINDOW_SIZE = 1000 # ultimately needs to be driven by anomaly ratio
+DATA_WINDOW_SIZE = 10000 # ultimately needs to be driven by anomaly ratio
 
 '''
 NUM_POINTS_TO_PROCESS: Number of points in dataset to process
 |- -1: process all the data
 |-  0 to inf: process up to that number if data is available
 '''
-NUM_POINTS_TO_PROCESS = -1
+NUM_POINTS_TO_PROCESS = 150000#-1
 
 # '''
 # NUM_RUN_TO_AVE: number of runs to average.
@@ -116,7 +116,7 @@ NUM_POINTS_TO_PROCESS = -1
 '''
 GRAPH_BATCH_SIZE: number of points in batch for stats purposes.
 '''
-GRAPH_BATCH_SIZE = 250
+GRAPH_BATCH_SIZE = 1000
 
 '''
 VERBOSE_FLAGS: Array of control flags to make ARED loud or quiet
@@ -152,6 +152,7 @@ RANDOM_SEED_OFFSET = 25
 from Data_Stream import *
 from Oracle import *
 from A_REDIN import *
+import sys
 from Stats import *
 import matplotlib.pyplot as plt
 import matplotlib
@@ -241,16 +242,21 @@ if __name__ == '__main__':
             calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes, ared, num_correct_queries, \
                                      num_queries, PLOT_FLAG, GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS)
 
-        # Plot # clusters
-        batch_num_pts = list(range(GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS + 1, GRAPH_BATCH_SIZE))
-        plt.figure(figsize=(10, 5))
-        plt.plot(batch_num_pts,num_clusters)
-        plt.grid()
-        plt.legend(("number of clusters",))
-
         print(ared.conf_matrix)
+        with np.printoptions(threshold=sys.maxsize):
+            print(ared.conf_matrix)
 
+        if MAKE_GRAPHS:
+            try:
+                # Plot # clusters
+                batch_num_pts = list(range(GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS + 1, GRAPH_BATCH_SIZE))
+                plt.figure(figsize=(10, 5))
+                plt.plot(batch_num_pts,num_clusters)
+                plt.grid()
+                plt.legend(("number of clusters",))
 
+            except Exception as e:
+                print(e)
 
         current_time = time.time()
         time_elapsed = current_time - start_time
