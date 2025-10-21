@@ -43,7 +43,7 @@ def validate_config(config):
         raise ValueError("NGHBHOOD_MERGE requires K_COMP_PTS >= 2")
     if config["SINGLETON_MERGE"] and config["K_COMP_PTS"] < 2:
         raise ValueError("SINGLETON_MERGE requires K_COMP_PTS >= 2")
-    if config["DATA_SOURCE"] not in ["NICE", "MNIST", "EMNIST", "PARKING_LOT"]:
+    if config["DATA_SOURCE"] not in ["NICE", "MNIST", "MNIST_2D", "EMNIST", "PARKING_LOT"]:
         raise ValueError(f"Invalid DATA_SOURCE: {config['DATA_SOURCE']}")
 
 def run_ared(config):
