@@ -8,6 +8,7 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
+
 matplotlib.use('TkAgg')  # Adjust backend as needed
 from data_visualization import *
 from more_stats import *
@@ -15,12 +16,14 @@ from main_helper_functions import *
 from sklearn.metrics import ConfusionMatrixDisplay
 from cluster_visualization import ClusterEvolutionPlotter
 
+
 def load_config(config_path):
     """Load the configuration file."""
     if not os.path.exists(config_path):
         raise FileNotFoundError(f"Configuration file {config_path} not found.")
     with open(config_path, 'r') as f:
         return json.load(f)
+
 
 def validate_config(config):
     """Validate a single run configuration."""
@@ -33,7 +36,7 @@ def validate_config(config):
     for key in required_keys:
         if key not in config:
             raise ValueError(f"Missing required configuration key: {key}")
-    
+
     # Additional validation
     if config["DATA_WINDOW_SIZE"] <= 0:
         raise ValueError("DATA_WINDOW_SIZE must be greater than 0")
@@ -46,8 +49,22 @@ def validate_config(config):
     if config["DATA_SOURCE"] not in ["NICE", "MNIST", "MNIST_2D", "EMNIST", "PARKING_LOT"]:
         raise ValueError(f"Invalid DATA_SOURCE: {config['DATA_SOURCE']}")
 
+
+def save_results(results, results_file):
+    """Save results to the specified file."""
+    try:
+        with open(results_file, "w") as f:
+            json.dump(results, f, indent=4)
+        print(f"Results saved to {results_file}")
+    except Exception as e:
+        print(f"Error saving results to file: {e}")
+
+
 def run_ared(config):
     """Run ARED with the given configuration."""
+    # Capture start time
+    start_time_str = time.strftime("%Y-%m-%d %H:%M:%S")
+
     # Extract configuration parameters
     DATA_SOURCE = config["DATA_SOURCE"]
     N_REL_CLASSES = config["N_REL_CLASSES"]
@@ -118,9 +135,9 @@ def run_ared(config):
             conf_matrices.append(ared.conf_matrix.copy())
             if 0 in VERBOSE_FLAGS:
                 if j > 1:
-                    print(f"Last {GRAPH_BATCH_SIZE} points took {times[j] - times[j-1]:.2f} seconds")
-                    print(f"Points queried in this batch: {num_queries[j-1] - num_queries[j-2]}")
-                    print(f"Number of clusters: {num_clusters[j-1]}")
+                    print(f"Last {GRAPH_BATCH_SIZE} points took {times[j] - times[j - 1]:.2f} seconds")
+                    print(f"Points queried in this batch: {num_queries[j - 1] - num_queries[j - 2]}")
+                    print(f"Number of clusters: {num_clusters[j - 1]}")
 
             if MAKE_EVO_GRAPHS:
                 evo_plotter.plot_clusters_colored_by_label(
@@ -143,7 +160,7 @@ def run_ared(config):
 
     # Calculate and plot statistics
     PLOT_FLAG = True
-    rel_recall_ave_list, query_precision_list, rel_individual_recalls = \
+    rel_recall_ave_list, query_precision_list, rel_individual_recalls, query_rate_ave_list = \
         calc_rel_recall_query_precision(
             sparsity_levels, conf_matrices, rel_classes, ared, num_correct_queries,
             num_queries, PLOT_FLAG, GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS
@@ -174,15 +191,53 @@ def run_ared(config):
     print(f"Run for {DATA_SOURCE} took {time_elapsed:.2f} seconds")
     print(f"ARED COMPLETE for {DATA_SOURCE}")
 
+    # Capture completion time
+    completion_time_str = time.strftime("%Y-%m-%d %H:%M:%S")
+
+    return rel_recall_ave_list, query_precision_list, rel_individual_recalls, query_rate_ave_list, start_time_str, completion_time_str
+
+
 if __name__ == '__main__':
     config_path = "config_files/config.json"
     configs = load_config(config_path)
+
+    # Load existing results if the file exists
+    results_file = "config_files/results.json"
+    results = []
+    if os.path.exists(results_file):
+        try:
+            with open(results_file, "r") as f:
+                results = json.load(f)
+        except Exception as e:
+            print(f"Error loading existing results file: {e}")
 
     for idx, config in enumerate(configs):
         print(f"\nStarting run {idx + 1}/{len(configs)}")
         try:
             validate_config(config)
-            run_ared(config)
+            rel_recall_ave_list, query_precision_list, rel_individual_recalls, query_rate_ave_list, start_time_str, completion_time_str = run_ared(
+                config)
+
+            # Compute averages
+            avg_rel_recall_ave = np.mean(rel_recall_ave_list)
+            avg_query_precision = np.mean(query_precision_list)
+            avg_rel_individual_recalls = np.mean(rel_individual_recalls)
+            avg_query_rate_ave = np.mean(query_rate_ave_list)
+
+            result = {
+                "config": config,
+                "avg_rel_recall_ave": float(avg_rel_recall_ave),
+                "avg_query_precision": float(avg_query_precision),
+                "avg_rel_individual_recalls": float(avg_rel_individual_recalls),
+                "avg_query_rate_ave": float(avg_query_rate_ave),
+                "start_time": start_time_str,
+                "completion_time": completion_time_str,
+                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+            }
+            results.append(result)
+
+            # Save results after each run
+            save_results(results, results_file)
         except Exception as e:
             print(f"Error in run {idx + 1}: {e}")
             continue

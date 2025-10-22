@@ -238,7 +238,7 @@ if __name__ == '__main__':
 
         PLOT_FLAG = True
         print("num_correct_queries:", num_correct_queries, "num_queries:", num_queries)
-        rel_recall_ave_list, query_precision_list, rel_individual_recalls = \
+        rel_recall_ave_list, query_precision_list, rel_individual_recalls, query_rate_ave_list = \
             calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes, ared, num_correct_queries, \
                                      num_queries, PLOT_FLAG, GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS)
 

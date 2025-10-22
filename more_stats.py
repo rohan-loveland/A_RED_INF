@@ -70,30 +70,26 @@ def calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes,
         rel_recall_ave /= len(rel_classes)
         rel_recall_ave_list.append(rel_recall_ave)
         query_precision_list.append(num_correct_queries[b] / num_queries[b])
+        query_rate_0 = [num_queries[0]/GRAPH_BATCH_SIZE]
+        batch_num_pts = list(range(GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS + 1, GRAPH_BATCH_SIZE))
+        query_rate = [(num_queries[m]-num_queries[m-1])/GRAPH_BATCH_SIZE for m in range(1,len(batch_num_pts))]
+        query_rate = query_rate_0 + query_rate
 
     if plot_flag:
         # would be nice at some point to show individual recalls, with line widths indicating sparsity level
-        batch_num_pts = list(range(GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS + 1, GRAPH_BATCH_SIZE))
         plt.figure(figsize=(10, 5))
-        plt.plot(batch_num_pts, rel_recall_ave_list)
+        plt.plot(batch_num_pts, rel_recall_ave_list, linewidth=10)
         for n in range(len(rel_individual_recalls)):
             plt.plot(batch_num_pts, rel_individual_recalls[n])
         plt.legend(("average_relevant_recall", "relevant_recall_0", "relevant_recall_1", \
                     "relevant_recall_2", "relevant_recall_3"))
         plt.figure(figsize=(10, 5))
-        query_rate_0 = [num_queries[0]/GRAPH_BATCH_SIZE]
-        query_rate = [(num_queries[m]-num_queries[m-1])/GRAPH_BATCH_SIZE for m in range(1,len(batch_num_pts))]
-        query_rate = query_rate_0 + query_rate
         plt.plot(batch_num_pts, query_precision_list)
         plt.plot(batch_num_pts, query_rate)
         plt.legend(("query_precision", " total query_rate"))
         plt.grid()
 
-
-    return rel_recall_ave_list, query_precision_list, rel_individual_recalls
-
-
-
+    return rel_recall_ave_list, query_precision_list, rel_individual_recalls, query_rate
 
 # Example usage
 if __name__ == "__main__":
