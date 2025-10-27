@@ -160,11 +160,9 @@ def run_ared(config):
 
     # Calculate and plot statistics
     PLOT_FLAG = True
-    rel_recall_ave_list, query_precision_list, rel_individual_recalls, query_rate_ave_list = \
-        calc_rel_recall_query_precision(
-            sparsity_levels, conf_matrices, rel_classes, ared, num_correct_queries,
-            num_queries, PLOT_FLAG, GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS
-        )
+    rel_recall_ave_list, single_rel_recall_list, query_precision_list, rel_individual_recalls, query_rate = \
+        calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes, ared, num_correct_queries, \
+        num_queries, PLOT_FLAG, GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS)
 
     print("Confusion Matrix:")
     print(ared.conf_matrix)
@@ -194,7 +192,7 @@ def run_ared(config):
     # Capture completion time
     completion_time_str = time.strftime("%Y-%m-%d %H:%M:%S")
 
-    return rel_recall_ave_list, query_precision_list, rel_individual_recalls, query_rate_ave_list, start_time_str, completion_time_str
+    return rel_recall_ave_list, single_rel_recall_list, query_precision_list, rel_individual_recalls, query_rate_ave_list, start_time_str, completion_time_str
 
 
 if __name__ == '__main__':
@@ -215,18 +213,18 @@ if __name__ == '__main__':
         print(f"\nStarting run {idx + 1}/{len(configs)}")
         try:
             validate_config(config)
-            rel_recall_ave_list, query_precision_list, rel_individual_recalls, query_rate_ave_list, start_time_str, completion_time_str = run_ared(
+            single_rel_recall_list, query_precision_list, rel_individual_recalls, query_rate_ave_list, start_time_str, completion_time_str = run_ared(
                 config)
 
             # Compute averages
-            avg_rel_recall_ave = np.mean(rel_recall_ave_list)
+            single_rel_recall = np.mean(single_rel_recall_list)
             avg_query_precision = np.mean(query_precision_list)
             avg_rel_individual_recalls = np.mean(rel_individual_recalls)
             avg_query_rate_ave = np.mean(query_rate_ave_list)
 
             result = {
                 "config": config,
-                "avg_rel_recall_ave": float(avg_rel_recall_ave),
+                "single_rel_recall": float(single_rel_recall),
                 "avg_query_precision": float(avg_query_precision),
                 "avg_rel_individual_recalls": float(avg_rel_individual_recalls),
                 "avg_query_rate_ave": float(avg_query_rate_ave),
