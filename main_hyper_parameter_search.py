@@ -196,8 +196,39 @@ def run_ared(config):
 
 
 if __name__ == '__main__':
-    config_path = "config_files/config.json"
-    configs = load_config(config_path)
+    # Define the hyperparameter grid
+    kappa_values = [0.01, 0.05, 0.1, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, \
+        0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1, 1.25, 1.5, 2]  # Example values for KAPPA; adjust as needed
+    window_sizes = [100, 500, 1000, 2500, 5000, 8000, 10000, 20000, 30000]  # Example values for DATA_WINDOW_SIZE; adjust as needed
+    data_sources = ["EMNIST", "PARKING_LOT"]  # All possible datasets
+
+    # Base configuration (fixed parameters)
+    base_config = {
+        "N_REL_CLASSES": 3,  # Example; adjust as needed
+        "QS_VAR": 0,  # Example; adjust as needed
+        "SM_VAR": 0,  # Example; adjust as needed
+        "REL_PROC_VAR": 0,  # Example; adjust as needed
+        "K_COMP_PTS": 2,
+        "NGHBHOOD_MERGE": True,
+        "SINGLETON_MERGE": True,
+        "NUM_POINTS_TO_PROCESS": -1,
+        "GRAPH_BATCH_SIZE": 100,
+        "VERBOSE_FLAGS": [0],
+        "MAKE_GRAPHS": False,
+        "MAKE_EVO_GRAPHS": False,
+        "RANDOM_SEED_OFFSET": 0
+    }
+
+    # Generate configurations for the grid search
+    configs = []
+    for data_source in data_sources:
+        for kappa in kappa_values:
+            for window_size in window_sizes:
+                config = base_config.copy()
+                config["DATA_SOURCE"] = data_source
+                config["KAPPA"] = kappa
+                config["DATA_WINDOW_SIZE"] = window_size
+                configs.append(config)
 
     # Load existing results if the file exists
     results_file = "config_files/results.json"
@@ -210,7 +241,7 @@ if __name__ == '__main__':
             print(f"Error loading existing results file: {e}")
 
     for idx, config in enumerate(configs):
-        print(f"\nStarting run {idx + 1}/{len(configs)}")
+        print(f"\nStarting run {idx + 1}/{len(configs)} with config: {config}")
         try:
             validate_config(config)
             single_rel_recall_list, query_precision_list, rel_individual_recalls, query_rate_ave_list, start_time_str, completion_time_str = run_ared(
