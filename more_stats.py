@@ -1,6 +1,36 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+def calculate_single_rel_recall(confusion_matrix,rel_classes,ared):
+    """
+    NOTE: this is tricky because we the confusion matrix doesn't record which points were queried
+    However, we know the off-diagonal elements were not queried, so recall still = TP / (TP + FN)
+    Args:
+        confusion_matrix: nxn numpy array where rows are true labels and columns are predicted labels
+    Returns:
+        scalar: relevant recall
+    """
+    # Ensure input is a numpy array
+    cm = np.array(confusion_matrix)
+    n_classes = cm.shape[0]
+
+    num_rel_pts_queried = 0.0
+    num_rel_pts_streamed = 0.0
+
+    for k,c in enumerate(rel_classes):
+        i = ared.oracle.int_str_label_bidict[c]
+
+        # True positives: diagonal element
+        num_rel_pts_queried += cm[i, i]
+        num_rel_pts_streamed += np.sum(cm[i, :])
+
+    if num_rel_pts_queried == 0:
+        rel_recall = 0.0
+    else:
+        rel_recall = num_rel_pts_queried/num_rel_pts_streamed
+
+    return rel_recall, num_rel_pts_streamed
+
 def calculate_precision_recall_all_classes(confusion_matrix):
     """
     Calculate precision and recall for each class from an nxn confusion matrix.
@@ -40,13 +70,16 @@ def calculate_precision_recall_all_classes(confusion_matrix):
 def calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes, ared, num_correct_queries, \
                                      num_queries, plot_flag, GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS):
     rel_recall_ave_list = []
+    single_rel_recall_list = []
     query_precision_list = []
+    query_rate_list = [num_queries[0] / GRAPH_BATCH_SIZE]
     rel_class_info = [None]*len(rel_classes)
     rel_individual_recalls = [None]*len(rel_classes)
-
     sparsity_labels = [l for l, _ in sparsity_levels]
     sparsity_numbers = [n for _, n in sparsity_levels]
     precision, recall = calculate_precision_recall_all_classes(conf_matrices[0])
+    single_rel_recall,num_rel_pts_streamed = calculate_single_rel_recall(conf_matrices[0], rel_classes, ared)
+    rel_rate_list = [num_rel_pts_streamed/GRAPH_BATCH_SIZE]
     rel_recall_ave = 0
     for i,c in enumerate(rel_classes):
         n = ared.oracle.int_str_label_bidict[c]
@@ -55,9 +88,11 @@ def calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes,
         rel_recall_ave += recall[n]
     rel_recall_ave /= len(rel_classes)
     rel_recall_ave_list.append(rel_recall_ave)
+    single_rel_recall_list.append(single_rel_recall)
     query_precision_list.append(num_correct_queries[0] / num_queries[0])
 
     conf_array = np.array(conf_matrices)  # final matrix
+    batch_num_pts = list(range(GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS + 1, GRAPH_BATCH_SIZE))
 
     for b in range(1, len(conf_matrices)):
         this_batch_conf_matrix = conf_array[b] - conf_array[b - 1]
@@ -69,28 +104,35 @@ def calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes,
             rel_recall_ave += recall[n]
         rel_recall_ave /= len(rel_classes)
         rel_recall_ave_list.append(rel_recall_ave)
+        single_rel_recall,num_rel_pts_streamed = calculate_single_rel_recall(this_batch_conf_matrix, rel_classes, ared)
+        rel_rate_list.append(num_rel_pts_streamed/GRAPH_BATCH_SIZE)
+        single_rel_recall_list.append(single_rel_recall)
         query_precision_list.append(num_correct_queries[b] / num_queries[b])
-        query_rate_0 = [num_queries[0]/GRAPH_BATCH_SIZE]
-        batch_num_pts = list(range(GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS + 1, GRAPH_BATCH_SIZE))
-        query_rate = [(num_queries[m]-num_queries[m-1])/GRAPH_BATCH_SIZE for m in range(1,len(batch_num_pts))]
-        query_rate = query_rate_0 + query_rate
+        query_rate = (num_queries[b]-num_queries[b-1])/GRAPH_BATCH_SIZE
+        query_rate_list.append(query_rate)
+
 
     if plot_flag:
         # would be nice at some point to show individual recalls, with line widths indicating sparsity level
         plt.figure(figsize=(10, 5))
-        plt.plot(batch_num_pts, rel_recall_ave_list, linewidth=10)
-        for n in range(len(rel_individual_recalls)):
-            plt.plot(batch_num_pts, rel_individual_recalls[n])
-        plt.legend(("average_relevant_recall", "relevant_recall_0", "relevant_recall_1", \
-                    "relevant_recall_2", "relevant_recall_3"))
+        # plt.plot(batch_num_pts, rel_recall_ave_list, linewidth=10)
+        plt.plot(batch_num_pts, single_rel_recall_list, linewidth=5)
+        plt.plot(batch_num_pts, query_rate_list, linewidth=5)
+        # for n in range(len(rel_individual_recalls)):
+        #     plt.plot(batch_num_pts, rel_individual_recalls[n])
+        # plt.legend(("average_relevant_recall", "single_relevant_recall","relevant_recall_0", "relevant_recall_1", \
+        #             "relevant_recall_2", "relevant_recall_3"))
+        plt.legend(("A/RED_relevant_recall","random_strategy_relevant_recall"))
+        plt.grid()
+
         plt.figure(figsize=(10, 5))
-        plt.plot(batch_num_pts, query_precision_list)
-        plt.plot(batch_num_pts, query_rate)
-        plt.legend(("query_precision", " total query_rate"))
+        plt.plot(batch_num_pts, query_precision_list, linewidth=5)
+        plt.plot(batch_num_pts, rel_rate_list, linewidth=5)
+        plt.legend(("A/RED_query_precision", " random_strategy_precision"))
         plt.grid()
 
 
-    return rel_recall_ave_list, query_precision_list, rel_individual_recalls, query_rate
+    return rel_recall_ave_list, single_rel_recall_list, query_precision_list, rel_individual_recalls, query_rate
 
 
 
