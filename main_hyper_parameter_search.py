@@ -50,6 +50,14 @@ def validate_config(config):
         raise ValueError(f"Invalid DATA_SOURCE: {config['DATA_SOURCE']}")
 
 
+def config_exists(config, existing_results):
+    """Check if a configuration already exists in the results."""
+    for result in existing_results:
+        existing_config = result.get("config", {})
+        if existing_config == config:
+            return True
+    return False
+
 def save_results(results, results_file):
     """Save results to the specified file."""
     try:
@@ -200,7 +208,7 @@ if __name__ == '__main__':
     kappa_values = [0.01, 0.05, 0.1, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, \
         0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1, 1.25, 1.5, 2]  # Example values for KAPPA; adjust as needed
     window_sizes = [100, 500, 1000, 2500, 5000, 8000, 10000, 20000, 30000]  # Example values for DATA_WINDOW_SIZE; adjust as needed
-    data_sources = ["EMNIST", "PARKING_LOT"]  # All possible datasets
+    data_sources = ["PARKING_LOT", "EMNIST"]  # All possible datasets
 
     # Base configuration (fixed parameters)
     base_config = {
@@ -242,6 +250,12 @@ if __name__ == '__main__':
 
     for idx, config in enumerate(configs):
         print(f"\nStarting run {idx + 1}/{len(configs)} with config: {config}")
+
+        # Skip if configuration already exists in results
+        if config_exists(config, results):
+            print(f"Configuration already exists in results, skipping run {idx + 1}")
+            continue
+
         try:
             validate_config(config)
             single_rel_recall_list, query_precision_list, rel_individual_recalls, query_rate_ave_list, start_time_str, completion_time_str = run_ared(
@@ -269,6 +283,6 @@ if __name__ == '__main__':
             save_results(results, results_file)
         except Exception as e:
             print(f"Error in run {idx + 1}: {e}")
-            continue
+            break
 
     plt.show()  # Display all plots at the end

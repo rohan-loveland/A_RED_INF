@@ -85,5 +85,1194 @@
         "start_time": "2025-10-27 15:55:18",
         "completion_time": "2025-10-27 15:56:27",
         "timestamp": "2025-10-27 15:56:27"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "EMNIST",
+            "KAPPA": 0.01,
+            "DATA_WINDOW_SIZE": 100
+        },
+        "single_rel_recall": 0.2622322817606532,
+        "avg_query_precision": 0.013270822162629349,
+        "avg_rel_individual_recalls": 0.11587038401703104,
+        "avg_query_rate_ave": 0.34709899287644314,
+        "start_time": "2025-10-27 16:24:59",
+        "completion_time": "2025-10-27 16:33:59",
+        "timestamp": "2025-10-27 16:34:00"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.01,
+            "DATA_WINDOW_SIZE": 100
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:35:04",
+        "completion_time": "2025-10-27 16:35:05",
+        "timestamp": "2025-10-27 16:35:05"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.01,
+            "DATA_WINDOW_SIZE": 500
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:35:05",
+        "completion_time": "2025-10-27 16:35:06",
+        "timestamp": "2025-10-27 16:35:06"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.01,
+            "DATA_WINDOW_SIZE": 1000
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:35:06",
+        "completion_time": "2025-10-27 16:35:07",
+        "timestamp": "2025-10-27 16:35:07"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.01,
+            "DATA_WINDOW_SIZE": 2500
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:35:07",
+        "completion_time": "2025-10-27 16:35:08",
+        "timestamp": "2025-10-27 16:35:08"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.01,
+            "DATA_WINDOW_SIZE": 5000
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:35:08",
+        "completion_time": "2025-10-27 16:35:09",
+        "timestamp": "2025-10-27 16:35:09"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.01,
+            "DATA_WINDOW_SIZE": 8000
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:35:09",
+        "completion_time": "2025-10-27 16:35:10",
+        "timestamp": "2025-10-27 16:35:10"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.01,
+            "DATA_WINDOW_SIZE": 10000
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:35:10",
+        "completion_time": "2025-10-27 16:35:11",
+        "timestamp": "2025-10-27 16:35:11"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.01,
+            "DATA_WINDOW_SIZE": 20000
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:35:11",
+        "completion_time": "2025-10-27 16:35:12",
+        "timestamp": "2025-10-27 16:35:12"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.01,
+            "DATA_WINDOW_SIZE": 30000
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:35:12",
+        "completion_time": "2025-10-27 16:35:13",
+        "timestamp": "2025-10-27 16:35:13"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.05,
+            "DATA_WINDOW_SIZE": 100
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:35:13",
+        "completion_time": "2025-10-27 16:35:13",
+        "timestamp": "2025-10-27 16:35:13"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.05,
+            "DATA_WINDOW_SIZE": 500
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:35:13",
+        "completion_time": "2025-10-27 16:35:14",
+        "timestamp": "2025-10-27 16:35:14"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.05,
+            "DATA_WINDOW_SIZE": 1000
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:35:14",
+        "completion_time": "2025-10-27 16:35:15",
+        "timestamp": "2025-10-27 16:35:15"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.05,
+            "DATA_WINDOW_SIZE": 2500
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:35:15",
+        "completion_time": "2025-10-27 16:35:16",
+        "timestamp": "2025-10-27 16:35:16"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.05,
+            "DATA_WINDOW_SIZE": 5000
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:35:16",
+        "completion_time": "2025-10-27 16:35:17",
+        "timestamp": "2025-10-27 16:35:17"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.05,
+            "DATA_WINDOW_SIZE": 8000
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:35:17",
+        "completion_time": "2025-10-27 16:35:18",
+        "timestamp": "2025-10-27 16:35:18"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.05,
+            "DATA_WINDOW_SIZE": 10000
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:35:18",
+        "completion_time": "2025-10-27 16:35:19",
+        "timestamp": "2025-10-27 16:35:19"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.05,
+            "DATA_WINDOW_SIZE": 20000
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:35:19",
+        "completion_time": "2025-10-27 16:35:20",
+        "timestamp": "2025-10-27 16:35:20"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.05,
+            "DATA_WINDOW_SIZE": 30000
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:35:20",
+        "completion_time": "2025-10-27 16:35:21",
+        "timestamp": "2025-10-27 16:35:21"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.1,
+            "DATA_WINDOW_SIZE": 100
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:35:21",
+        "completion_time": "2025-10-27 16:35:22",
+        "timestamp": "2025-10-27 16:35:22"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.1,
+            "DATA_WINDOW_SIZE": 500
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:35:22",
+        "completion_time": "2025-10-27 16:35:23",
+        "timestamp": "2025-10-27 16:35:23"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.1,
+            "DATA_WINDOW_SIZE": 1000
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:35:23",
+        "completion_time": "2025-10-27 16:35:23",
+        "timestamp": "2025-10-27 16:35:23"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.1,
+            "DATA_WINDOW_SIZE": 2500
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:35:23",
+        "completion_time": "2025-10-27 16:35:24",
+        "timestamp": "2025-10-27 16:35:24"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.1,
+            "DATA_WINDOW_SIZE": 5000
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:35:24",
+        "completion_time": "2025-10-27 16:35:25",
+        "timestamp": "2025-10-27 16:35:25"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.1,
+            "DATA_WINDOW_SIZE": 8000
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:35:25",
+        "completion_time": "2025-10-27 16:35:26",
+        "timestamp": "2025-10-27 16:35:26"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.1,
+            "DATA_WINDOW_SIZE": 10000
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:35:26",
+        "completion_time": "2025-10-27 16:35:27",
+        "timestamp": "2025-10-27 16:35:27"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.1,
+            "DATA_WINDOW_SIZE": 20000
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:35:27",
+        "completion_time": "2025-10-27 16:35:28",
+        "timestamp": "2025-10-27 16:35:28"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.1,
+            "DATA_WINDOW_SIZE": 30000
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:39:57",
+        "completion_time": "2025-10-27 16:39:58",
+        "timestamp": "2025-10-27 16:39:58"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.2,
+            "DATA_WINDOW_SIZE": 100
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:39:58",
+        "completion_time": "2025-10-27 16:39:59",
+        "timestamp": "2025-10-27 16:39:59"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.2,
+            "DATA_WINDOW_SIZE": 500
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:39:59",
+        "completion_time": "2025-10-27 16:40:00",
+        "timestamp": "2025-10-27 16:40:00"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.2,
+            "DATA_WINDOW_SIZE": 1000
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:40:00",
+        "completion_time": "2025-10-27 16:40:00",
+        "timestamp": "2025-10-27 16:40:00"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.2,
+            "DATA_WINDOW_SIZE": 2500
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:40:00",
+        "completion_time": "2025-10-27 16:40:01",
+        "timestamp": "2025-10-27 16:40:01"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.2,
+            "DATA_WINDOW_SIZE": 5000
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:40:01",
+        "completion_time": "2025-10-27 16:40:02",
+        "timestamp": "2025-10-27 16:40:02"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.2,
+            "DATA_WINDOW_SIZE": 8000
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:40:02",
+        "completion_time": "2025-10-27 16:40:03",
+        "timestamp": "2025-10-27 16:40:03"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.2,
+            "DATA_WINDOW_SIZE": 10000
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:40:03",
+        "completion_time": "2025-10-27 16:40:04",
+        "timestamp": "2025-10-27 16:40:04"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.2,
+            "DATA_WINDOW_SIZE": 20000
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:40:04",
+        "completion_time": "2025-10-27 16:40:05",
+        "timestamp": "2025-10-27 16:40:05"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.2,
+            "DATA_WINDOW_SIZE": 30000
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:40:05",
+        "completion_time": "2025-10-27 16:40:06",
+        "timestamp": "2025-10-27 16:40:06"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.25,
+            "DATA_WINDOW_SIZE": 100
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:40:06",
+        "completion_time": "2025-10-27 16:40:07",
+        "timestamp": "2025-10-27 16:40:07"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.25,
+            "DATA_WINDOW_SIZE": 500
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:40:07",
+        "completion_time": "2025-10-27 16:40:07",
+        "timestamp": "2025-10-27 16:40:07"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.25,
+            "DATA_WINDOW_SIZE": 1000
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:40:07",
+        "completion_time": "2025-10-27 16:40:08",
+        "timestamp": "2025-10-27 16:40:08"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "PARKING_LOT",
+            "KAPPA": 0.25,
+            "DATA_WINDOW_SIZE": 2500
+        },
+        "single_rel_recall": 0.0,
+        "avg_query_precision": 0.5,
+        "avg_rel_individual_recalls": 0.0,
+        "avg_query_rate_ave": 0.00045454545454545455,
+        "start_time": "2025-10-27 16:40:08",
+        "completion_time": "2025-10-27 16:40:09",
+        "timestamp": "2025-10-27 16:40:09"
     }
 ]
