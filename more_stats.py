@@ -111,6 +111,10 @@ def calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes,
         query_rate = (num_queries[b]-num_queries[b-1])/GRAPH_BATCH_SIZE
         query_rate_list.append(query_rate)
 
+        query_rate_0 = [num_queries[0]/GRAPH_BATCH_SIZE]
+        batch_num_pts = list(range(GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS + 1, GRAPH_BATCH_SIZE))
+        query_rate = [(num_queries[m]-num_queries[m-1])/GRAPH_BATCH_SIZE for m in range(1,len(batch_num_pts))]
+        query_rate = query_rate_0 + query_rate
 
     if plot_flag:
         # would be nice at some point to show individual recalls, with line widths indicating sparsity level

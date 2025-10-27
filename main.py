@@ -21,11 +21,11 @@ N_REL_CLASSES: Specified number of relevant classes
 # DATA_SOURCE = "MNIST" # NOTE: currently multiplied by 10x to get ~130,000 samples
 # N_REL_CLASSES = 4
 
-DATA_SOURCE = "MNIST_2D"
-N_REL_CLASSES = 4
+# DATA_SOURCE = "MNIST_2D"
+# N_REL_CLASSES = 4
 
-# DATA_SOURCE = "EMNIST"
-# N_REL_CLASSES = 3
+DATA_SOURCE = "EMNIST"
+N_REL_CLASSES = 3
 
 # DATA_SOURCE = "NICE"
 # N_REL_CLASSES = 4
@@ -37,7 +37,7 @@ N_REL_CLASSES = 4
 KAPPA: Paranoia Parameter
 (single value for now)
 '''
-KAPPA = 1
+KAPPA = 0.1
 # # KAPPAS = [0.5] #0.5, , 1.4, 10
 # |- Array of Kappas to run ARED on
 # |- Run more than one for graphing purposes
@@ -47,7 +47,7 @@ QS_VAR: Query Strategy Variants
 |- 0: Diameter check
 |- 1: Approx. Ave Single Linkage Average 
 '''
-QS_VAR = 1
+QS_VAR = 0
 
 '''
 SM_VAR: Split Method Var 
@@ -97,14 +97,14 @@ window_size: size of the data_window window saved by ARED
 |- int: larger window size means it remembers more data
 |- WARNING: value must be larger than 0
 '''
-DATA_WINDOW_SIZE = 1000 # ultimately needs to be driven by anomaly ratio
+DATA_WINDOW_SIZE = 100 # ultimately needs to be driven by anomaly ratio
 
 '''
 NUM_POINTS_TO_PROCESS: Number of points in dataset to process
 |- -1: process all the data
 |-  0 to inf: process up to that number if data is available
 '''
-NUM_POINTS_TO_PROCESS = -1
+NUM_POINTS_TO_PROCESS = 10000#-1
 
 # '''
 # NUM_RUN_TO_AVE: number of runs to average.
