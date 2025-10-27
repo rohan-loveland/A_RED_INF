@@ -8,6 +8,7 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
+from datetime import datetime
 
 matplotlib.use('TkAgg')  # Adjust backend as needed
 from data_visualization import *
@@ -50,14 +51,6 @@ def validate_config(config):
         raise ValueError(f"Invalid DATA_SOURCE: {config['DATA_SOURCE']}")
 
 
-def config_exists(config, existing_results):
-    """Check if a configuration already exists in the results."""
-    for result in existing_results:
-        existing_config = result.get("config", {})
-        if existing_config == config:
-            return True
-    return False
-
 def save_results(results, results_file):
     """Save results to the specified file."""
     try:
@@ -66,6 +59,15 @@ def save_results(results, results_file):
         print(f"Results saved to {results_file}")
     except Exception as e:
         print(f"Error saving results to file: {e}")
+
+
+def get_existing_result(config, existing_results):
+    """Check if a configuration already exists in the results and return the result if it does."""
+    for result in existing_results:
+        existing_config = result.get("config", {})
+        if existing_config == config:
+            return result
+    return None
 
 
 def run_ared(config):
@@ -227,6 +229,21 @@ if __name__ == '__main__':
         "RANDOM_SEED_OFFSET": 0
     }
 
+    # Precompute dataset sizes
+    dataset_sizes = {}
+    for data_source in data_sources:
+        X_skewed, _, _, _ = get_data(
+            data_source,
+            base_config["N_REL_CLASSES"],
+            base_config["VERBOSE_FLAGS"],
+            base_config["RANDOM_SEED_OFFSET"]
+        )
+        dataset_sizes[data_source] = len(X_skewed)
+        print(f"Dataset size for {data_source}: {dataset_sizes[data_source]}")
+
+    # Initialize timed out pairs per data source
+    timed_out_pairs = {ds: [] for ds in data_sources}
+
     # Generate configurations for the grid search
     configs = []
     for data_source in data_sources:
@@ -249,17 +266,54 @@ if __name__ == '__main__':
             print(f"Error loading existing results file: {e}")
 
     for idx, config in enumerate(configs):
-        print(f"\nStarting run {idx + 1}/{len(configs)} with config: {config}")
+        ds = config["DATA_SOURCE"]
+        kappa = config["KAPPA"]
+        window_size = config["DATA_WINDOW_SIZE"]
 
-        # Skip if configuration already exists in results
-        if config_exists(config, results):
+        print(f"\nChecking run {idx + 1}/{len(configs)} with config: {config}")
+
+        # Skip if data window size larger than dataset
+        if window_size > dataset_sizes[ds]:
+            print(f"Skipping run {idx + 1} because DATA_WINDOW_SIZE {window_size} > dataset size {dataset_sizes[ds]}")
+            continue
+
+        # Check if exceeds any timed out pair
+        skip_due_to_timeout = False
+        for t_kappa, t_window in timed_out_pairs[ds]:
+            if kappa > t_kappa and window_size > t_window:
+                skip_due_to_timeout = True
+                break
+        if skip_due_to_timeout:
+            print(f"Skipping run {idx + 1} because it exceeds a timed out configuration in both kappa and window size")
+            continue
+
+        # Skip if configuration already exists in results, but check if it timed out
+        existing_result = get_existing_result(config, results)
+        if existing_result:
+            if 'start_time' in existing_result and 'completion_time' in existing_result:
+                try:
+                    start = datetime.strptime(existing_result['start_time'], "%Y-%m-%d %H:%M:%S")
+                    complete = datetime.strptime(existing_result['completion_time'], "%Y-%m-%d %H:%M:%S")
+                    elapsed = (complete - start).total_seconds()
+                    if elapsed > 7200:
+                        timed_out_pairs[ds].append((kappa, window_size))
+                        print(f"Existing run for {ds} with kappa={kappa}, window={window_size} timed out ({elapsed:.2f}s), added to timed_out_pairs")
+                except ValueError:
+                    print(f"Error parsing times for existing run {idx + 1}")
             print(f"Configuration already exists in results, skipping run {idx + 1}")
             continue
 
         try:
             validate_config(config)
+            run_start_time = time.time()
             single_rel_recall_list, query_precision_list, rel_individual_recalls, query_rate_ave_list, start_time_str, completion_time_str = run_ared(
                 config)
+            time_elapsed = time.time() - run_start_time
+
+            # Check if run took longer than 2 hours (7200 seconds)
+            if time_elapsed > 7200:
+                timed_out_pairs[ds].append((kappa, window_size))
+                print(f"Run {idx + 1} took {time_elapsed:.2f} seconds (> 2 hours), added to timed out pairs for {ds}")
 
             # Compute averages
             single_rel_recall = np.mean(single_rel_recall_list)
@@ -283,6 +337,6 @@ if __name__ == '__main__':
             save_results(results, results_file)
         except Exception as e:
             print(f"Error in run {idx + 1}: {e}")
-            break
+            continue
 
     plt.show()  # Display all plots at the end
