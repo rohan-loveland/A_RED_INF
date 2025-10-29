@@ -7,6 +7,12 @@ import pickle
 import os
 from collections import Counter
 from sklearn.manifold import TSNE
+from sklearn.datasets import fetch_openml
+import matplotlib.pyplot as plt
+import matplotlib
+import matplotlib.colors as mcolors
+import seaborn as sns
+matplotlib.use('TkAgg')
 
 # Create skewed subset
 def create_skewed_mnist(X, y, sparsity_levels, seed):
@@ -83,12 +89,13 @@ def load_and_skew_mnist(sparsity_levels, seed, save_path="mnist_full.pkl"):
 def generate_is_relevant(label_list, relevant_set):
     return [label in relevant_set for label in label_list]
 
-def MNIST_2D_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS,seed):
+def MNIST_2D_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, seed):
     sparsity_levels = [(1 / int(2 ** n)) for n in range(1, 11)]
 
     X_skewed, y_skewed, X_full, y_full, digit_order = load_and_skew_mnist(sparsity_levels, seed)
     n_events = len(y_skewed)
-    # Step 2: Identify the N_REL_CLASSES least common digits
+
+    # Identify least common digits
     digit_counts = Counter(y_skewed)
     relevant_classes = [digit for digit, _ in digit_counts.most_common()[-N_REL_CLASSES:]]
 
@@ -100,8 +107,78 @@ def MNIST_2D_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS,seed):
     relevance_array = generate_is_relevant(y_skewed, set(relevant_classes))
     y_w_rel = list(zip(y_skewed, relevance_array))
 
-    sparsity_levels = [(digit_order[n],sparsity_levels[n]) for n in range(len(sparsity_levels))]
+    sparsity_levels = [(digit_order[n], sparsity_levels[n]) for n in range(len(sparsity_levels))]
 
     tsne = TSNE(n_components=2, random_state=seed, perplexity=min(30, len(X_skewed) - 1))
     X_skewed = tsne.fit_transform(X_skewed)
     return X_skewed, y_w_rel, sparsity_levels, relevant_classes
+
+
+def main():
+    N_REL_CLASSES = 3
+    VERBOSE_FLAGS = [0]
+    seed = 42
+
+    X_2d, y_w_rel, sparsity_levels, relevant_classes = MNIST_2D_setup_for_main(
+        N_REL_CLASSES, VERBOSE_FLAGS, seed
+    )
+
+    print("Relevant classes:", relevant_classes)
+
+    y_labels = np.array([int(y) for y, rel in y_w_rel])
+    is_rel = np.array([rel for y, rel in y_w_rel])
+
+    non_rel_mask = ~is_rel
+    rel_mask = is_rel
+
+    # Use jet colormap discretized into 10 colors
+    num_classes = 10
+    cmap = plt.get_cmap('Spectral_r', num_classes)
+    bounds = np.arange(-0.5, num_classes + 0.5, 1)
+    norm = mcolors.BoundaryNorm(bounds, cmap.N)
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+
+    # Non-relevant points (smaller, semi-transparent)
+    ax.scatter(
+        X_2d[non_rel_mask, 0],
+        X_2d[non_rel_mask, 1],
+        c=y_labels[non_rel_mask],
+        cmap=cmap,
+        norm=norm,
+        s=50,
+        edgecolors='none',
+        alpha=.45,
+        label='Non-relevant classes'
+    )
+
+    # Relevant points (larger, red border)
+    ax.scatter(
+        X_2d[rel_mask, 0],
+        X_2d[rel_mask, 1],
+        c=y_labels[rel_mask],
+        cmap=cmap,
+        norm=norm,
+        s=100,
+        edgecolors='red',
+        linewidths=1.2,
+        alpha=1,
+        label=f"Relevant classes: {relevant_classes}"
+    )
+
+    # Colorbar
+    sm = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
+    cbar = fig.colorbar(sm, ax=ax, boundaries=bounds, ticks=np.arange(num_classes))
+    cbar.set_ticklabels(np.arange(num_classes))
+    cbar.set_label('Digit Class')
+
+    #ax.set_title('2D t-SNE projection of skewed MNIST\nRelevant classes have red borders')
+    ax.set_xlabel('t-SNE 1')
+    ax.set_ylabel('t-SNE 2')
+    #ax.legend()
+    plt.grid()
+    fig.tight_layout()
+    plt.show()
+
+if __name__ == "__main__":
+    main()
