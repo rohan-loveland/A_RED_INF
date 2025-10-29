@@ -21,11 +21,11 @@ N_REL_CLASSES: Specified number of relevant classes
 # DATA_SOURCE = "MNIST" # NOTE: currently multiplied by 10x to get ~130,000 samples
 # N_REL_CLASSES = 4
 
-# DATA_SOURCE = "MNIST_2D"
-# N_REL_CLASSES = 4
+DATA_SOURCE = "MNIST_2D"
+N_REL_CLASSES = 4
 
-DATA_SOURCE = "EMNIST"
-N_REL_CLASSES = 3
+# DATA_SOURCE = "EMNIST"
+# N_REL_CLASSES = 3
 
 # DATA_SOURCE = "NICE"
 # N_REL_CLASSES = 4
@@ -37,7 +37,7 @@ N_REL_CLASSES = 3
 KAPPA: Paranoia Parameter
 (single value for now)
 '''
-KAPPA = 0.1
+KAPPA = 2
 # # KAPPAS = [0.5] #0.5, , 1.4, 10
 # |- Array of Kappas to run ARED on
 # |- Run more than one for graphing purposes
