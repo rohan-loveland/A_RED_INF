@@ -130,7 +130,7 @@ VERBOSE_FLAGS: Array of control flags to make ARED loud or quiet
 |- 4: Prints the forgotten_abs_index and forgotten_point_cluster_id during subspace_partition_maintenance 
 |- 5: Prints information about cluster merging 
 '''
-VERBOSE_FLAGS = [0,5] #example setting [1, 2] for two verbose level control flags
+VERBOSE_FLAGS = [0] #example setting [1, 2] for two verbose level control flags
 
 '''
 MAKE_GRAPHS

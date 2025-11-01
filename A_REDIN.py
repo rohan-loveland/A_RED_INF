@@ -44,118 +44,120 @@ class Subspace_Partition:
 
 
 
+
 """# Cluster"""
 class Cluster:
-    def __init__(self, label, relevance, l_pt_idxs, l_buf, cluster_key, QS_VAR = 0):
+    def __init__(self, label, relevance, l_pt_idxs, l_buf, cluster_key, QS_VAR=0):
         self.label = label
         self.relevance = relevance
         self.l_pt_idxs = l_pt_idxs
-        self.comp_distance = 0  # QR_VAR=0: Diameter, QS_VAR=1: approx_nn_distance
-
-        # cluster id is this cluster's position in Subspace_Partition.cluster_dict
+        self.comp_distance = 0
         self.cluster_id = cluster_key
+        self.last_updated = 0  # <<< FIX >>> For aging (optional future use)
+
         if len(l_pt_idxs) > 1 and QS_VAR == 0:
-            self.update_diameter(l_buf)
-
+            self.update_diameter_all(l_buf)
         elif len(l_pt_idxs) > 1 and QS_VAR == 1:
-            self.update_ave_nn_dist(l_buf)
+            self.update_ave_nn_dist_all(l_buf)
 
+    def touch(self):
+        import time
+        self.last_updated = time.time()  # <<< FIX >>> Track activity
 
-    def add_l_pt(self, abs_idx, l_buf, QS_VAR = 0):
+    def add_l_pt(self, abs_idx, l_buf, QS_VAR=0):
         self.l_pt_idxs.append(abs_idx)
-
+        self.touch()  # <<< FIX >>> Mark as active
         if QS_VAR == 0:
-            self.update_diameter(l_buf)
+            self.update_diameter_single(l_buf)
         elif QS_VAR == 1:
-            self.update_ave_nn_dist(l_buf)
-        # elif QS_VAR == 2:
-        #     self.update_ave_nn_dist_w_o_pt_idxs(l_buf)
+            self.update_ave_nn_dist_single(l_buf)
 
     def add_l_pt_no_comp_dist_update(self, abs_idx):
         self.l_pt_idxs.append(abs_idx)
+        self.touch()  # <<< FIX >>>
 
     def remove_l_pt_from_cluster(self, pt_abs_idx):
         self.l_pt_idxs.remove(pt_abs_idx)
 
-    def update_comp_distance(self, l_buf, QS_VAR = 0):
+    def update_comp_distance_single(self, l_buf, QS_VAR=0):
         if QS_VAR == 0:
-            self.update_diameter(l_buf)
+            self.update_diameter_single(l_buf)
         elif QS_VAR == 1:
-            self.update_ave_nn_dist(l_buf)
+            self.update_ave_nn_dist_single(l_buf)
 
-    def merge_comp_distances(
-            self,
-            l_buf,
-            other_l_pt_idxs=None,
-            QS_VAR=0,
-    ):
-        """
-        Merge cluster distances.
-
-        Parameters
-        ----------
-        l_buf : buffer providing get_pt_data_abs
-        other_l_pt_idxs : list of absolute indices of points
-                          in the cluster being merged.
-        QS_VAR : 0 -> diameter merge
-                 1 -> average nearest-neighbor distance merge
-        """
+    def merge_comp_distances(self, l_buf, QS_VAR):
         if QS_VAR == 0:
-            # Recompute diameter on the combined set
-            self.update_diameter(l_buf)
-
+            self.update_diameter_all(l_buf)
         elif QS_VAR == 1:
-            if other_l_pt_idxs is None:
-                raise ValueError(
-                    "For QS_VAR=1 you must pass other_l_pt_idxs to recompute average NN distance."
-                )
+            self.update_ave_nn_dist_all(l_buf)
 
-            # Combine point indices
-            combined_idxs = self.l_pt_idxs + list(other_l_pt_idxs)
+    def update_diameter_single(self, l_buf):
+        latest_idx = self.l_pt_idxs[-1]
+        latest_pt = l_buf.get_pt_data_abs(latest_idx)
+        max_dist = 0
+        for idx in self.l_pt_idxs[:-1]:
+            dist = np.linalg.norm(l_buf.get_pt_data_abs(idx) - latest_pt)
+            if dist > max_dist:
+                max_dist = dist
+        if max_dist > self.comp_distance:
+            self.comp_distance = max_dist
 
-            # Retrieve data like update_diameter
-            data_points = np.array([l_buf.get_pt_data_abs(idx) for idx in combined_idxs])
+    def update_diameter_all(self, l_buf):
+        max_dist = 0
+        for i in range(len(self.l_pt_idxs)):
+            p1 = l_buf.get_pt_data_abs(self.l_pt_idxs[i])
+            for j in range(i + 1, len(self.l_pt_idxs)):
+                p2 = l_buf.get_pt_data_abs(self.l_pt_idxs[j])
+                dist = np.linalg.norm(p1 - p2)
+                if dist > max_dist:
+                    max_dist = dist
+        self.comp_distance = max_dist
 
-            # Recompute average nearest-neighbor distance on the union
-            self.update_ave_nn_dist(l_buf)
-
-    def update_diameter(self, l_buf):
-        latest_l_pt_idx = self.l_pt_idxs[-1]
-        latest_pt_data = l_buf.get_pt_data_abs(latest_l_pt_idx)
-        largest_distance = 0
-        for i in range(len(self.l_pt_idxs)-1): # all except the latest...
-                data_l_pt_i = l_buf.get_pt_data_abs(self.l_pt_idxs[i])
-                distance = np.linalg.norm(data_l_pt_i - latest_pt_data)
-                if  distance > largest_distance:
-                    largest_distance = distance
-        # if new distance is > existing diameter, update diameter, otherwise leave alone
-        if largest_distance > self.comp_distance:
-            self.comp_distance = largest_distance
-
-
-    def update_ave_nn_dist(self, l_buf):
-        """
-        Compute the average nearest-neighbor distance of all labeled points in the cluster.
-        Updated to retrieve data the same way QS_VAR = 0 does (using absolute indices).
-        """
+    def update_ave_nn_dist_single(self, l_buf):
         if len(self.l_pt_idxs) < 2:
             self.comp_distance = 0.0
             return
+        latest_idx = self.l_pt_idxs[-1]
+        latest_pt = l_buf.get_pt_data_abs(latest_idx)
+        min_dist = np.inf
+        for idx in self.l_pt_idxs[:-1]:
+            dist = np.linalg.norm(l_buf.get_pt_data_abs(idx) - latest_pt)
+            if dist < min_dist:
+                min_dist = dist
+        n = len(self.l_pt_idxs)
+        self.comp_distance = (self.comp_distance * (n - 1) + min_dist) / n
 
-        latest_l_pt_idx = self.l_pt_idxs[-1]
-        latest_pt_data = l_buf.get_pt_data_abs(latest_l_pt_idx)
-        data_l_pt_i = l_buf.get_pt_data_abs(self.l_pt_idxs[0])
-        smallest_distance = np.linalg.norm(data_l_pt_i - latest_pt_data)
-        num_pts_in_cluster = len(self.l_pt_idxs)
-        for i in range(num_pts_in_cluster - 1):  # all except the latest...
-            data_l_pt_i = l_buf.get_pt_data_abs(self.l_pt_idxs[i])
-            distance = np.linalg.norm(data_l_pt_i - latest_pt_data)
-            if distance < smallest_distance:
-                smallest_distance = distance
+    def update_ave_nn_dist_all(self, l_buf):
+        if len(self.l_pt_idxs) < 2:
+            self.comp_distance = 0.0
+            return
+        data = np.array([l_buf.get_pt_data_abs(i) for i in self.l_pt_idxs])
+        nn = NearestNeighbors(n_neighbors=2).fit(data)
+        distances, _ = nn.kneighbors(data)
+        self.comp_distance = np.mean(distances[:, 1])
 
-        # calculate new average
-        self.comp_distance = (self.comp_distance*(num_pts_in_cluster - 1) + smallest_distance)/num_pts_in_cluster
+    # AI !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    # ------------------------------------------------------------------
+    # Inside class Cluster (unchanged except for the two helpers below)
+    # ------------------------------------------------------------------
+    def _diameter_of_union(self, l_buf, other_idxs):
+        """Return the exact diameter of *self + other_idxs* without modifying self."""
+        pts = [l_buf.get_pt_data_abs(i) for i in self.l_pt_idxs + other_idxs]
+        max_d = 0.0
+        for a in range(len(pts)):
+            for b in range(a + 1, len(pts)):
+                d = np.linalg.norm(pts[a] - pts[b])
+                if d > max_d: max_d = d
+        return max_d
 
+    def _avg_nn_of_union(self, l_buf, other_idxs):
+        """Return the exact avg-NN distance of *self + other_idxs*."""
+        pts = np.vstack([l_buf.get_pt_data_abs(i) for i in self.l_pt_idxs + other_idxs])
+        if pts.shape[0] < 2:
+            return 0.0
+        nn = NearestNeighbors(n_neighbors=2).fit(pts)
+        distances, _ = nn.kneighbors(pts)
+        return np.mean(distances[:, 1])
 
 """# AREDIN"""
 
@@ -261,41 +263,46 @@ class ARED:
                     self.merge_clusters(neighbor_cluster_key, singleton_key)
                     # break  # Stop after first merge to avoid merging same singleton multiple times
 
-    def merge_clusters(self, cluster_key_a, cluster_key_b):
-        # DONE (by Nate Mediocrely)
-
-        #                                 0            1                2     3      4     5    6
-        # Get k closest points in l_buf [(cluster_key, pt_internal_idx, dist, label, data, rel, true_abs_idx)]
-
-        # failsafe to ensure that we don't try merging the same cluster # NOTE REDUNDANT SINCE we do this check before merging.
-        if cluster_key_a == cluster_key_b:
-            return self.subspace_partition.cluster_dict[cluster_key_a]
-        # ^ CONSIDER REMOVING THIS
+    def merge_clusters(self, keep_key, merge_key):
+        if keep_key == merge_key:
+            return
 
         if 5 in self.verbose_flags:
-            print("Merging clusters:", cluster_key_a, cluster_key_b)
+            print("Merging clusters:", keep_key, merge_key)
 
-        cluster_a = self.subspace_partition.cluster_dict[cluster_key_a]
-        cluster_b = self.subspace_partition.cluster_dict[cluster_key_b]
+        keep_cl = self.subspace_partition.cluster_dict[keep_key]
+        merge_cl = self.subspace_partition.cluster_dict[merge_key]
 
-        cluster_a.l_pt_idxs += cluster_b.l_pt_idxs
+        # 1. move points
+        keep_cl.l_pt_idxs.extend(merge_cl.l_pt_idxs)
 
+        # 2. fix circular-buffer cluster keys — ONLY VALID INDICES
         cb = self.l_buf.cluster_key_circular_buffer
-        for i in range(len(self.l_buf.cluster_key_circular_buffer)):
-            if cb.get(i) == cluster_key_b:
-                cb.set_at(i, cluster_key_a)
+        for i in range(cb.count):          # ← Fix 2
+            if cb.get(i) == merge_key:
+                cb.set_at(i, keep_key)
 
-        self.subspace_partition.cluster_dict.pop(cluster_key_b)
+        # 3. delete the merged cluster
+        del self.subspace_partition.cluster_dict[merge_key]
 
-        if self.QS_VAR == 0:
-            #merge_comp_distances(self, l_buf, comp_distance_to_add = 0, num_points_from_merged_cluster = 0, QS_VAR = 0):
-            cluster_a.merge_comp_distances(self.l_buf, QS_VAR=self.QS_VAR)
+        # 4. UPDATE METRIC
+        if self.QS_VAR == 0:  # DIAMETER
+            max_cross = 0.0
+            for k_idx in keep_cl.l_pt_idxs:
+                k_pt = self.l_buf.get_pt_data_abs(k_idx)
+                if k_pt is None: continue    # ← Fix 3
+                for m_idx in merge_cl.l_pt_idxs:
+                    m_pt = self.l_buf.get_pt_data_abs(m_idx)
+                    if m_pt is None: continue
+                    d = np.linalg.norm(k_pt - m_pt)
+                    if d > max_cross: max_cross = d
+            keep_cl.comp_distance = max(keep_cl.comp_distance,
+                                        merge_cl.comp_distance,
+                                        max_cross)
+        else:  # AVG NN
+            keep_cl.comp_distance = keep_cl._avg_nn_of_union(
+                self.l_buf, merge_cl.l_pt_idxs)
 
-        elif self.QS_VAR == 1:
-            cluster_a.merge_comp_distances(self.l_buf, cluster_b.l_pt_idxs, self.QS_VAR)
-
-
-        return cluster_key_a
 
     def determine_comparison_cluster(self, data_point):
         comparison_point_info = None
@@ -388,7 +395,7 @@ class ARED:
         # do maintenance by adding pt to l_buf, forgetting from subspace_partition if necessary
         self.update_structs_w_new_pt(abs_idx, data_point, cluster_key,this_cluster.label, this_cluster.relevance)
 
-        this_cluster.update_comp_distance(self.l_buf, self.QS_VAR)
+        this_cluster.update_comp_distance_single(self.l_buf, self.QS_VAR)
 
 
     def split(self, data_point, data_point_idx, new_cluster_label, new_cluster_relevance, old_cluster_id):
