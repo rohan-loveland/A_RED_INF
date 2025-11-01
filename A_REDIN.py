@@ -209,59 +209,101 @@ class ARED:
         int_label = self.oracle.int_str_label_bidict[label]
         self.conf_matrix[int_label,int_label] += 1
 
-    def singleton_merge(self):
+    def small_cluster_merge(self):
         """
-        Periodically merge singleton clusters (len(l_pt_idxs) == 1) with nearest neighbor clusters
-        that share the same label. Updates cluster keys in l_buf and subspace partition.
+        Called every GRAPH_BATCH_SIZE points.
+        Finds every cluster with len(l_pt_idxs) < SMALL_CLUSTER_THRESHOLD
+        and merges it into the *closest* cluster that has the same label.
         """
-        if not self.SINGLETON_MERGE or self.K_COMP_PTS < 2:
+        if not hasattr(self, 'SMALL_CLUSTER_THRESHOLD'):
+            # fallback – if the constant is missing in main.py
+            SMALL_CLUSTER_THRESHOLD = 3
+        else:
+            SMALL_CLUSTER_THRESHOLD = self.SMALL_CLUSTER_THRESHOLD
+
+        # ------------------------------------------------------------------
+        # 1. Collect all clusters that are too small
+        # ------------------------------------------------------------------
+        small_keys = [
+            key for key, cl in self.subspace_partition.cluster_dict.items()
+            if len(cl.l_pt_idxs) < SMALL_CLUSTER_THRESHOLD
+        ]
+
+        if not small_keys:
             if 5 in self.verbose_flags:
-                print("Singleton merge skipped: SINGLETON_MERGE=False or K_COMP_PTS<2")
+                print("small_cluster_merge: no clusters below threshold")
             return
 
-        # Identify singleton clusters
-        singleton_keys = [key for key, cluster in self.subspace_partition.cluster_dict.items()
-                          if len(cluster.l_pt_idxs) == 1]
-
         if 5 in self.verbose_flags:
-            print(f"Singleton merge: Found {len(singleton_keys)} singleton clusters: {singleton_keys}")
+            print(f"small_cluster_merge: {len(small_keys)} clusters below threshold {SMALL_CLUSTER_THRESHOLD}")
 
-        for singleton_key in singleton_keys:
-            if singleton_key not in self.subspace_partition.cluster_dict:
-                continue  # Cluster may have been merged/removed already
+        # ------------------------------------------------------------------
+        # 2. For each small cluster, compute its centroid (only live points)
+        # ------------------------------------------------------------------
+        centroids = {}
+        for key in small_keys:
+            cl = self.subspace_partition.cluster_dict[key]
+            live_pts = [self.l_buf.get_pt_data_abs(i) for i in cl.l_pt_idxs
+                        if self.l_buf.get_pt_data_abs(i) is not None]
+            if not live_pts:
+                # the whole cluster has been forgotten → just delete it
+                del self.subspace_partition.cluster_dict[key]
+                continue
+            centroids[key] = np.mean(live_pts, axis=0)
 
-            cluster = self.subspace_partition.cluster_dict[singleton_key]
-            singleton_idx = cluster.l_pt_idxs[0]  # Singleton's only point (absolute index)
-            singleton_label = cluster.label
-            singleton_data = self.l_buf.get_pt_data_abs(singleton_idx)
+        # ------------------------------------------------------------------
+        # 3. For every other *candidate* cluster (any size, same label) compute its centroid
+        # ------------------------------------------------------------------
+        candidate_centroids = {}
+        for key, cl in self.subspace_partition.cluster_dict.items():
+            if key in small_keys:
+                continue
+            live_pts = [self.l_buf.get_pt_data_abs(i) for i in cl.l_pt_idxs
+                        if self.l_buf.get_pt_data_abs(i) is not None]
+            if live_pts:
+                candidate_centroids[key] = np.mean(live_pts, axis=0)
 
-            if singleton_data is None:
-                if 5 in self.verbose_flags:
-                    print(f"Singleton {singleton_key} point {singleton_idx} no longer in buffer, skipping")
+        # ------------------------------------------------------------------
+        # 4. For each small cluster, find the nearest same-label candidate
+        # ------------------------------------------------------------------
+        merges = []  # list of (keep_key, merge_key) to perform
+        processed = set()
+
+        for small_key in small_keys:
+            if small_key not in self.subspace_partition.cluster_dict:
+                continue
+            small_label = self.subspace_partition.cluster_dict[small_key].label
+            small_center = centroids.get(small_key)
+            if small_center is None:
                 continue
 
-            # Find K_COMP_PTS closest points
-            # Format: [(cluster_key, pt_internal_idx, dist, label, data, rel, true_abs_idx)]
-            k_closest_pts, _ = self.l_buf.find_closest_pts(singleton_data, self.K_COMP_PTS)
+            best_dist = np.inf
+            best_keep = None
 
-            # Look for a matching label in the closest points' clusters
-            for pt_info in k_closest_pts:
-                neighbor_cluster_key = pt_info[0]
-                neighbor_label = pt_info[3]
-
-                # Skip if same cluster or cluster no longer exists
-                if neighbor_cluster_key == singleton_key or neighbor_cluster_key not in self.subspace_partition.cluster_dict:
+            for cand_key, cand_center in candidate_centroids.items():
+                if cand_key in processed:
                     continue
+                cand_label = self.subspace_partition.cluster_dict[cand_key].label
+                if cand_label != small_label:
+                    continue
+                d = np.linalg.norm(small_center - cand_center)
+                if d < best_dist:
+                    best_dist = d
+                    best_keep = cand_key
 
-                # Merge if labels match
-                if neighbor_label == singleton_label:
-                    if 5 in self.verbose_flags:
-                        print(f"Merging singleton cluster {singleton_key} into cluster {neighbor_cluster_key} "
-                              f"(label: {singleton_label})")
+            if best_keep is not None:
+                merges.append((best_keep, small_key))
+                processed.add(best_keep)
 
-                    # Merge clusters (updates l_buf cluster keys and comp_distance)
-                    self.merge_clusters(neighbor_cluster_key, singleton_key)
-                    # break  # Stop after first merge to avoid merging same singleton multiple times
+        # ------------------------------------------------------------------
+        # 5. Perform the merges (in any order – merge_clusters is idempotent)
+        # ------------------------------------------------------------------
+        for keep, merge in merges:
+            if 5 in self.verbose_flags:
+                print(
+                    f"small_cluster_merge: merging {merge} (size {len(self.subspace_partition.cluster_dict[merge].l_pt_idxs)}) "
+                    f"into {keep} (size {len(self.subspace_partition.cluster_dict[keep].l_pt_idxs)})")
+            self.merge_clusters(keep, merge)
 
     def merge_clusters(self, keep_key, merge_key):
         if keep_key == merge_key:

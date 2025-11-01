@@ -70,7 +70,7 @@ K_COMP_PTS: Number of points to compare to when looking for relevance
 |- 2 or more: k ARED
 @WARNING: must be 1 or greater
 '''
-K_COMP_PTS = 2
+K_COMP_PTS = 5
 
 '''
 NGHBHOOD_MERGE: Neighborhood Merge Variants
@@ -90,7 +90,13 @@ SINGLETON_MERGE: Neighborhood Merge Variants
 |- False: No singleton merge
 |- True: singleton merge
 '''
-SINGLETON_MERGE = False
+SINGLETON_MERGE = True
+
+# ------------------------------------------------------------------
+# NEW: threshold for “small” clusters that will be forcibly merged
+# ------------------------------------------------------------------
+SMALL_CLUSTER_THRESHOLD = 3      # clusters with < 3 points are merged
+
 
 '''
 window_size: size of the data_window window saved by ARED
@@ -214,13 +220,14 @@ if __name__ == '__main__':
                         print(f"Processing point {i}... (last {GRAPH_BATCH_SIZE} points took {times[j]- times[j-1]:.2f} seconds)")
                         print(f"Points queried in this batch: {num_queries[j-1] - num_queries[j-2]}")
                         print(f"Number of clusters: {num_clusters[j-1]}")  # Add cluster count
+                        print(f"Number of labels: {num_labels[j-1]}")
 
                 if MAKE_EVO_GRAPHS:
                     evo_plotter.plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label")
 
                 if SINGLETON_MERGE:
-                    ared.singleton_merge()
-
+                    ared.SMALL_CLUSTER_THRESHOLD = SMALL_CLUSTER_THRESHOLD  # expose the constant
+                    ared.small_cluster_merge()
 
             # end save and print -------------------------------------------------------------
 
@@ -242,20 +249,55 @@ if __name__ == '__main__':
             calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes, ared, num_correct_queries, \
                                      num_queries, PLOT_FLAG, GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS)
 
-        with np.printoptions(threshold=sys.maxsize):
-            print(ared.conf_matrix)
+        # with np.printoptions(threshold=sys.maxsize):
+        #     print(ared.conf_matrix)
 
         if MAKE_GRAPHS:
             try:
-                # Plot # clusters
+                # --- Plot #1: Number of clusters ---
                 batch_num_pts = list(range(GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS + 1, GRAPH_BATCH_SIZE))
                 plt.figure(figsize=(10, 5))
-                plt.plot(batch_num_pts,num_clusters)
-                plt.grid()
-                plt.legend(("number of clusters",))
+                plt.plot(batch_num_pts, num_clusters, 'b-o', label="Number of clusters")
+                plt.grid(True)
+                plt.xlabel("Processed points")
+                plt.ylabel("Count")
+                plt.legend()
+                plt.title("Cluster Evolution")
+
+                # --- Plot #2: Time per batch + Queries per batch (using existing 'times') ---
+                if len(times) > 1:
+                    plt.figure(figsize=(10, 6))
+
+                    batch_indices = list(range(1, len(times)))  # batch 1, 2, ...
+
+                    # Time per batch = diff(times)
+                    time_per_batch = np.diff(times)
+
+                    # Queries per batch = diff(num_queries)
+                    queries_per_batch = np.diff(num_queries)
+
+                    # Left: time
+                    ax1 = plt.gca()
+                    color = 'tab:red'
+                    ax1.set_xlabel("Batch #")
+                    ax1.set_ylabel("Time per batch (sec)", color=color)
+                    ax1.plot(batch_indices, time_per_batch, 'o-', color=color, label="Time per batch")
+                    ax1.tick_params(axis='y', labelcolor=color)
+                    ax1.grid(True, alpha=0.3)
+
+                    # Right: queries
+                    ax2 = ax1.twinx()
+                    color = 'tab:green'
+                    ax2.set_ylabel("Queries per batch", color=color)
+                    ax2.plot(batch_indices, queries_per_batch, 's--', color=color, label="Queries per batch")
+                    ax2.tick_params(axis='y', labelcolor=color)
+
+                    plt.title("Performance per Batch")
+                    ax1.legend(loc="upper left")
+                    ax2.legend(loc="upper right")
 
             except Exception as e:
-                print(e)
+                print("Plot error:", e)
 
         current_time = time.time()
         time_elapsed = current_time - start_time
