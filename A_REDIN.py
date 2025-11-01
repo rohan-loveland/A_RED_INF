@@ -259,7 +259,7 @@ class ARED:
 
                     # Merge clusters (updates l_buf cluster keys and comp_distance)
                     self.merge_clusters(neighbor_cluster_key, singleton_key)
-                    break  # Stop after first merge to avoid merging same singleton multiple times
+                    # break  # Stop after first merge to avoid merging same singleton multiple times
 
     def merge_clusters(self, cluster_key_a, cluster_key_b):
         # DONE (by Nate Mediocrely)
