@@ -181,6 +181,7 @@ if __name__ == '__main__':
         ared = ARED(oracle, KAPPA, DATA_WINDOW_SIZE, K_COMP_PTS, QS_VAR, REL_PROC_VAR, SM_VAR, NGHBHOOD_MERGE, SINGLETON_MERGE, VERBOSE_FLAGS)
         start_time, times, num_correct_queries, num_queries, num_clusters, num_labels, pt_dists, num_pts_searched_list, conf_matrices, \
             num_queries_last_batch = set_up_stats(ared)
+        buffer_fill_percents = []
 
         if MAKE_EVO_GRAPHS:
             evo_plotter = ClusterEvolutionPlotter()
@@ -215,12 +216,16 @@ if __name__ == '__main__':
                 num_clusters.append(len(ared.subspace_partition.cluster_dict))
                 num_labels.append(len(ared.subspace_partition.set_of_known_labels))
                 conf_matrices.append(ared.conf_matrix.copy())
+                fill_pct = ared.l_buf.data_circular_buffer.count / ared.l_buf.data_circular_buffer.size * 100
+                buffer_fill_percents.append(fill_pct)
+                print(f"fill % of buffer: {fill_pct:.2f}%")
                 if 0 in VERBOSE_FLAGS:
                     if j > 1:
                         print(f"Processing point {i}... (last {GRAPH_BATCH_SIZE} points took {times[j]- times[j-1]:.2f} seconds)")
                         print(f"Points queried in this batch: {num_queries[j-1] - num_queries[j-2]}")
                         print(f"Number of clusters: {num_clusters[j-1]}")  # Add cluster count
                         print(f"Number of labels: {num_labels[j-1]}")
+                        print(f"fill % of buffer: {fill_pct:.2f}%")
 
                 if MAKE_EVO_GRAPHS:
                     evo_plotter.plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label")
@@ -264,33 +269,27 @@ if __name__ == '__main__':
                 plt.legend()
                 plt.title("Cluster Evolution")
 
-                # --- Plot #2: Time per batch + Queries per batch (using existing 'times') ---
-                if len(times) > 1:
+                # --- Plot #2: Time per batch + Buffer fill % ---
+                if len(times) > 1 and len(buffer_fill_percents) == len(np.diff(times)):
                     plt.figure(figsize=(10, 6))
 
-                    batch_indices = list(range(1, len(times)))  # batch 1, 2, ...
+                    batch_indices = list(range(1, len(times)))
 
-                    # Time per batch = diff(times)
                     time_per_batch = np.diff(times)
 
-                    # Queries per batch = diff(num_queries)
-                    queries_per_batch = np.diff(num_queries)
-
-                    # Left: time
                     ax1 = plt.gca()
-                    color = 'tab:red'
+                    col = 'tab:red'
                     ax1.set_xlabel("Batch #")
-                    ax1.set_ylabel("Time per batch (sec)", color=color)
-                    ax1.plot(batch_indices, time_per_batch, 'o-', color=color, label="Time per batch")
-                    ax1.tick_params(axis='y', labelcolor=color)
+                    ax1.set_ylabel("Time per batch (sec)", color=col)
+                    ax1.plot(batch_indices, time_per_batch, 'o-', color=col, label="Time per batch")
+                    ax1.tick_params(axis='y', labelcolor=col)
                     ax1.grid(True, alpha=0.3)
 
-                    # Right: queries
                     ax2 = ax1.twinx()
-                    color = 'tab:green'
-                    ax2.set_ylabel("Queries per batch", color=color)
-                    ax2.plot(batch_indices, queries_per_batch, 's--', color=color, label="Queries per batch")
-                    ax2.tick_params(axis='y', labelcolor=color)
+                    col = 'tab:green'
+                    ax2.set_ylabel("Buffer fill %", color=col)
+                    ax2.plot(batch_indices, buffer_fill_percents, 's--', color=col, label="Buffer fill %")
+                    ax2.tick_params(axis='y', labelcolor=col)
 
                     plt.title("Performance per Batch")
                     ax1.legend(loc="upper left")
@@ -298,6 +297,7 @@ if __name__ == '__main__':
 
             except Exception as e:
                 print("Plot error:", e)
+
 
         current_time = time.time()
         time_elapsed = current_time - start_time
