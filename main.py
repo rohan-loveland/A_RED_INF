@@ -22,13 +22,13 @@ N_REL_CLASSES: Specified number of relevant classes
 # N_REL_CLASSES = 4
 
 # DATA_SOURCE = "MNIST_2D"
-# N_REL_CLASSES = 4
-
-# DATA_SOURCE = "EMNIST"
 # N_REL_CLASSES = 3
 
-DATA_SOURCE = "NICE"
-N_REL_CLASSES = 4
+DATA_SOURCE = "EMNIST"
+N_REL_CLASSES = 3
+
+# DATA_SOURCE = "NICE"
+# N_REL_CLASSES = 4
 
 # DATA_SOURCE = "PARKING_LOT"
 # N_REL_CLASSES = 4
@@ -37,7 +37,7 @@ N_REL_CLASSES = 4
 KAPPA: Paranoia Parameter
 (single value for now)
 '''
-KAPPA = 1
+KAPPA = 0.01
 # # KAPPAS = [0.5] #0.5, , 1.4, 10
 # |- Array of Kappas to run ARED on
 # |- Run more than one for graphing purposes
@@ -110,7 +110,7 @@ NUM_POINTS_TO_PROCESS: Number of points in dataset to process
 |- -1: process all the data
 |-  0 to inf: process up to that number if data is available
 '''
-NUM_POINTS_TO_PROCESS = 100000#-1
+NUM_POINTS_TO_PROCESS = 10000#-1
 
 # '''
 # NUM_RUN_TO_AVE: number of runs to average.
