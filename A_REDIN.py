@@ -174,6 +174,7 @@ class ARED:
         self.anom_queries = 0 # queries arising from kappa comparison - NOT IMPLEMENTED YET
         self.rel_queries = 0 # queries arising from relevance assignment- NOT IMPLEMENTED YET
         self.num_pts_streamed = 0
+        self.cumulative_relevant_seen = 0
         # Note: this is equivalent to abs_idx + 1
         # VARIATION CONTROL FLAGS
         self.QS_VAR = QS_VAR # {0: diameter, 1: Ave Single Link Dist in Cluster
@@ -192,6 +193,8 @@ class ARED:
         data_point_abs_idx = self.num_pts_streamed - 1
 
         label, relevance = self.query(data_point_abs_idx)
+        if relevance:  # the point itself is relevant
+            self.cumulative_relevant_seen += 1
         # END QUERY
 
         # UPDATE CLUSTER Dictionary
@@ -497,5 +500,8 @@ class ARED:
             comp_cluster_label_int = self.oracle.int_str_label_bidict[comp_cluster_label]
             self.conf_matrix[actual_new_pt_label_int,comp_cluster_label_int] += 1
 
+        actual_new_pt_rel = self.oracle.y[data_point_abs_idx][1]
+        if actual_new_pt_rel:  # the point itself is relevant
+            self.cumulative_relevant_seen += 1
         # DEBUG ONLY -----------------------
         return distance, num_pts_searched

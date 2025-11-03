@@ -24,11 +24,11 @@ N_REL_CLASSES: Specified number of relevant classes
 # DATA_SOURCE = "MNIST_2D"
 # N_REL_CLASSES = 4
 
-DATA_SOURCE = "EMNIST"
-N_REL_CLASSES = 3
+# DATA_SOURCE = "EMNIST"
+# N_REL_CLASSES = 3
 
-# DATA_SOURCE = "NICE"
-# N_REL_CLASSES = 4
+DATA_SOURCE = "NICE"
+N_REL_CLASSES = 4
 
 # DATA_SOURCE = "PARKING_LOT"
 # N_REL_CLASSES = 4
@@ -37,7 +37,7 @@ N_REL_CLASSES = 3
 KAPPA: Paranoia Parameter
 (single value for now)
 '''
-KAPPA = 0.01
+KAPPA = 1
 # # KAPPAS = [0.5] #0.5, , 1.4, 10
 # |- Array of Kappas to run ARED on
 # |- Run more than one for graphing purposes
@@ -110,7 +110,7 @@ NUM_POINTS_TO_PROCESS: Number of points in dataset to process
 |- -1: process all the data
 |-  0 to inf: process up to that number if data is available
 '''
-NUM_POINTS_TO_PROCESS = 50000#-1
+NUM_POINTS_TO_PROCESS = 100000#-1
 
 # '''
 # NUM_RUN_TO_AVE: number of runs to average.
@@ -180,7 +180,7 @@ if __name__ == '__main__':
         oracle = Oracle(X_skewed, y_w_rel)
         ared = ARED(oracle, KAPPA, DATA_WINDOW_SIZE, K_COMP_PTS, QS_VAR, REL_PROC_VAR, SM_VAR, NGHBHOOD_MERGE, SINGLETON_MERGE, VERBOSE_FLAGS)
         start_time, times, num_correct_queries, num_queries, num_clusters, num_labels, pt_dists, num_pts_searched_list, conf_matrices, \
-            num_queries_last_batch = set_up_stats(ared)
+            num_queries_last_batch, cumulative_relevants = set_up_stats(ared)
         buffer_fill_percents = []
 
         if MAKE_EVO_GRAPHS:
@@ -218,11 +218,13 @@ if __name__ == '__main__':
                 conf_matrices.append(ared.conf_matrix.copy())
                 fill_pct = ared.l_buf.data_circular_buffer.count / ared.l_buf.data_circular_buffer.size * 100
                 buffer_fill_percents.append(fill_pct)
+                cumulative_relevants.append(ared.cumulative_relevant_seen)
                 print(f"fill % of buffer: {fill_pct:.2f}%")
                 if 0 in VERBOSE_FLAGS:
                     if j > 1:
                         print(f"Processing point {i}... (last {GRAPH_BATCH_SIZE} points took {times[j]- times[j-1]:.2f} seconds)")
-                        print(f"Points queried in this batch: {num_queries[j-1] - num_queries[j-2]}")
+                        print(f"# correct queries in this batch: {num_correct_queries[j-1] - num_correct_queries[j-2]}")
+                        print(f"# queries in this batch: {num_queries[j-1] - num_queries[j-2]}")
                         print(f"Number of clusters: {num_clusters[j-1]}")  # Add cluster count
                         print(f"Number of labels: {num_labels[j-1]}")
                         print(f"fill % of buffer: {fill_pct:.2f}%")
@@ -247,9 +249,11 @@ if __name__ == '__main__':
 
         print("ARED DONE")
 
+        relevant_per_batch = np.diff(cumulative_relevants, prepend=0)
+        num_correct_queries_per_batch = np.diff(num_correct_queries, prepend=0)
+        num_queries_per_batch = np.diff(num_queries, prepend=0)
 
         PLOT_FLAG = True
-        print("num_correct_queries:", num_correct_queries, "num_queries:", num_queries)
         single_rel_recall_list, query_precision_list, rel_individual_recalls, query_rate = \
             calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes, ared, num_correct_queries, \
                                      num_queries, PLOT_FLAG, GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS)

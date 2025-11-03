@@ -27,13 +27,15 @@ def set_up_stats(ared):
     times = [start_time]
     num_correct_queries = []
     num_queries = []
-    num_clusters = []#[len(ared.subspace_partition.cluster_dict)] # should probably start out empty?
-    num_labels = []#[len(ared.subspace_partition.set_of_known_labels)] # should probably start out empty?
+    num_clusters = []
+    num_labels = []
     conf_matrices = []
+    cumulative_relevants = []
 
 
     # DEBUG ONLY
     pt_dists = []
     num_pts_searched_list = []
 
-    return start_time, times, num_correct_queries, num_queries, num_clusters, num_labels, conf_matrices, pt_dists, num_pts_searched_list, num_queries_last_batch
+    return start_time, times, num_correct_queries, num_queries, num_clusters, num_labels, conf_matrices, pt_dists, \
+        num_pts_searched_list, num_queries_last_batch, cumulative_relevants

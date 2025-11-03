@@ -56,6 +56,7 @@ def generate_synthetic_dataset_with_relevance(n_least_populous, seed=42):
     np.random.shuffle(indices)
     X = X[indices]
     y = y[indices]
+    y = y.astype(str)
 
     # Identify the n least populous classes
     # Since samples_per_class is [512, 256, ..., 1], least populous are highest indices
@@ -67,24 +68,7 @@ def generate_synthetic_dataset_with_relevance(n_least_populous, seed=42):
     relevance = np.isin(y, least_populous_classes).astype(int)
 
     # Concatenate y and relevance into a 2D array
-    y_w_rel = [(str(label), bool(rel)) for label, rel in zip(y, relevance)]
-    # y_w_rel = np.column_stack((y, relevance))
-
-    # Plot the dataset
-    # plt.figure(figsize=(10, 10))
-    # for class_id in range(num_classes):
-    #     mask = y == class_id
-    #     # Use different markers for relevant vs non-relevant classes
-    #     marker = 'o' if class_id in least_populous_classes else 's'
-    #     plt.scatter(X[mask, 0], X[mask, 1], label=f'Class {class_id} (Relevant: {class_id in least_populous_classes})',
-    #                 alpha=0.7, marker=marker)
-    #
-    # plt.title(f'2D Dataset with {n_least_populous} Least Populous Classes Marked')
-    # plt.xlabel('Feature 1')
-    # plt.ylabel('Feature 2')
-    # plt.legend()
-    # plt.grid(True)
-    # plt.show()
+    y_w_rel = [(label, bool(rel)) for label, rel in zip(y, relevance)]
 
     return X, y_w_rel, sparsity_levels, least_populous_classes
 
