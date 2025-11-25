@@ -7,6 +7,7 @@ from collections import defaultdict
 import heapq
 from sklearn.mixture import GaussianMixture
 from FiniteBuffer import FiniteBuffer
+from sklearn.neighbors import NearestNeighbors
 
 from main import QS_VAR
 
@@ -313,41 +314,83 @@ class ARED:
             return
 
         if 5 in self.verbose_flags:
-            print("Merging clusters:", keep_key, merge_key)
+            print("Merging clusters:", keep_key, "←", merge_key)
 
         keep_cl = self.subspace_partition.cluster_dict[keep_key]
         merge_cl = self.subspace_partition.cluster_dict[merge_key]
 
-        # 1. move points
+        old_keep_size = len(keep_cl.l_pt_idxs)  # size before merge
+        merge_size = len(merge_cl.l_pt_idxs)
+
+        # 1. Move points from merge_cl → keep_cl
         keep_cl.l_pt_idxs.extend(merge_cl.l_pt_idxs)
 
-        # 2. fix circular-buffer cluster keys — ONLY VALID INDICES
+        # 2. Update circular buffer: fix cluster_key references
         cb = self.l_buf.cluster_key_circular_buffer
-        for i in range(cb.count):          # ← Fix 2
+        for i in range(cb.count):
             if cb.get(i) == merge_key:
                 cb.set_at(i, keep_key)
 
-        # 3. delete the merged cluster
+        # 3. Delete merged cluster
         del self.subspace_partition.cluster_dict[merge_key]
 
-        # 4. UPDATE METRIC
-        if self.QS_VAR == 0:  # DIAMETER
+        # 4. UPDATE comp_distance based on QS_VAR
+        if self.QS_VAR == 0:  # Diameter
+            # Existing diameter code (already fast enough)
             max_cross = 0.0
-            for k_idx in keep_cl.l_pt_idxs:
-                k_pt = self.l_buf.get_pt_data_abs(k_idx)
-                if k_pt is None: continue    # ← Fix 3
-                for m_idx in merge_cl.l_pt_idxs:
-                    m_pt = self.l_buf.get_pt_data_abs(m_idx)
+            keep_pts = [self.l_buf.get_pt_data_abs(i) for i in keep_cl.l_pt_idxs[-merge_size:]]  # only new ones
+            merge_pts = [self.l_buf.get_pt_data_abs(i) for i in merge_cl.l_pt_idxs]
+            for k_pt in keep_pts:
+                if k_pt is None: continue
+                for m_pt in merge_pts:
                     if m_pt is None: continue
                     d = np.linalg.norm(k_pt - m_pt)
-                    if d > max_cross: max_cross = d
-            keep_cl.comp_distance = max(keep_cl.comp_distance,
-                                        merge_cl.comp_distance,
-                                        max_cross)
-        else:  # AVG NN
-            keep_cl.comp_distance = keep_cl._avg_nn_of_union(
-                self.l_buf, merge_cl.l_pt_idxs)
+                    if d > max_cross:
+                        max_cross = d
+            keep_cl.comp_distance = max(keep_cl.comp_distance, merge_cl.comp_distance, max_cross)
 
+        else:  # QS_VAR == 1 → Average Nearest-Neighbor Distance (Single-Linkage Style)
+            # Goal: update keep_cl.comp_distance exactly using only new pairwise links
+
+            if old_keep_size < 1:
+                # Keep cluster was empty or singleton → just take merge cluster's avg
+                keep_cl.comp_distance = merge_cl.comp_distance
+            elif merge_size == 0:
+                pass  # nothing to do
+            else:
+                # Extract live points from both clusters
+                keep_pts = np.array([
+                    self.l_buf.get_pt_data_abs(i)
+                    for i in keep_cl.l_pt_idxs[:-merge_size]  # old points only
+                    if self.l_buf.get_pt_data_abs(i) is not None
+                ])
+                merge_pts = np.array([
+                    self.l_buf.get_pt_data_abs(i)
+                    for i in merge_cl.l_pt_idxs
+                    if self.l_buf.get_pt_data_abs(i) is not None
+                ])
+
+                if len(merge_pts) == 0:
+                    pass
+                elif len(keep_pts) == 0:
+                    # Only merged points survive
+                    keep_cl.comp_distance = merge_cl.comp_distance
+                else:
+                    # Compute min distance from each merged point to any point in keep_cl
+                    # Shape: (merge_size, keep_size)
+                    dist_matrix = np.linalg.norm(merge_pts[:, np.newaxis, :] - keep_pts[np.newaxis, :, :], axis=2)
+                    min_dists_to_keep = dist_matrix.min(axis=1)  # one per merged point
+
+                    # These are the new nearest-neighbor links introduced by the merge
+                    avg_new_link_dist = min_dists_to_keep.mean()
+
+                    # Weighted update of running average
+                    old_avg = keep_cl.comp_distance
+                    old_n = old_keep_size
+                    new_n = old_n + len(merge_pts)
+
+                    # New global average NN distance
+                    keep_cl.comp_distance = (old_avg * old_n + avg_new_link_dist * len(merge_pts)) / new_n
 
     def determine_comparison_cluster(self, data_point):
         comparison_point_info = None
