@@ -8611,5 +8611,527 @@
         "start_time": "2025-10-28 06:56:39",
         "completion_time": "2025-10-28 07:43:25",
         "timestamp": "2025-10-28 07:43:25"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "EMNIST",
+            "KAPPA": 0.01,
+            "DATA_WINDOW_SIZE": 2500
+        },
+        "single_rel_recall": 0.26869378063187943,
+        "avg_query_precision": 0.0520921392506043,
+        "avg_rel_individual_recalls": 0.11870274843745736,
+        "avg_query_rate_ave": 0.08675386882829773,
+        "start_time": "2025-10-29 19:51:16",
+        "completion_time": "2025-10-30 05:41:40",
+        "timestamp": "2025-10-30 05:41:40"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "EMNIST",
+            "KAPPA": 0.1,
+            "DATA_WINDOW_SIZE": 100
+        },
+        "single_rel_recall": 0.2680346469218982,
+        "avg_query_precision": 0.013371098533303778,
+        "avg_rel_individual_recalls": 0.11711632413548405,
+        "avg_query_rate_ave": 0.3513018914271678,
+        "start_time": "2025-10-30 09:04:11",
+        "completion_time": "2025-10-30 09:13:23",
+        "timestamp": "2025-10-30 09:13:23"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "EMNIST",
+            "KAPPA": 0.1,
+            "DATA_WINDOW_SIZE": 500
+        },
+        "single_rel_recall": 0.23110561345638722,
+        "avg_query_precision": 0.02540997001411694,
+        "avg_rel_individual_recalls": 0.1013448784082535,
+        "avg_query_rate_ave": 0.16526529108327195,
+        "start_time": "2025-10-30 09:13:23",
+        "completion_time": "2025-10-30 10:02:53",
+        "timestamp": "2025-10-30 10:02:54"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "EMNIST",
+            "KAPPA": 0.1,
+            "DATA_WINDOW_SIZE": 1000
+        },
+        "single_rel_recall": 0.24841913183843914,
+        "avg_query_precision": 0.03536728799951172,
+        "avg_rel_individual_recalls": 0.1107876852534185,
+        "avg_query_rate_ave": 0.12255588307541146,
+        "start_time": "2025-10-30 22:25:32",
+        "completion_time": "2025-10-31 01:00:38",
+        "timestamp": "2025-10-31 01:00:39"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "EMNIST",
+            "KAPPA": 0.25,
+            "DATA_WINDOW_SIZE": 100
+        },
+        "single_rel_recall": 0.27121451380847106,
+        "avg_query_precision": 0.01345918253048599,
+        "avg_rel_individual_recalls": 0.11875801741313899,
+        "avg_query_rate_ave": 0.35157086710881846,
+        "start_time": "2025-10-31 01:00:39",
+        "completion_time": "2025-10-31 01:09:52",
+        "timestamp": "2025-10-31 01:09:52"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "EMNIST",
+            "KAPPA": 0.25,
+            "DATA_WINDOW_SIZE": 500
+        },
+        "single_rel_recall": 0.21879583815840264,
+        "avg_query_precision": 0.024762380786169314,
+        "avg_rel_individual_recalls": 0.09714443625644804,
+        "avg_query_rate_ave": 0.1641304347826087,
+        "start_time": "2025-10-31 01:09:52",
+        "completion_time": "2025-10-31 02:00:52",
+        "timestamp": "2025-10-31 02:00:53"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "EMNIST",
+            "KAPPA": 0.25,
+            "DATA_WINDOW_SIZE": 1000
+        },
+        "single_rel_recall": 0.22560912844626918,
+        "avg_query_precision": 0.03467159536394149,
+        "avg_rel_individual_recalls": 0.10004435164715195,
+        "avg_query_rate_ave": 0.11816138540899045,
+        "start_time": "2025-10-31 02:00:53",
+        "completion_time": "2025-10-31 04:21:50",
+        "timestamp": "2025-10-31 04:21:50"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "EMNIST",
+            "KAPPA": 0.4,
+            "DATA_WINDOW_SIZE": 100
+        },
+        "single_rel_recall": 0.2675971739715291,
+        "avg_query_precision": 0.013422204969434009,
+        "avg_rel_individual_recalls": 0.11801222740795327,
+        "avg_query_rate_ave": 0.35524686809137807,
+        "start_time": "2025-10-31 04:21:50",
+        "completion_time": "2025-10-31 04:30:53",
+        "timestamp": "2025-10-31 04:30:53"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "EMNIST",
+            "KAPPA": 0.4,
+            "DATA_WINDOW_SIZE": 500
+        },
+        "single_rel_recall": 0.2184089553286311,
+        "avg_query_precision": 0.02472521882265471,
+        "avg_rel_individual_recalls": 0.09646346788940746,
+        "avg_query_rate_ave": 0.16449643822156718,
+        "start_time": "2025-10-31 04:30:53",
+        "completion_time": "2025-10-31 05:19:08",
+        "timestamp": "2025-10-31 05:19:09"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "EMNIST",
+            "KAPPA": 0.4,
+            "DATA_WINDOW_SIZE": 1000
+        },
+        "single_rel_recall": 0.2462677357850534,
+        "avg_query_precision": 0.03518580820454351,
+        "avg_rel_individual_recalls": 0.10994432162449848,
+        "avg_query_rate_ave": 0.12303365266519282,
+        "start_time": "2025-10-31 05:19:09",
+        "completion_time": "2025-10-31 07:40:23",
+        "timestamp": "2025-10-31 07:40:23"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "EMNIST",
+            "KAPPA": 0.5,
+            "DATA_WINDOW_SIZE": 100
+        },
+        "single_rel_recall": 0.2766788316898855,
+        "avg_query_precision": 0.013351099212432346,
+        "avg_rel_individual_recalls": 0.12209599061109747,
+        "avg_query_rate_ave": 0.36885654630311965,
+        "start_time": "2025-10-31 07:40:23",
+        "completion_time": "2025-10-31 07:49:28",
+        "timestamp": "2025-10-31 07:49:28"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "EMNIST",
+            "KAPPA": 0.5,
+            "DATA_WINDOW_SIZE": 500
+        },
+        "single_rel_recall": 0.22537810997648874,
+        "avg_query_precision": 0.02424261553887961,
+        "avg_rel_individual_recalls": 0.10022244056879281,
+        "avg_query_rate_ave": 0.16964259395725867,
+        "start_time": "2025-10-31 07:49:28",
+        "completion_time": "2025-10-31 08:37:48",
+        "timestamp": "2025-10-31 08:37:48"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "EMNIST",
+            "KAPPA": 0.6,
+            "DATA_WINDOW_SIZE": 100
+        },
+        "single_rel_recall": 0.28878069036506765,
+        "avg_query_precision": 0.012790882205763313,
+        "avg_rel_individual_recalls": 0.12742637626572775,
+        "avg_query_rate_ave": 0.38981699828052074,
+        "start_time": "2025-10-31 11:03:18",
+        "completion_time": "2025-10-31 11:14:04",
+        "timestamp": "2025-10-31 11:14:04"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "EMNIST",
+            "KAPPA": 0.6,
+            "DATA_WINDOW_SIZE": 500
+        },
+        "single_rel_recall": 0.2366623387257138,
+        "avg_query_precision": 0.02363891118542556,
+        "avg_rel_individual_recalls": 0.10410832719233602,
+        "avg_query_rate_ave": 0.17924834193072955,
+        "start_time": "2025-10-31 12:51:58",
+        "completion_time": "2025-10-31 13:44:41",
+        "timestamp": "2025-10-31 13:44:42"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "EMNIST",
+            "KAPPA": 0.75,
+            "DATA_WINDOW_SIZE": 100
+        },
+        "single_rel_recall": 0.3294741551742289,
+        "avg_query_precision": 0.012860175170340542,
+        "avg_rel_individual_recalls": 0.14523663309588142,
+        "avg_query_rate_ave": 0.4497641857037583,
+        "start_time": "2025-10-31 13:44:42",
+        "completion_time": "2025-10-31 13:54:14",
+        "timestamp": "2025-10-31 13:54:15"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "EMNIST",
+            "KAPPA": 0.75,
+            "DATA_WINDOW_SIZE": 500
+        },
+        "single_rel_recall": 0.2582909312091331,
+        "avg_query_precision": 0.020509387146377046,
+        "avg_rel_individual_recalls": 0.11361800267474548,
+        "avg_query_rate_ave": 0.2172046180299681,
+        "start_time": "2025-10-31 14:51:26",
+        "completion_time": "2025-10-31 15:55:30",
+        "timestamp": "2025-10-31 15:55:31"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "EMNIST",
+            "KAPPA": 0.85,
+            "DATA_WINDOW_SIZE": 100
+        },
+        "single_rel_recall": 0.3737530851200711,
+        "avg_query_precision": 0.012404211252740395,
+        "avg_rel_individual_recalls": 0.16404446082043722,
+        "avg_query_rate_ave": 0.5159874723655121,
+        "start_time": "2025-10-31 15:55:31",
+        "completion_time": "2025-10-31 16:05:43",
+        "timestamp": "2025-10-31 16:05:44"
+    },
+    {
+        "config": {
+            "N_REL_CLASSES": 3,
+            "QS_VAR": 0,
+            "SM_VAR": 0,
+            "REL_PROC_VAR": 0,
+            "K_COMP_PTS": 2,
+            "NGHBHOOD_MERGE": true,
+            "SINGLETON_MERGE": true,
+            "NUM_POINTS_TO_PROCESS": -1,
+            "GRAPH_BATCH_SIZE": 100,
+            "VERBOSE_FLAGS": [
+                0
+            ],
+            "MAKE_GRAPHS": false,
+            "MAKE_EVO_GRAPHS": false,
+            "RANDOM_SEED_OFFSET": 0,
+            "DATA_SOURCE": "EMNIST",
+            "KAPPA": 0.85,
+            "DATA_WINDOW_SIZE": 500
+        },
+        "single_rel_recall": 0.2822171339673182,
+        "avg_query_precision": 0.018716747640660208,
+        "avg_rel_individual_recalls": 0.12484579273451786,
+        "avg_query_rate_ave": 0.2641635961680177,
+        "start_time": "2025-10-31 16:05:44",
+        "completion_time": "2025-10-31 17:03:14",
+        "timestamp": "2025-10-31 17:03:14"
     }
 ]
