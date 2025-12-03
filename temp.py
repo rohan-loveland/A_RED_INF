@@ -1,127 +1,221 @@
+from DAGMM import DAGMM   # ← This is now the correct implementation!
 import numpy as np
-import pickle
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import TensorDataset, DataLoader
+import torch.nn.functional as F
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('TkAgg')
+plt.ion()
+
+from sklearn.manifold import TSNE
+import seaborn as sns
+from collections import Counter
+import random
+import math
+import warnings
 import os
-import struct
-from sklearn.datasets import fetch_openml
+import pickle
+warnings.filterwarnings('ignore')
 
+# -------------------------- Config --------------------------
+N_REL_CLASSES = 8
+RANDOM_SEED   = 42
+MAX_EPOCHS    = 300
+PATIENCE      = 120
+BATCH_SIZE    = 256
+N_COMPONENTS  = 4
+VERBOSE_FLAGS = [0]
 
-def load_and_replicate_mnist(save_path="mnist_replicated_10x.pkl"):
-    """
-    Loads the MNIST dataset using sklearn, duplicates all samples 10 times,
-    and saves to a pickle file.
+np.random.seed(RANDOM_SEED)
+random.seed(RANDOM_SEED)
+torch.manual_seed(RANDOM_SEED)
 
-    Args:
-        save_path: Path to save the replicated MNIST dataset pickle file.
+# -------------------------- 1. Load Data --------------------------
+from main_helper_functions import parking_lot_setup_for_main
 
-    Returns:
-        None (saves replicated dataset to pickle file).
-    """
-    if os.path.exists(save_path):
-        print(f"Replicated MNIST already exists at {save_path}. Skipping...")
-        return
+print(f"Loading Parking Lot data with N_REL_CLASSES = {N_REL_CLASSES}")
+X_raw, y_w_rel, sparsity_levels, relevant_labels = parking_lot_setup_for_main(
+    N_REL_CLASSES=N_REL_CLASSES,
+    VERBOSE_FLAGS=VERBOSE_FLAGS,
+    seed=RANDOM_SEED
+)
 
-    print("Loading MNIST dataset from sklearn...")
+# Normalize to [-1, 1] (DaGMM expects this range)
+X_full = X_raw.astype(np.float32)
+X_full = X_full * 2.0 - 1.0
+input_dim = X_full.shape[1]
 
-    # Load MNIST dataset using sklearn
-    mnist = fetch_openml('mnist_784', version=1, cache=True, as_frame=False)
-    all_images = mnist.data  # Shape: (70000, 784)
-    all_labels = mnist.target  # Shape: (70000,)
+raw_labels = [y[0] for y in y_w_rel]
+class_labels = np.array(raw_labels)
+relevance_flags = np.array([y[1] for y in y_w_rel])
 
-    print(f"Original MNIST loaded: {all_images.shape[0]} samples")
+print(f"Dataset: {X_full.shape[0]:,} samples × {input_dim} features")
+print(f"Selected {N_REL_CLASSES} rarest classes as RELEVANT:")
+for lbl in relevant_labels:
+    cnt = np.sum(class_labels == lbl)
+    print(f"   • '{lbl}': {cnt} samples")
+print()
 
-    # Replicate 10 times
-    all_images_replicated = np.tile(all_images, (10, 1))  # Shape: (700000, 784)
-    all_labels_replicated = np.tile(all_labels, (10,))  # Shape: (700000,)
+# -------------------------- 2. Train/Val Split --------------------------
+val_ratio = 0.10
+n_val = int(len(X_full) * val_ratio)
+indices = np.random.RandomState(RANDOM_SEED).permutation(len(X_full))
+train_idx, val_idx = indices[:-n_val], indices[-n_val:]
 
-    # Normalize images to [0, 1] (sklearn's MNIST is already flattened but not normalized)
-    X_replicated = all_images_replicated / 255.0  # Shape: (700000, 784)
-    y_replicated = all_labels_replicated.astype(str)  # Convert to strings
+X_train = torch.from_numpy(X_full[train_idx])
+X_val   = torch.from_numpy(X_full[val_idx])
 
-    # Save replicated dataset
-    mnist_replicated = {
-        'images': X_replicated,
-        'labels': y_replicated
-    }
-    with open(save_path, 'wb') as f:
-        pickle.dump(mnist_replicated, f)
-    print(f"Replicated MNIST (10x) saved to {save_path}")
-    print(f"Replicated dataset shape: images {X_replicated.shape}, labels {y_replicated.shape}")
+train_dataset = TensorDataset(X_train)
+val_dataset   = TensorDataset(X_val)
+train_loader  = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+val_loader    = DataLoader(val_dataset,   batch_size=BATCH_SIZE, shuffle=False)
 
+# -------------------------- 3. Model + Training Setup --------------------------
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(f"\nTraining on {device} | GMM Components: {N_COMPONENTS}")
 
+model = DAGMM(
+    input_dim=input_dim,
+    latent_dim=16,
+    n_components=N_COMPONENTS,
+    lambda_energy=0.1,
+    lambda_cov=0.005,
+    enc_hidden=[128, 64, 32],
+    est_hidden=[64, 32],
+    dropout=0.5,
+    activation="tanh",
+    device=device
+).to(device)
 
-def load_emnist(data_dir="./gzip", save_path="emnist.pkl"):
-    """
-    Loads EMNIST dataset (byclass split) and saves to a pickle file.
+optimizer = optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-6)
 
-    Args:
-        data_dir: Directory containing EMNIST .idx files and mapping.txt.
-        save_path: Path to save the EMNIST dataset pickle file.
+# -------------------------- 4. Training Loop (with proper GMM updates) --------------------------
+best_val_energy = float('inf')
+patience_counter = 0
+train_losses = []
 
-    Returns:
-        None (saves dataset to pickle file).
-    """
-    # File paths
-    TRAIN_IMAGE_FILE = 'emnist-byclass-train-images-idx3-ubyte'
-    TRAIN_LABEL_FILE = 'emnist-byclass-train-labels-idx1-ubyte'
-    TEST_IMAGE_FILE = 'emnist-byclass-test-images-idx3-ubyte'
-    TEST_LABEL_FILE = 'emnist-byclass-test-labels-idx1-ubyte'
-    MAPPING_FILE = 'emnist-byclass-mapping.txt'
+print("Starting training with REAL DaGMM...")
+for epoch in range(1, MAX_EPOCHS + 1):
+    model.train()
+    epoch_loss = 0.0
 
-    if os.path.exists(save_path):
-        print(f"EMNIST already exists at {save_path}. Skipping...")
-        return
+    # === Full-batch GMM parameter estimation (as in paper) ===
+    z_collect, gamma_collect = [], []
+    with torch.no_grad():
+        for (x,) in train_loader:
+            x = x.to(device)
+            _, _, z, gamma = model(x)
+            z_collect.append(z.cpu())
+            gamma_collect.append(gamma.cpu())
+    z_all = torch.cat(z_collect).to(device)
+    gamma_all = torch.cat(gamma_collect).to(device)
+    model.compute_gmm_params(z_all, gamma_all)
 
-    print("Loading EMNIST dataset from .idx files...")
+    for (x,) in train_loader:
+        x = x.to(device)
+        optimizer.zero_grad()
 
-    # Load mapping file (for reference, not strictly needed for pickle)
-    mapping = {}
-    with open(os.path.join(data_dir, MAPPING_FILE), 'r') as f:
-        for line in f:
-            label_idx, unicode_val = map(int, line.strip().split())
-            mapping[label_idx] = chr(unicode_val)
+        z_c, x_rec, z, gamma = model(x)
+        loss_dict = model.loss_function(x, x_rec, z, gamma)
 
-    # Load train images
-    with open(os.path.join(data_dir, TRAIN_IMAGE_FILE), 'rb') as f:
-        magic, num_images_train, rows, cols = struct.unpack('>IIII', f.read(16))
-        train_img_data = np.frombuffer(f.read(), dtype=np.uint8)
-        train_images = train_img_data.reshape((num_images_train, rows, cols))
+        loss_dict["loss"].backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
+        optimizer.step()
 
-    # Load train labels
-    with open(os.path.join(data_dir, TRAIN_LABEL_FILE), 'rb') as f:
-        magic, num_labels_train = struct.unpack('>II', f.read(8))
-        train_labels = np.frombuffer(f.read(), dtype=np.uint8)
+        epoch_loss += loss_dict["loss"].item() * x.size(0)
 
-    # Load test images
-    with open(os.path.join(data_dir, TEST_IMAGE_FILE), 'rb') as f:
-        magic, num_images_test, rows_test, cols_test = struct.unpack('>IIII', f.read(16))
-        test_img_data = np.frombuffer(f.read(), dtype=np.uint8)
-        test_images = test_img_data.reshape((num_images_test, rows_test, cols_test))
+    epoch_loss /= len(train_loader)
+    train_losses.append(epoch_loss)
 
-    # Load test labels
-    with open(os.path.join(data_dir, TEST_LABEL_FILE), 'rb') as f:
-        magic, num_labels_test = struct.unpack('>II', f.read(8))
-        test_labels = np.frombuffer(f.read(), dtype=np.uint8)
+    # === Validation energy ===
+    model.eval()
+    with torch.no_grad():
+        val_z_collect = []
+        for (x,) in val_loader:
+            x = x.to(device)
+            _, _, z, _ = model(x)
+            val_z_collect.append(z.cpu())
+        val_z = torch.cat(val_z_collect).to(device)
+        val_energy = model.compute_energy(val_z).mean().item()
 
-    # Combine train and test
-    all_images = np.concatenate((train_images, test_images), axis=0)  # Shape: (814255, 28, 28)
-    all_labels = np.concatenate((train_labels, test_labels), axis=0)  # Shape: (814255,)
+    if epoch <= 10 or epoch % 20 == 0 or epoch == MAX_EPOCHS:
+        print(f"Epoch {epoch:3d} | Train Loss: {epoch_loss:.4f} | Val Energy: {val_energy:.4f}")
 
-    print(f"EMNIST loaded: {all_images.shape[0]} samples")
+    # Early stopping on validation energy
+    if val_energy < best_val_energy - 1e-4:
+        best_val_energy = val_energy
+        patience_counter = 0
+        torch.save(model.state_dict(), f"results/dagmm_real_4comp_NREL{N_REL_CLASSES}_best.pth")
+    else:
+        patience_counter += 1
+        if patience_counter >= PATIENCE:
+            print(f"\nEarly stopping at epoch {epoch}")
+            break
 
-    # Fix orientation, normalize, and flatten images
-    X = np.array([np.fliplr(img.T).flatten() / 255.0 for img in all_images])  # Shape: (814255, 784)
-    y = all_labels.astype(str)  # Convert to strings
+# Load best model
+model.load_state_dict(torch.load(f"results/dagmm_real_4comp_NREL{N_REL_CLASSES}_best.pth"))
 
-    # Save dataset
-    emnist = {
-        'images': X,
-        'labels': y
-    }
-    with open(save_path, 'wb') as f:
-        pickle.dump(emnist, f)
-    print(f"EMNIST saved to {save_path}")
-    print(f"Dataset shape: images {X.shape}, labels {y.shape}")
+# -------------------------- 5. Final Inference --------------------------
+print("\nFinal inference on full dataset...")
+model.eval()
+with torch.no_grad():
+    X_tensor = torch.from_numpy(X_full).to(device)
+    z_c_all, _, z_all, _ = model(X_tensor)
+    z_c_all = z_c_all.cpu().numpy()
+    anomaly_scores = model.predict_energy(X_full)  # Uses real GMM energy
 
-if __name__ == "__main__":
-    load_emnist()
-    load_and_replicate_mnist()
+# -------------------------- 5.1 Save for A/RED --------------------------
+os.makedirs("results", exist_ok=True)
+latent_path = f"results/preprocessed_X_latent_NREL{N_REL_CLASSES}.pkl"
+yrel_path   = f"results/y_w_rel_NREL{N_REL_CLASSES}.pkl"
+
+with open(latent_path, "wb") as f:
+    pickle.dump(z_c_all, f)        # Save compressed latent z_c (not full z with euc/cos)
+with open(yrel_path, "wb") as f:
+    pickle.dump(y_w_rel, f)
+
+print("\n" + "="*80)
+print("PREPROCESSED DATA SAVED FOR A/RED (REAL DAGMM)")
+print(f"   • Latent z_c : {latent_path}")
+print(f"   • Labels     : {yrel_path}")
+print("="*80)
+
+# -------------------------- 6. Top 100 Anomalies --------------------------
+print("\nTOP 100 MOST ANOMALOUS SAMPLES (Real DaGMM Energy)")
+print("-"*90)
+top_idx = np.argsort(anomaly_scores)[-100:][::-1]
+for rank, idx in enumerate(top_idx, 1):
+    label = class_labels[idx]
+    is_rel = "REL" if relevance_flags[idx] else "   "
+    print(f"{rank:3d}. [{is_rel}] Energy: {anomaly_scores[idx]:8.2f} → '{label}'")
+
+# -------------------------- 7. t-SNE Visualization --------------------------
+print("\nRunning t-SNE on compressed latent space...")
+tsne = TSNE(n_components=2, perplexity=80, learning_rate='auto', init='pca',
+            random_state=RANDOM_SEED, n_jobs=-1, metric='euclidean', max_iter=4000)
+Z_2d = tsne.fit_transform(z_c_all)
+
+unique_classes = sorted(set(class_labels))
+palette = sns.color_palette("tab20", len(unique_classes))
+class_to_color = {cls: palette[i] for i, cls in enumerate(unique_classes)}
+
+plt.figure(figsize=(14, 10))
+for cls in unique_classes:
+    mask = class_labels == cls
+    color = 'red' if cls in relevant_labels else class_to_color[cls]
+    alpha = 1.0 if cls in relevant_labels else 0.6
+    plt.scatter(Z_2d[mask, 0], Z_2d[mask, 1], c=[color], s=50, label=f"{cls} ({mask.sum()})",
+                alpha=alpha, edgecolors='black', linewidth=0.6 if cls in relevant_labels else 0)
+plt.legend(bbox_to_anchor=(1.02, 1), loc='upper left', title="Class (red = relevant)")
+plt.title(f'Real DaGMM Latent Space — N_REL_CLASSES={N_REL_CLASSES}', fontsize=18)
+plt.tight_layout()
+plt.savefig(f'results/real_dagmm_tsne_NREL{N_REL_CLASSES}.png', dpi=300, bbox_inches='tight')
+plt.show(block=True)
+
+print("\n" + "="*85)
+print("ALL DONE WITH THE REAL DAGMM!")
+print("You now have state-of-the-art unsupervised anomaly scores.")
+print("="*85)

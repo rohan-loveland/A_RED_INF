@@ -422,7 +422,7 @@ if __name__ == "__main__":
     # Load and preprocess data
     # -------------------------
     X_skewed, y_w_rel, sparsity_levels, rel_classes = parking_lot_setup_for_main(
-        VERBOSE_FLAGS, RANDOM_SEED_OFFSET
+        1, VERBOSE_FLAGS, RANDOM_SEED_OFFSET
     )
     print(f"Dataset loaded: {X_skewed.shape[0]} samples, labels type: {type(y_w_rel[0])}")
 
@@ -436,7 +436,7 @@ if __name__ == "__main__":
     # -------------------------
     # Initialize and train DaGMM
     # -------------------------
-    model = DaGMM(
+    model = DAGMM(
         input_dim=X.shape[1],
         latent_dim=latent_dim,
         n_components=n_components,

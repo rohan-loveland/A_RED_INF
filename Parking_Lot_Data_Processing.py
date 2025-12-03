@@ -3,6 +3,7 @@ import pickle
 import pandas as pd
 import cv2
 from collections import Counter
+import os
 
 
 def parking_lot_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, seed):
