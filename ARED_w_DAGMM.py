@@ -83,11 +83,8 @@ class ARED_w_DAGMM:
 
         X = np.stack(data)
 
-        new_model = DaGMM(
-            comp=self.dagmm_params["n_components"],
-            latent_dim=self.dagmm_params["latent_dim"],
-            lambda_energy=self.dagmm_params["lambda_energy"],
-            lambda_cov_diag=self.dagmm_params["lambda_cov"],
+        new_model = DAGMM(
+            128*128
         )
         new_model.fit(
             X,
