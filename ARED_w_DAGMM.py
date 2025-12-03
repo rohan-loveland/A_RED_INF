@@ -1,6 +1,6 @@
 from A_REDIN import ARED
 from Circular_Buffer import Circular_Buffer
-from DAGMM import DaGMM # replace with ro's dagmm
+from DAGMM import DAGMM
 import threading
 import numpy as np
 
