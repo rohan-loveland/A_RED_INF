@@ -70,7 +70,7 @@ class DAGMM(nn.Module):
         # ---------------- Decoder ----------------
         dec_layers = []
         prev = self.latent_dim
-        for h in reversed(enc_hidden):
+        for h in reversed(enc_hidden): # hi
             dec_layers.append(nn.Linear(prev, h))
             dec_layers.append(self.activation)
             prev = h
