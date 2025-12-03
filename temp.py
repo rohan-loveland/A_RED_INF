@@ -6,7 +6,7 @@ import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
-import matplotlib
+import matplotlib #
 matplotlib.use('TkAgg')
 plt.ion()
 
