@@ -18,12 +18,15 @@ def parking_lot_dagmm_preprocessed(VERBOSE_FLAGS=None, seed=42):
         VERBOSE_FLAGS = []
 
     # Paths – adjust if needed
-    latent_path = "Parking_Lot_Data/preprocessed_X_latent_NREL8.pkl"
+    # latent_path = "Parking_Lot_Data/preprocessed_X_latent_NREL8.pkl"
     y_path      = "Parking_Lot_Data/y_w_rel_NREL8.pkl"
+    #
+    # # Load data
+    # with open(latent_path, "rb") as f:
+    #     X = pickle.load(f)
 
-    # Load data
-    with open(latent_path, "rb") as f:
-        X = pickle.load(f)
+    with open("results/preprocessed_X_full_z_NREL8.pkl", "rb") as f:
+        X = pickle.load(f)  # ← this is now z_all (66-dim)
 
     with open(y_path, "rb") as f:
         y_w_rel = pickle.load(f)  # Keep original relevance flags!

@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# dagmm_modern_full.py
-
 import math
 import os
 from typing import Optional, Tuple, Union, Dict
@@ -12,6 +9,7 @@ from torch import Tensor
 from main_helper_functions import *
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
+import seaborn as sns  # Added for consistent color palette
 
 class DAGMM(nn.Module):
     """
@@ -501,47 +499,23 @@ if __name__ == "__main__":
     z_2d = tsne.fit_transform(z_c)
 
     # -------------------------
-    # Smart visualization: highlight anomalies, subsample normals
+    # Visualization: each class a different color
     # -------------------------
-    # Define what you consider "anomaly" classes (adjust to your actual rare labels!)
-    ANOMALY_LABELS = {'person', 'bicycle', 'motorcycle', 'car'}  # ← change if needed
-
-    is_anomaly = np.array([label in ANOMALY_LABELS for label in y_w_rel])
-    normal_idx = np.where(~is_anomaly)[0]
-    anomaly_idx = np.where(is_anomaly)[0]
-
-    print(f"Normals: {len(normal_idx)} | Anomalies: {len(anomaly_idx)}")
-
     plt.figure(figsize=(14, 10))
 
-    # 1. Subsampled background (normals)
-    np.random.seed(123)
-    n_background = min(1200, len(normal_idx))
-    bg_idx = np.random.choice(normal_idx, n_background, replace=False)
-    plt.scatter(z_2d[bg_idx, 0], z_2d[bg_idx, 1],
-                c='lightgray', s=20, alpha=0.6, label=f'Normal (subsampled, n={n_background})')
+    unique_labels = sorted(set(y_w_rel))
+    palette = sns.color_palette("tab20", len(unique_labels))
+    color_map = {cls: palette[i] for i, cls in enumerate(unique_labels)}
 
-    # 2. All anomalies — big, colorful, edged
-    unique_anomaly_labels = sorted(set(y_w_rel[i] for i in anomaly_idx))
-    colors = [unique_anomaly_labels.index(y_w_rel[i]) for i in anomaly_idx]
+    for cls in unique_labels:
+        mask = np.array([label == cls for label in y_w_rel])
+        color = color_map[cls]
+        plt.scatter(z_2d[mask, 0], z_2d[mask, 1], c=[color], s=60, label=f"{cls} ({mask.sum()})",
+                    alpha=1.0, edgecolors='black', linewidth=1.0, zorder=5)
 
-    scatter = plt.scatter(z_2d[anomaly_idx, 0], z_2d[anomaly_idx, 1],
-                          c=colors, cmap='tab10', s=140,
-                          edgecolor='black', linewidth=1.2,
-                          label='Anomalies', zorder=5)
-
-    # Custom legend only for anomaly types
-    from matplotlib.lines import Line2D
-    legend_elements = [
-        Line2D([0], [0], marker='o', color='w', label=lab,
-               markerfacecolor=plt.cm.tab10(i), markersize=12, markeredgecolor='black')
-        for i, lab in enumerate(unique_anomaly_labels)
-    ]
-    plt.legend(handles=legend_elements, title="Anomaly Type", loc="upper left")
-
+    plt.legend(bbox_to_anchor=(1.02, 1), loc='upper left', title="Class")
     plt.title("DaGMM Latent Space (t-SNE) — Parking Lot Dataset\n"
-              f"Total: {len(X)} samples | Anomalies highlighted: {len(anomaly_idx)}",
-              fontsize=16, pad=20)
+              f"Total: {len(X)} samples", fontsize=16, pad=20)
     plt.xlabel("t-SNE 1")
     plt.ylabel("t-SNE 2")
     plt.grid(alpha=0.3)

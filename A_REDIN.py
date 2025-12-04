@@ -43,9 +43,6 @@ class Subspace_Partition:
             del self.cluster_dict[pt_cluster_key]
 
 
-
-
-
 """# Cluster"""
 class Cluster:
     def __init__(self, label, relevance, l_pt_idxs, l_buf, cluster_key, QS_VAR=0):
