@@ -30,17 +30,17 @@ N_REL_CLASSES: Specified number of relevant classes
 # DATA_SOURCE = "NICE"
 # N_REL_CLASSES = 4
 
-# DATA_SOURCE = "PARKING_LOT"
-# N_REL_CLASSES = 8
-
-DATA_SOURCE = "PARKING_LOT_DAGMM"
+DATA_SOURCE = "PARKING_LOT"
 N_REL_CLASSES = 8
+
+# DATA_SOURCE = "PARKING_LOT_DAGMM"
+# N_REL_CLASSES = 8
 
 '''
 KAPPA: Paranoia Parameter
 (single value for now)
 '''
-KAPPA = 2
+KAPPA = 0.5
 # # KAPPAS = [0.5] #0.5, , 1.4, 10
 # |- Array of Kappas to run ARED on
 # |- Run more than one for graphing purposes
@@ -124,7 +124,7 @@ NUM_POINTS_TO_PROCESS = 100000#-1
 '''
 GRAPH_BATCH_SIZE: number of points in batch for stats purposes.
 '''
-GRAPH_BATCH_SIZE = 1000
+GRAPH_BATCH_SIZE = 500
 
 '''
 VERBOSE_FLAGS: Array of control flags to make ARED loud or quiet

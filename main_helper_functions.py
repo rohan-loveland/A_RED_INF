@@ -4,25 +4,33 @@ from MNIST_2D_Data_Processing import *
 from EMNIST_Data_Processing import *
 from NICE_Data_Processing import *
 from Parking_Lot_Data_Processing import *
-from Parking_Lot_DAGMM_Data_Processing import *
+# from Parking_Lot_DAGMM_Data_Processing import *
+from dagmm_parking_lot import compute_dagmm_features_parking_lot
 
 def get_data(data_source, N_REL_CLASSES, VERBOSE_FLAGS, seed):
     if data_source == "MNIST":
-        X_skewed, y_w_rel, sparsity_levels, rel_classes = MNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, seed)
+        X, y_w_rel, sparsity_levels, rel_classes = MNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, seed)
     elif data_source == "MNIST_2D":
-        X_skewed, y_w_rel, sparsity_levels, rel_classes = MNIST_2D_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, seed)
+        X, y_w_rel, sparsity_levels, rel_classes = MNIST_2D_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, seed)
     elif data_source == "EMNIST":
-        X_skewed, y_w_rel, sparsity_levels, rel_classes = EMNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS)
+        X, y_w_rel, sparsity_levels, rel_classes = EMNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS)
     elif data_source == "NICE":
-        X_skewed, y_w_rel, sparsity_levels, rel_classes = generate_synthetic_dataset_with_relevance(N_REL_CLASSES, seed)
+        X, y_w_rel, sparsity_levels, rel_classes = generate_synthetic_dataset_with_relevance(N_REL_CLASSES, seed)
     elif data_source == "PARKING_LOT":
-        X_skewed, y_w_rel, sparsity_levels, rel_classes = parking_lot_setup_for_main(VERBOSE_FLAGS, seed)
+        X, y_w_rel, sparsity_levels, rel_classes = parking_lot_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, seed)
     elif data_source == "PARKING_LOT_DAGMM":
-        X_skewed, y_w_rel, sparsity_levels, rel_classes = parking_lot_dagmm_preprocessed(VERBOSE_FLAGS, seed)
+        X, y_w_rel, sparsity_levels, rel_classes = compute_dagmm_features_parking_lot(
+            N_REL_CLASSES=N_REL_CLASSES,
+            USE_PCA=False,  # change anytime!
+            PCA_COMPS=1024,
+            seed=42 + seed,  # keep consistent with other experiments
+            verbose=0 in VERBOSE_FLAGS
+        )
     else:
         raise ValueError("Invalid data source")
 
-    return X_skewed, y_w_rel, sparsity_levels, rel_classes
+    return X, y_w_rel, sparsity_levels, rel_classes
+
 
 def set_up_stats(ared):
     start_time = time.time()
