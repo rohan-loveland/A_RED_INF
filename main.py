@@ -27,23 +27,20 @@ N_REL_CLASSES: Specified number of relevant classes
 # DATA_SOURCE = "EMNIST"
 # N_REL_CLASSES = 3
 
-# DATA_SOURCE = "NICE"
-# N_REL_CLASSES = 4
+DATA_SOURCE = "NICE"
+N_REL_CLASSES = 4
 
-DATA_SOURCE = "PARKING_LOT"
-N_REL_CLASSES = 8
+# DATA_SOURCE = "PARKING_LOT"
+# N_REL_CLASSES = 8
 
 # DATA_SOURCE = "PARKING_LOT_DAGMM"
 # N_REL_CLASSES = 8
 
 '''
 KAPPA: Paranoia Parameter
-(single value for now)
 '''
-KAPPA = 0.5
-# # KAPPAS = [0.5] #0.5, , 1.4, 10
-# |- Array of Kappas to run ARED on
-# |- Run more than one for graphing purposes
+KAPPA = 0.25
+
 
 '''
 QS_VAR: Query Strategy Variants
@@ -97,7 +94,7 @@ NUM_POINTS_TO_PROCESS: Number of points in dataset to process
 |- -1: process all the data
 |-  0 to inf: process up to that number if data is available
 '''
-NUM_POINTS_TO_PROCESS = 100000#-1
+NUM_POINTS_TO_PROCESS = 10000#-1
 
 # '''
 # NUM_RUN_TO_AVE: number of runs to average.
@@ -109,7 +106,7 @@ NUM_POINTS_TO_PROCESS = 100000#-1
 '''
 GRAPH_BATCH_SIZE: number of points in batch for stats purposes.
 '''
-GRAPH_BATCH_SIZE = 500
+GRAPH_BATCH_SIZE = 250
 
 '''
 VERBOSE_FLAGS: Array of control flags to make ARED loud or quiet
@@ -210,8 +207,9 @@ if __name__ == '__main__':
                 if 0 in VERBOSE_FLAGS:
                     if j > 1:
                         print(f"Processing point {i}... (last {GRAPH_BATCH_SIZE} points took {times[j]- times[j-1]:.2f} seconds)")
-                        print(f"# correct queries in this batch: {num_correct_queries[j-1] - num_correct_queries[j-2]}")
+                        print(f"# relevants in this batch: {cumulative_relevants[j-1] - cumulative_relevants[j-2]}")
                         print(f"# queries in this batch: {num_queries[j-1] - num_queries[j-2]}")
+                        print(f"# correct queries in this batch: {num_correct_queries[j-1] - num_correct_queries[j-2]}")
                         print(f"Number of clusters: {num_clusters[j-1]}")  # Add cluster count
                         print(f"Number of labels: {num_labels[j-1]}")
                         print(f"fill % of buffer: {fill_pct:.2f}%")
@@ -234,60 +232,57 @@ if __name__ == '__main__':
             evo_plotter.plot()
             evo_plotter.plot_dataset(X_skewed, y_w_rel)
 
-        print("ARED DONE")
 
         relevant_per_batch = np.diff(cumulative_relevants, prepend=0)
         num_correct_queries_per_batch = np.diff(num_correct_queries, prepend=0)
         num_queries_per_batch = np.diff(num_queries, prepend=0)
 
-        PLOT_FLAG = True
-        single_rel_recall_list, query_precision_list, rel_individual_recalls, query_rate = \
-            calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes, ared, num_correct_queries, \
-                                     num_queries, PLOT_FLAG, GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS)
-
         # with np.printoptions(threshold=sys.maxsize):
         #     print(ared.conf_matrix)
 
         if MAKE_GRAPHS:
-            try:
-                # --- Plot #1: Number of clusters ---
-                batch_num_pts = list(range(GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS + 1, GRAPH_BATCH_SIZE))
-                plt.figure(figsize=(10, 5))
-                plt.plot(batch_num_pts, num_clusters, 'b-o', label="Number of clusters")
-                plt.grid(True)
-                plt.xlabel("Processed points")
-                plt.ylabel("Count")
-                plt.legend()
-                plt.title("Cluster Evolution")
-
-                # --- Plot #2: Time per batch + Buffer fill % ---
-                if len(times) > 1 and len(buffer_fill_percents) == len(np.diff(times)):
-                    plt.figure(figsize=(10, 6))
-
-                    batch_indices = list(range(1, len(times)))
-
-                    time_per_batch = np.diff(times)
-
-                    ax1 = plt.gca()
-                    col = 'tab:red'
-                    ax1.set_xlabel("Batch #")
-                    ax1.set_ylabel("Time per batch (sec)", color=col)
-                    ax1.plot(batch_indices, time_per_batch, 'o-', color=col, label="Time per batch")
-                    ax1.tick_params(axis='y', labelcolor=col)
-                    ax1.grid(True, alpha=0.3)
-
-                    ax2 = ax1.twinx()
-                    col = 'tab:green'
-                    ax2.set_ylabel("Buffer fill %", color=col)
-                    ax2.plot(batch_indices, buffer_fill_percents, 's--', color=col, label="Buffer fill %")
-                    ax2.tick_params(axis='y', labelcolor=col)
-
-                    plt.title("Performance per Batch")
-                    ax1.legend(loc="upper left")
-                    ax2.legend(loc="upper right")
-
-            except Exception as e:
-                print("Plot error:", e)
+            single_rel_recall_list, query_precision_list, rel_individual_recalls, query_rate, rel_rate_list = \
+                calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes, ared, num_correct_queries,
+                                                num_queries, MAKE_GRAPHS, GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS)
+            # try:
+            #     # --- Plot #1: Number of clusters ---
+            #     batch_num_pts = list(range(GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS + 1, GRAPH_BATCH_SIZE))
+            #     plt.figure(figsize=(10, 5))
+            #     plt.plot(batch_num_pts, num_clusters, 'b-o', label="Number of clusters")
+            #     plt.grid(True)
+            #     plt.xlabel("Processed points")
+            #     plt.ylabel("Count")
+            #     plt.legend()
+            #     plt.title("Cluster Evolution")
+            #
+            #     # --- Plot #2: Time per batch + Buffer fill % ---
+            #     if len(times) > 1 and len(buffer_fill_percents) == len(np.diff(times)):
+            #         plt.figure(figsize=(10, 6))
+            #
+            #         batch_indices = list(range(1, len(times)))
+            #
+            #         time_per_batch = np.diff(times)
+            #
+            #         ax1 = plt.gca()
+            #         col = 'tab:red'
+            #         ax1.set_xlabel("Batch #")
+            #         ax1.set_ylabel("Time per batch (sec)", color=col)
+            #         ax1.plot(batch_indices, time_per_batch, 'o-', color=col, label="Time per batch")
+            #         ax1.tick_params(axis='y', labelcolor=col)
+            #         ax1.grid(True, alpha=0.3)
+            #
+            #         ax2 = ax1.twinx()
+            #         col = 'tab:green'
+            #         ax2.set_ylabel("Buffer fill %", color=col)
+            #         ax2.plot(batch_indices, buffer_fill_percents, 's--', color=col, label="Buffer fill %")
+            #         ax2.tick_params(axis='y', labelcolor=col)
+            #
+            #         plt.title("Performance per Batch")
+            #         ax1.legend(loc="upper left")
+            #         ax2.legend(loc="upper right")
+            #
+            # except Exception as e:
+            #     print("Plot error:", e)
 
 
         current_time = time.time()
