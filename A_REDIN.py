@@ -8,9 +8,7 @@ import heapq
 from sklearn.mixture import GaussianMixture
 from FiniteBuffer import FiniteBuffer
 from sklearn.neighbors import NearestNeighbors
-
 from main import QS_VAR
-
 
 """# Subspace Partition"""
 # NOTE: ARED_IN doesn't use o-pts at the moment, and ALL o_pt support has been removed

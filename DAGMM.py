@@ -108,19 +108,8 @@ class DAGMM(nn.Module):
     # ============================================================
     # Forward helpers
     # ============================================================
-    def encode(self, x: Union[np.ndarray, Tensor]) -> Tensor:
-        # Convert numpy to tensor if needed
-        if isinstance(x, np.ndarray):
-            x = torch.from_numpy(x).float()
-
-        # Move input to the model's device
-        x = x.to(self.device)
-
-        # Forward pass
-        z = self.encoder(x)
-
-        # IMPORTANT: BallTree requires CPU tensors → numpy
-        return z.detach().cpu()
+    def encode(self, x: Tensor) -> Tensor:
+        return self.encoder(x)
 
     def decode(self, z: Tensor) -> Tensor:
         return self.decoder(z)
@@ -402,6 +391,66 @@ class DAGMM(nn.Module):
         self.load_state_dict(data["state_dict"])
         self.to(self.device)
 
+    @torch.no_grad()
+    def transform(self, X: Union[np.ndarray, Tensor], batch_size: int = 4096) -> np.ndarray:
+        """
+        Encode data into the compression latent space z_c (same as autoencoder latent).
+        This is the method used by ARED_w_DAGMM to get low-dim representations.
+
+        Args:
+            X: Input data (N, input_dim), can be numpy or torch tensor
+            batch_size: For memory efficiency on large datasets
+
+        Returns:
+            z_c: (N, latent_dim) numpy array
+        """
+        self.eval()
+        if isinstance(X, np.ndarray):
+            X = torch.from_numpy(X).float()
+        X = X.to(self.device)
+
+        latents = []
+        loader = torch.utils.data.DataLoader(
+            torch.utils.data.TensorDataset(X),
+            batch_size=batch_size,
+            shuffle=False,
+        )
+
+        for (batch,) in loader:
+            z_c, _, _, _ = self.forward(batch)
+            latents.append(z_c.cpu().numpy())
+
+        return np.concatenate(latents, axis=0)
+
+    @torch.no_grad()
+    def transform_energy(self, X: Union[np.ndarray, Tensor], batch_size: int = 4096
+                         ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Returns both latent vectors and corresponding energy (anomaly) scores.
+
+        Useful for visualization or hybrid scoring.
+        """
+        self.eval()
+        if isinstance(X, np.ndarray):
+            X = torch.from_numpy(X).float()
+        X = X.to(self.device)
+
+        latents = []
+        energies = []
+        loader = torch.utils.data.DataLoader(
+            torch.utils.data.TensorDataset(X),
+            batch_size=batch_size,
+            shuffle=False,
+        )
+
+        for (batch,) in loader:
+            z_c, _, z, _ = self.forward(batch)
+            energy = self.compute_energy(z)
+            latents.append(z_c.cpu().numpy())
+            energies.append(energy.cpu().numpy())
+
+        return np.concatenate(latents, axis=0), np.concatenate(energies, axis=0)
+
 
 # ============================================================
 # Main (example usage)
@@ -542,3 +591,5 @@ if __name__ == "__main__":
              labels=np.array(y_w_rel),
              top_indices=top_indices)
     print("Results saved to dagmm_results.npz")
+
+

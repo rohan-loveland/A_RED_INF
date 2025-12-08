@@ -21,6 +21,28 @@ class Circular_Buffer:
             self.start = (self.start + 1) % self.size
             return overwritten
 
+    # used by ARED_w_DAGMM
+    def append_get_index(self, value):
+        """
+        Appends a value and returns both:
+            - the overwritten value (same as append())
+            - the index where the new value was written
+        """
+        index = (self.start + self.count) % self.size
+
+        if self.count < self.size:
+            self.buffer[index] = value
+            self.count += 1
+            return None, index  # nothing overwritten
+        else:
+            overwritten = self.buffer[self.start]
+            self.buffer[self.start] = value
+            self.start = (self.start + 1) % self.size
+            # Note: when full, we write to self.start, then advance it
+            # so the written index is the old self.start
+            written_index = (self.start - 1) % self.size
+            return overwritten, written_index
+
     def set_at(self, index, value):
         """Set value at a relative index within the buffer (0 = oldest)."""
         if index < 0 or index >= self.count:
