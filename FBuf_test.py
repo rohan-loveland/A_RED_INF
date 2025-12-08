@@ -72,7 +72,7 @@ class TestInit(unittest.TestCase):
         self.assertTrue(len(self.FiniteBuffer.ball_trees) == 0 )
 
     def test_buffer_size_set_up(self):
-        self.assertEqual(self.FiniteBuffer.data_circular_buffer.size, 10)
+        self.assertEqual(self.FiniteBuffer.dagmm_data_circular_buffer.size, 10)
         self.assertEqual(self.FiniteBuffer.label_circular_buffer.size, 10)
         #self.assertEqual(self.FiniteBuffer.cluster_id_circular_buffer.size, 10) # removed feature
         self.assertEqual(self.FiniteBuffer.relevance_circular_buffer.size, 10)

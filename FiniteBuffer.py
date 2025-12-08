@@ -4,6 +4,7 @@ from sklearn.metrics import DistanceMetric
 import threading
 import numpy as np
 import bisect
+from DAGMM import DAGMM
 
 # READ AND ACT UPON.
 # NOTE by Ro: There are 3 types of indexes here, and we should improve the names:
@@ -26,6 +27,7 @@ class BallTreeWithIndexes(BallTree):
 
 class FiniteBuffer:
     def __init__(self, buffer_size: int, ball_tree_ratio: float = 0.8, num_ball_trees: int = 2):
+        self.dagmm_data_circular_buffer = Circular_Buffer(buffer_size)
         self.data_circular_buffer = Circular_Buffer(buffer_size)
         self.label_circular_buffer = Circular_Buffer(buffer_size)
         self.relevance_circular_buffer = Circular_Buffer(buffer_size)
@@ -50,17 +52,18 @@ class FiniteBuffer:
         self._tree_build_lock = threading.Lock()
         self._building_tree = False  # flag so we don’t start multiple builds
 
-    def insert_pt(self, X, cluster_key, label, relevance, true_abs_idx):
+    def insert_pt(self, x_c, x, cluster_key, label, relevance, true_abs_idx):
 
         forgotten_pt_info = None
         build_ball_tree = False
 
         # Check if buffer is fulls
-        if self.data_circular_buffer.is_full():
+        if self.dagmm_data_circular_buffer.is_full():
             forgotten_pt_info = self._forget_pt()
             self.min_internal_abs_idx += 1
 
-        self.data_circular_buffer.append(X)
+        self.dagmm_data_circular_buffer.append(x_c)
+        self.data_circular_buffer.append(x)
         self.label_circular_buffer.append(label)
         self.relevance_circular_buffer.append(relevance)
         self.cluster_key_circular_buffer.append(cluster_key)
@@ -98,7 +101,7 @@ class FiniteBuffer:
 
         return forgotten_pt_cluster_key, forgotten_pt_index, forgotten_pt_relevance, forgotten_pt_true_abs_idx
 
-    def find_closest_pts(self, X, k):
+    def find_closest_pts(self, x_c, k):
         closest_pts = []
         internal_idxes = []
 
@@ -121,7 +124,7 @@ class FiniteBuffer:
 
             # --- brute-force tail end ---
             for cb_i in range(0, min_cb_index_covered_by_btree):
-                dist = np.linalg.norm(X - self.data_circular_buffer.get(cb_i))
+                dist = np.linalg.norm(x_c - self.dagmm_data_circular_buffer.get(cb_i))
                 distances = [d[2] for d in closest_pts]
                 l_internal_idx = cb_i + self.min_internal_abs_idx
                 pos = bisect.bisect_left(distances, dist)
@@ -135,7 +138,7 @@ class FiniteBuffer:
                             l_internal_idx,
                             dist,
                             self.label_circular_buffer.get(cb_i),
-                            self.data_circular_buffer.get(cb_i),
+                            self.dagmm_data_circular_buffer.get(cb_i),
                             self.relevance_circular_buffer.get(cb_i),
                             self.true_abs_idx_circular_buffer.get(cb_i),
                         ),
@@ -145,9 +148,9 @@ class FiniteBuffer:
                         closest_pts.pop()
 
             # --- search only the snapshotted trees ---
-            X = X.reshape((1, -1))
+            x_c = x_c.reshape((1, -1))
             for ball_tree in trees_snapshot:
-                dists, bt_idxs = ball_tree.query(X, min(k, ball_tree.length))
+                dists, bt_idxs = ball_tree.query(x_c, min(k, ball_tree.length))
 
                 for j in range(dists.shape[1]):
                     l_internal_idx = bt_idxs[0][j] + ball_tree.min_index
@@ -166,7 +169,7 @@ class FiniteBuffer:
                                 l_internal_idx,
                                 dist,
                                 self.label_circular_buffer.get(cb_idx),
-                                self.data_circular_buffer.get(cb_idx),
+                                self.dagmm_data_circular_buffer.get(cb_idx),
                                 self.relevance_circular_buffer.get(cb_idx),
                                 self.true_abs_idx_circular_buffer.get(cb_idx),
                             ),
@@ -179,7 +182,7 @@ class FiniteBuffer:
             # brute force head end
             num_head_pts = self.max_internal_abs_idx - max_l_idx_covered_by_btree
             for cb_idx in range(max_cb_index_covered_by_btree, max_cb_index_covered_by_btree + num_head_pts  + 1):
-                dist = np.linalg.norm(X - self.data_circular_buffer.get(cb_idx))
+                dist = np.linalg.norm(x_c - self.dagmm_data_circular_buffer.get(cb_idx))
                 l_internal_idx = cb_idx + self.min_internal_abs_idx
                 distances = [d[2] for d in closest_pts]
                 pos = bisect.bisect_left(distances, dist)
@@ -194,7 +197,7 @@ class FiniteBuffer:
                             l_internal_idx,
                             dist,
                             self.label_circular_buffer.get(cb_idx),
-                            self.data_circular_buffer.get(cb_idx),
+                            self.dagmm_data_circular_buffer.get(cb_idx),
                             self.relevance_circular_buffer.get(cb_idx),
                             self.true_abs_idx_circular_buffer.get(cb_idx),
                         ),
@@ -210,7 +213,7 @@ class FiniteBuffer:
 
         else: # brute force all points
             for i in range(self.max_internal_abs_idx - self.min_internal_abs_idx + 1):
-                dist = np.linalg.norm(X - self.data_circular_buffer.get(i))
+                dist = np.linalg.norm(x_c - self.dagmm_data_circular_buffer.get(i))
                 distances = [d for _, __, d, ___, ____, _____, ______ in closest_pts]
                 l_internal_idx = i + self.min_internal_abs_idx
                 pos = bisect.bisect_left(distances, dist)
@@ -222,7 +225,7 @@ class FiniteBuffer:
                                                  l_internal_idx,
                                                  dist,
                                                  self.label_circular_buffer.get(i),
-                                                 self.data_circular_buffer.get(i),
+                                                 self.dagmm_data_circular_buffer.get(i),
                                                  self.relevance_circular_buffer.get(i),
                                                  self.true_abs_idx_circular_buffer.get(i)))
 
@@ -235,13 +238,70 @@ class FiniteBuffer:
 
     def get_pt_data(self, internal_abs_idx):
         if self.min_internal_abs_idx <= internal_abs_idx < self.max_internal_abs_idx:
-            return self.data_circular_buffer.get(internal_abs_idx - self.min_internal_abs_idx)
+            return self.dagmm_data_circular_buffer.get(internal_abs_idx - self.min_internal_abs_idx)
 
         return None
 
     def get_pt_data_abs(self, true_abs_idx):
         internal_abs_idx = self.true_abs_idx_circular_buffer.get_array().index(true_abs_idx)
-        return self.data_circular_buffer.get(internal_abs_idx)
+        return self.dagmm_data_circular_buffer.get(internal_abs_idx)
+
+    def get_full_data_buffer(self):
+        return self.data_circular_buffer.get_array()
+
+    # changes the data in dagmm circular buffer to the latent space of the given dagmm.
+    def reproject_to_new_dagmm(self, new_dagmm: DAGMM):
+        """
+        Reproject ALL currently buffered points from raw data → new DAGMM latent space.
+        This is called exactly once per model swap.
+        Extremely fast + zero race conditions.
+        """
+        if new_dagmm is None:
+            return
+
+        count = self.data_circular_buffer.count
+        if count == 0:
+            print("[FiniteBuffer] Nothing to reproject (buffer empty)")
+            return
+
+        print(f"[FiniteBuffer] Reprojecting {count} points to new DAGMM latent space...")
+
+        # 1. Atomic snapshot of raw points (outside any heavy lock)
+        raw_points = []
+        for i in range(count):
+            pt = self.data_circular_buffer.get(i)
+            if pt is not None:
+                raw_points.append(pt)
+
+        if not raw_points:
+            return
+
+        # 2. Batch transform — this is the only expensive part, done off-lock
+        raw_array = np.stack(raw_points)                    # (N, high_dim)
+        new_latents = new_dagmm.transform(raw_array)        # (N, latent_dim)
+
+        # 3. Critical section: swap latent buffer + invalidate ball trees
+        with self._tree_build_lock:
+            # Overwrite latent buffer in one atomic burst
+            self.dagmm_data_circular_buffer.clear()
+            for z in new_latents:
+                self.dagmm_data_circular_buffer.append(z)
+
+            # Invalidate all existing ball trees — they point to old latents
+            old_count = len(self.ball_trees)
+            self.ball_trees.clear()
+            self.num_ball_trees_completed = 0
+            self.build_up_period = True  # Force full rebuild
+
+        print(f"[FiniteBuffer] Reprojection complete: {len(new_latents)} points → latent dim {new_latents.shape[1]}")
+        print(f"          Invalidated {old_count} old BallTrees → rebuilding from scratch")
+
+        # 4. Kick off first new tree build immediately
+        if not self._building_tree:
+            self._building_tree = True
+            threading.Thread(target=self._build_new_tree, daemon=True).start()
+
+
 
     def _build_new_tree(self):
         """
@@ -254,7 +314,7 @@ class FiniteBuffer:
             with self._tree_build_lock:
                 min_abs_snapshot = self.min_internal_abs_idx
                 max_abs_snapshot = self.max_internal_abs_idx
-                full_array = list(self.data_circular_buffer.get_array())
+                full_array = list(self.dagmm_data_circular_buffer.get_array())
 
             # === 2. Compute absolute window bounds ===
             window_size = self.ball_tree_interval

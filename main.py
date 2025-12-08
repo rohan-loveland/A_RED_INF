@@ -218,7 +218,7 @@ if __name__ == '__main__':
                 num_clusters.append(len(ared.subspace_partition.cluster_dict))
                 num_labels.append(len(ared.subspace_partition.set_of_known_labels))
                 conf_matrices.append(ared.conf_matrix.copy())
-                fill_pct = ared.l_buf.data_circular_buffer.count / ared.l_buf.data_circular_buffer.size * 100
+                fill_pct = ared.l_buf.dagmm_data_circular_buffer.count / ared.l_buf.dagmm_data_circular_buffer.size * 100
                 buffer_fill_percents.append(fill_pct)
                 cumulative_relevants.append(ared.cumulative_relevant_seen)
                 print(f"fill % of buffer: {fill_pct:.2f}%")

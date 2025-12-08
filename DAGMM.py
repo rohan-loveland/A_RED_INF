@@ -108,8 +108,19 @@ class DAGMM(nn.Module):
     # ============================================================
     # Forward helpers
     # ============================================================
-    def encode(self, x: Tensor) -> Tensor:
-        return self.encoder(x)
+    def encode(self, x: Union[np.ndarray, Tensor]) -> Tensor:
+        # Convert numpy to tensor if needed
+        if isinstance(x, np.ndarray):
+            x = torch.from_numpy(x).float()
+
+        # Move input to the model's device
+        x = x.to(self.device)
+
+        # Forward pass
+        z = self.encoder(x)
+
+        # IMPORTANT: BallTree requires CPU tensors → numpy
+        return z.detach().cpu()
 
     def decode(self, z: Tensor) -> Tensor:
         return self.decoder(z)

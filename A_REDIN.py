@@ -183,33 +183,6 @@ class ARED:
         self.verbose_flags = VERBOSE_FLAGS
         self.conf_matrix = np.zeros((oracle.num_classes, oracle.num_classes), dtype=int)
 
-
-
-    def process_first_point(self, data_point):
-        # START QUERY
-        self.num_pts_streamed += 1
-        data_point_abs_idx = self.num_pts_streamed - 1
-
-        label, relevance = self.query(data_point_abs_idx)
-        if relevance:  # the point itself is relevant
-            self.cumulative_relevant_seen += 1
-        # END QUERY
-
-        # UPDATE CLUSTER Dictionary
-        # Create new cluster
-        cluster_key = self.subspace_partition.create_new_cluster(label, relevance, [data_point_abs_idx], [], self.QS_VAR)
-        self.l_buf.insert_pt(data_point, cluster_key, label, relevance, data_point_abs_idx)
-        # no maintenance required because this is the first point (so buffer's not full)
-        # UPDATE CLUSTER LIST
-
-        if 1 in self.verbose_flags:
-            print("new cluster:", 0, [0])
-
-
-        # update confusion matrix
-        int_label = self.oracle.int_str_label_bidict[label]
-        self.conf_matrix[int_label,int_label] += 1
-
     def small_cluster_merge(self):
         """
         Called every GRAPH_BATCH_SIZE points.
@@ -450,20 +423,20 @@ class ARED:
 
         return (label, relevance)
 
-    def update_structs_w_new_pt(self, abs_idx, data_point, cluster_key, label, relevance):
+    def update_structs_w_new_pt(self, abs_idx, data_point, data_point_original, cluster_key, label, relevance):
         # do maintenance by adding pt to l_buf, forgetting from subspace_partition if necessary
 
         # update l_buf to have the new point
         #                      0    1          2                 3
         # forgotten_pt_info = (key, relevance, internal_abs_idx, true_abs_idx)
-        forgotten_pt_info = self.l_buf.insert_pt(data_point, cluster_key, label, relevance, abs_idx)
+        forgotten_pt_info = self.l_buf.insert_pt(data_point, data_point_original, cluster_key, label, relevance, abs_idx)
 
         if forgotten_pt_info:
             forgotten_pt_cluster_key = forgotten_pt_info[0]
             forgotten_pt_abs_idx = forgotten_pt_info[3]
             self.subspace_partition.remove_l_pt_from_partition(forgotten_pt_abs_idx, forgotten_pt_cluster_key)
 
-    def add_l_pt_to_existing_cl(self, abs_idx, data_point, cluster_key):
+    def add_l_pt_to_existing_cl(self, abs_idx, data_point, data_point_original, cluster_key):
         # Done (by Ro)
         # run when we add a new labeled data point to a known cluster
         # this adds to both l_buf and appropriate cluster in subspace partition
@@ -478,12 +451,12 @@ class ARED:
         this_cluster.add_l_pt_no_comp_dist_update(abs_idx)
 
         # do maintenance by adding pt to l_buf, forgetting from subspace_partition if necessary
-        self.update_structs_w_new_pt(abs_idx, data_point, cluster_key,this_cluster.label, this_cluster.relevance)
+        self.update_structs_w_new_pt(abs_idx, data_point, data_point_original, cluster_key,this_cluster.label, this_cluster.relevance)
 
         this_cluster.update_comp_distance_single(self.l_buf, self.QS_VAR)
 
 
-    def split(self, data_point, data_point_idx, new_cluster_label, new_cluster_relevance, old_cluster_id):
+    def split(self, data_point, data_point_original, data_point_idx, new_cluster_label, new_cluster_relevance, old_cluster_id):
         # Done (by Ro Not-Goodly)
         # NOTE: there are no o_pt_idxs in this implementation, so "splitting" consists only of creating a new cluster
 
@@ -491,9 +464,38 @@ class ARED:
         this_cluster_key_num = self.subspace_partition.create_new_cluster(new_cluster_label, new_cluster_relevance, [data_point_idx], [], self.QS_VAR)
 
         # do maintenance by adding pt to l_buf, forgetting from subspace_partition if necessary
-        self.update_structs_w_new_pt(data_point_idx, data_point, this_cluster_key_num, new_cluster_label, new_cluster_relevance)
+        self.update_structs_w_new_pt(data_point_idx, data_point, data_point_original, this_cluster_key_num, new_cluster_label, new_cluster_relevance)
 
-    def process_point(self, data_point):
+    def process_first_point(self, data_point, data_point_original):
+        # START QUERY
+        self.num_pts_streamed += 1
+        data_point_abs_idx = self.num_pts_streamed - 1
+
+        label, relevance = self.query(data_point_abs_idx)
+        if relevance:  # the point itself is relevant
+            self.cumulative_relevant_seen += 1
+        # END QUERY
+
+        # UPDATE CLUSTER Dictionary
+        # Create new cluster
+        cluster_key = self.subspace_partition.create_new_cluster(label, relevance, [data_point_abs_idx], [], self.QS_VAR)
+        self.l_buf.insert_pt(data_point, data_point_original, cluster_key, label, relevance, data_point_abs_idx)
+        # no maintenance required because this is the first point (so buffer's not full)
+        # UPDATE CLUSTER LIST
+
+        if 1 in self.verbose_flags:
+            print("new cluster:", 0, [0])
+
+
+        # update confusion matrix
+        int_label = self.oracle.int_str_label_bidict[label]
+        self.conf_matrix[int_label,int_label] += 1
+
+        distance = 0
+        num_points_searched = 0
+        return distance, num_points_searched
+
+    def process_point(self, data_point, data_point_original):
         self.num_pts_streamed += 1
         data_point_abs_idx = self.num_pts_streamed - 1
 
@@ -513,7 +515,7 @@ class ARED:
 
             label_is_same = (new_pt_label == comp_cluster_label)
             if label_is_same:  # if not a new label
-                self.add_l_pt_to_existing_cl(data_point_abs_idx, data_point, comp_cluster_key)
+                self.add_l_pt_to_existing_cl(data_point_abs_idx, data_point, data_point_original, comp_cluster_key)
                 # this adds pt to l_buf and updates appropriate cluster in subspace partition
             else: # new pt label different from comp. cluster
                 if self.K_COMP_PTS > 1 and self.NGHBHOOD_MERGE and len(k_closest_pts) > 1:
@@ -522,13 +524,13 @@ class ARED:
                     second_cluster_label = k_closest_pts[1][3]
                     if new_pt_label == second_cluster_label:
                         second_cluster_key = k_closest_pts[1][0]
-                        self.add_l_pt_to_existing_cl(data_point_abs_idx, data_point, second_cluster_key)
+                        self.add_l_pt_to_existing_cl(data_point_abs_idx, data_point, data_point_original, second_cluster_key)
                         # this adds pt to l_buf and updates appropriate cluster in subspace partition
                         # print("NEIGHBORHOOD MERGE!")
                     else:
-                        self.split(data_point, data_point_abs_idx, new_pt_label, new_pt_relevant, comp_cluster_key)
+                        self.split(data_point, data_point_original, data_point_abs_idx, new_pt_label, new_pt_relevant, comp_cluster_key)
                 else:
-                    self.split(data_point, data_point_abs_idx, new_pt_label, new_pt_relevant, comp_cluster_key)
+                    self.split(data_point, data_point_original, data_point_abs_idx, new_pt_label, new_pt_relevant, comp_cluster_key)
             # update confusion matrix
             new_pt_label_int = self.oracle.int_str_label_bidict[new_pt_label]
             self.conf_matrix[new_pt_label_int,new_pt_label_int] += 1

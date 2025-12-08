@@ -16,7 +16,7 @@ def get_data(data_source, N_REL_CLASSES, VERBOSE_FLAGS, seed):
     elif data_source == "NICE":
         X_skewed, y_w_rel, sparsity_levels, rel_classes = generate_synthetic_dataset_with_relevance(N_REL_CLASSES, seed)
     elif data_source == "PARKING_LOT":
-        X_skewed, y_w_rel, sparsity_levels, rel_classes = parking_lot_setup_for_main(VERBOSE_FLAGS, seed)
+        X_skewed, y_w_rel, sparsity_levels, rel_classes = parking_lot_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, seed)
     elif data_source == "PARKING_LOT_DAGMM":
         X_skewed, y_w_rel, sparsity_levels, rel_classes = parking_lot_dagmm_preprocessed(VERBOSE_FLAGS, seed)
     else:
