@@ -109,7 +109,9 @@ class ARED_w_DAGMM:
         # ------------------------------------------------------------------
         # Replay all buffered points in original order
         # ------------------------------------------------------------------
-        for raw_pt in self.pending_raw_points:
+        for i, raw_pt in enumerate(self.pending_raw_points):
+            if i % 100 == 0:
+                print(f"[ARED] Processing point {i}...")
             latent_pt = self._transform_with_current_model(raw_pt)
             if not self.first_point_processed:
                 self.ared.process_first_point(latent_pt, raw_pt)

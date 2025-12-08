@@ -26,9 +26,9 @@ class DAGMM(nn.Module):
         n_components: int = 16,
         lambda_energy: float = 0.1,
         lambda_cov: float = 0.005,
-        enc_hidden: Optional[list] = [128, 64],
-        est_hidden: Optional[list] = [64, 128],
-        dropout: float = 0.5,
+        enc_hidden: Optional[list] = [2048, 1024, 512, 256, 128],
+        est_hidden: Optional[list] = [128, 256, 512, 1024, 2048],
+        dropout: float = 0.3,
         activation: str = "tanh",
         device: Optional[Union[str, torch.device]] = None,
     ):
