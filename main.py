@@ -53,21 +53,6 @@ QS_VAR: Query Strategy Variants
 QS_VAR = 1
 
 '''
-SM_VAR: Split Method Var 
-|- 0: Voronoi Split
-|- 1: eventually 2 component GMM...
-'''
-SM_VAR = 0
-
-'''
-REL_PROC_VAR: Relevance Processing Variants
-# NOTE: currently unused since there are no o_pts
-|- 0: No relevance processing
-|- 1: Single
-'''
-REL_PROC_VAR = 0
-
-'''
 K_COMP_PTS: Number of points to compare to when looking for relevance
 |- 1: Standard ARED
 |- 2 or more: k ARED
@@ -180,7 +165,7 @@ if __name__ == '__main__':
         # Initialize Data Stream, Oracle and ARED ===================================
         data_stream = Data_Stream(X_skewed, y_w_rel)
         oracle = Oracle(X_skewed, y_w_rel)
-        ared = ARED(oracle, KAPPA, DATA_WINDOW_SIZE, K_COMP_PTS, QS_VAR, REL_PROC_VAR, SM_VAR, NGHBHOOD_MERGE, SINGLETON_MERGE, VERBOSE_FLAGS)
+        ared = ARED(oracle, KAPPA, DATA_WINDOW_SIZE, K_COMP_PTS, QS_VAR, NGHBHOOD_MERGE, SINGLETON_MERGE, VERBOSE_FLAGS)
         start_time, times, num_correct_queries, num_queries, num_clusters, num_labels, pt_dists, num_pts_searched_list, conf_matrices, \
             num_queries_last_batch, cumulative_relevants = set_up_stats(ared)
         buffer_fill_percents = []

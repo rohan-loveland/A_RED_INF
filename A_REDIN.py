@@ -161,7 +161,7 @@ class Cluster:
 
 class ARED:
 
-    def __init__(self, oracle, kappa, l_buf_size, K_COMP_PTS, QS_VAR, REL_PROC_VAR, SM_VAR, NGHBHOOD_MERGE, SINGLETON_MERGE,VERBOSE_FLAGS):
+    def __init__(self, oracle, kappa, l_buf_size, K_COMP_PTS, QS_VAR, NGHBHOOD_MERGE, SINGLETON_MERGE,VERBOSE_FLAGS):
         self.kappa = kappa
         self.K_COMP_PTS = K_COMP_PTS
         self.l_buf = FiniteBuffer(l_buf_size, .8, 2)
@@ -176,8 +176,6 @@ class ARED:
         # Note: this is equivalent to abs_idx + 1
         # VARIATION CONTROL FLAGS
         self.QS_VAR = QS_VAR # {0: diameter, 1: Ave Single Link Dist in Cluster
-        self.REL_PROC_VAR = REL_PROC_VAR
-        self.SM_VAR = SM_VAR
         self.NGHBHOOD_MERGE = NGHBHOOD_MERGE
         self.SINGLETON_MERGE = SINGLETON_MERGE
         self.verbose_flags = VERBOSE_FLAGS
