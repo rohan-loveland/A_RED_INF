@@ -3,7 +3,8 @@ DATA_SOURCE: Dataset to run ARED on
 |- NICE: Nice dataset - synthetic data with well separated Gaussian clusters
 |- MNIST: MNIST dataset
 |- EMNIST: EMNIST dataset
-|- P_LOT
+|- PARKING_LOT
+|- PARKING_LOT_DAGMM
 
 and ...
 
@@ -31,7 +32,7 @@ N_REL_CLASSES: Specified number of relevant classes
 # N_REL_CLASSES = 4
 
 # DATA_SOURCE = "PARKING_LOT"
-# N_REL_CLASSES = 8
+# N_REL_CLASSES = 7
 
 # DATA_SOURCE = "PARKING_LOT_DAGMM"
 # N_REL_CLASSES = 8
@@ -99,13 +100,6 @@ NUM_POINTS_TO_PROCESS: Number of points in dataset to process
 '''
 NUM_POINTS_TO_PROCESS = 10000#-1
 
-# '''
-# NUM_RUN_TO_AVE: number of runs to average.
-# |- INT, higher numbers means more runs to average for graphs.
-# |- @WARNING MUST BE GREATER THAN 1.
-# '''
-# NUM_RUNS_TO_AVE = 1
-
 '''
 GRAPH_BATCH_SIZE: number of points in batch for stats purposes.
 '''
@@ -167,8 +161,11 @@ if __name__ == '__main__':
         oracle = Oracle(X_skewed, y_w_rel)
         ared = ARED(oracle, KAPPA, DATA_WINDOW_SIZE, K_COMP_PTS, QS_VAR, NGHBHOOD_MERGE, SINGLETON_MERGE, VERBOSE_FLAGS)
         start_time, times, num_correct_queries, num_queries, num_clusters, num_labels, pt_dists, num_pts_searched_list, conf_matrices, \
-            num_queries_last_batch, cumulative_relevants = set_up_stats(ared)
+            cumulative_relevants = set_up_stats(ared)
         buffer_fill_percents = []
+        anom_only_queries = []  # only anomalous (not near a relevant cluster)
+        rel_only_queries = []  # only relevant-near (not anomalous)
+        both_a_and_r_queries = []  # triggered by both_a_and_r_queries conditions at once
 
         if MAKE_EVO_GRAPHS:
             evo_plotter = ClusterEvolutionPlotter()
@@ -198,6 +195,7 @@ if __name__ == '__main__':
                 j = i//GRAPH_BATCH_SIZE # count of number of batches
                 print(i)
                 times.append(time.time())
+                # update CUMULATIVE stats...
                 num_correct_queries.append(ared.num_correct_queries)
                 num_queries.append(ared.num_queries)
                 num_clusters.append(len(ared.subspace_partition.cluster_dict))
@@ -206,12 +204,19 @@ if __name__ == '__main__':
                 fill_pct = ared.l_buf.data_circular_buffer.count / ared.l_buf.data_circular_buffer.size * 100
                 buffer_fill_percents.append(fill_pct)
                 cumulative_relevants.append(ared.cumulative_relevant_seen)
+                anom_only_queries.append(ared.anom_only_queries)
+                rel_only_queries.append(ared.rel_only_queries)
+                both_a_and_r_queries.append(ared.both_a_and_r_queries)
+
                 print(f"fill % of buffer: {fill_pct:.2f}%")
                 if 0 in VERBOSE_FLAGS:
                     if j > 1:
                         print(f"Processing point {i}... (last {GRAPH_BATCH_SIZE} points took {times[j]- times[j-1]:.2f} seconds)")
                         print(f"# relevants in this batch: {cumulative_relevants[j-1] - cumulative_relevants[j-2]}")
-                        print(f"# queries in this batch: {num_queries[j-1] - num_queries[j-2]}")
+                        print(f"  → anomalous queries only this batch: {anom_only_queries[j-1] - anom_only_queries[j-2]}")
+                        print(f"  → relevant queries only this batch : {rel_only_queries[j-1] - rel_only_queries[j-2]}")
+                        print(f"  → both trigger queries in this batch : {both_a_and_r_queries[j-1] - both_a_and_r_queries[j-2]}")
+                        print(f"  → total queries this batch : {num_queries[j-1] - num_queries[j-2]}")
                         print(f"# correct queries in this batch: {num_correct_queries[j-1] - num_correct_queries[j-2]}")
                         print(f"Number of clusters: {num_clusters[j-1]}")  # Add cluster count
                         print(f"Number of labels: {num_labels[j-1]}")
@@ -247,6 +252,70 @@ if __name__ == '__main__':
             single_rel_recall_list, query_precision_list, rel_individual_recalls, query_rate, rel_rate_list = \
                 calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes, ared, num_correct_queries,
                                                 num_queries, MAKE_GRAPHS, GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS)
+
+            # --------------------------------------------------------------
+            # PLOT: Query Breakdown Over Time as Stacked Bar Chart
+            # --------------------------------------------------------------
+
+            if MAKE_GRAPHS:
+                import matplotlib.pyplot as plt
+                import numpy as np
+
+                # X-axis: processed points at the end of each batch
+                batch_points = np.arange(GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS + 1, GRAPH_BATCH_SIZE)
+
+                # Per-batch counts
+                anom_only_batch = np.diff(anom_only_queries, prepend=0)
+                rel_only_batch = np.diff(rel_only_queries, prepend=0)
+                both_batch = np.diff(both_a_and_r_queries, prepend=0)
+
+                # Optional: reduce number of bars if too many (e.g. show every 4th batch)
+                step = 4  # change to 1 to show every batch
+                indices = np.arange(0, len(batch_points), step)
+                batch_points = batch_points[indices]
+                anom_only_batch = anom_only_batch[indices]
+                rel_only_batch = rel_only_batch[indices]
+                both_batch = both_batch[indices]
+
+                # Set up the bar positions
+                bar_width = GRAPH_BATCH_SIZE * step * 0.8  # visual width, adjust as needed
+                x_pos = batch_points
+
+                plt.figure(figsize=(14, 8))
+
+                # Stacked bars
+                p1 = plt.bar(x_pos, anom_only_batch, width=bar_width,
+                             label='Anomalous Only', color='#E74C3C', edgecolor='white', alpha=0.9)
+                p2 = plt.bar(x_pos, rel_only_batch, bottom=anom_only_batch,
+                             width=bar_width, label='Relevant Only', color='#3498DB', edgecolor='white', alpha=0.9)
+                p3 = plt.bar(x_pos, both_batch, bottom=anom_only_batch + rel_only_batch,
+                             width=bar_width, label='Both Triggers', color='#9B59B6', edgecolor='white', alpha=0.9)
+
+                # Optional: overlay total queries as a line
+                total_queries_batch = np.diff(num_queries, prepend=0)[indices]
+                plt.plot(x_pos, total_queries_batch, 'k-o', markersize=4, linewidth=2.5,
+                         label='Total Queries', alpha=0.9, markerfacecolor='white', markeredgewidth=1.5)
+
+                # Labels & styling
+                plt.title('A/RED Query Breakdown Over Time (Stacked Bar Chart)', fontsize=18, pad=20)
+                plt.xlabel('Processed Points', fontsize=14)
+                plt.ylabel('Number of Queries per Batch', fontsize=14)
+                plt.legend(fontsize=12, loc='upper left')
+                plt.grid(True, axis='y', alpha=0.3, linestyle='--')
+
+                # Optional: add text labels on top of bars (total per batch)
+                for i, (x, total) in enumerate(zip(x_pos, total_queries_batch)):
+                    if total > 0:
+                        plt.text(x, total + 0.5, str(int(total)), ha='center', va='bottom',
+                                 fontsize=9, fontweight='bold', color='black')
+
+                plt.tight_layout()
+                plt.show()
+
+                # Save if you want
+                # plt.savefig('ared_query_breakdown_bars.png', dpi=300, bbox_inches='tight')
+
+            plt.show()
             # try:
             #     # --- Plot #1: Number of clusters ---
             #     batch_num_pts = list(range(GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS + 1, GRAPH_BATCH_SIZE))
@@ -303,16 +372,5 @@ if __name__ == '__main__':
         # # plt.plot(np.array(precision)/1.0)
         # plt.legend(["time per batch", "num queries per batch", "num_clusters,num_labels"])
         # plt.figure()
-        # #DEBUG ONLY------------------------------------------------
-        # pt_dists = np.array(pt_dists)
-        # num_pts_searched_list = np.array(num_pts_searched_list)
-        # total_num_pts_searched = np.sum(num_pts_searched_list,axis=1)
-        # plt.plot(pt_dists/max(pt_dists)*max(total_num_pts_searched),'o-') # don't care about scale of this
-        # plt.plot(num_pts_searched_list,'o-') # do care about scale of this!
-        # plt.legend(["closest pt dists", "num pts searched in l_buf"])
-        # plt.figure()
-        # plot_stacked_area(num_pts_searched_list[:,0], num_pts_searched_list[:,1], num_pts_searched_list[:,2], \
-        #                   legend_labels=['# tail_pts', '# ball_trees_pts', '# head_pts'])
+
         plt.show()
-
-

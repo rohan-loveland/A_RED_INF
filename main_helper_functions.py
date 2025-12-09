@@ -42,8 +42,6 @@ def get_data(data_source, N_REL_CLASSES, VERBOSE_FLAGS, seed):
 def set_up_stats(ared):
     start_time = time.time()
 
-    num_queries_last_batch = 0
-
     times = [start_time]
     num_correct_queries = []
     num_queries = []
@@ -58,4 +56,4 @@ def set_up_stats(ared):
     num_pts_searched_list = []
 
     return start_time, times, num_correct_queries, num_queries, num_clusters, num_labels, conf_matrices, pt_dists, \
-        num_pts_searched_list, num_queries_last_batch, cumulative_relevants
+        num_pts_searched_list, cumulative_relevants
