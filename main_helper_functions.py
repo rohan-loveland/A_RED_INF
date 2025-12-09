@@ -6,6 +6,7 @@ from NICE_Data_Processing import *
 from Parking_Lot_Data_Processing import *
 # from Parking_Lot_DAGMM_Data_Processing import *
 from dagmm_parking_lot import compute_dagmm_features_parking_lot
+from DINOv2_Data_Processing import parking_lot_dino_preprocessed
 
 def get_data(data_source, N_REL_CLASSES, VERBOSE_FLAGS, seed):
     if data_source == "MNIST":
@@ -25,6 +26,12 @@ def get_data(data_source, N_REL_CLASSES, VERBOSE_FLAGS, seed):
             PCA_COMPS=1024,
             seed=42 + seed,  # keep consistent with other experiments
             verbose=0 in VERBOSE_FLAGS
+        )
+    elif data_source == "PARKING_LOT_DINO":
+        X, y_w_rel, sparsity_levels, rel_classes = parking_lot_dino_preprocessed(
+            N_REL_CLASSES,
+            VERBOSE_FLAGS,
+            seed
         )
     else:
         raise ValueError("Invalid data source")
