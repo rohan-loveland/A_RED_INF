@@ -169,8 +169,9 @@ class ARED:
         self.oracle = oracle
         self.num_correct_queries = 0
         self.num_queries = 0
-        self.anom_queries = 0 # queries arising from kappa comparison - NOT IMPLEMENTED YET
-        self.rel_queries = 0 # queries arising from relevance assignment- NOT IMPLEMENTED YET
+        self.anom_only_queries = 0  # only anomalous
+        self.rel_only_queries = 0  # only relevant-near
+        self.both_a_and_r_queries = 0  # triggered by both_a_and_r_queries
         self.num_pts_streamed = 0
         self.cumulative_relevant_seen = 0
         # Note: this is equivalent to abs_idx + 1
@@ -187,6 +188,8 @@ class ARED:
         # START QUERY
         self.num_pts_streamed += 1
         data_point_abs_idx = self.num_pts_streamed - 1
+        self.num_queries += 1
+        self.anom_only_queries += 1
 
         label, relevance = self.query(data_point_abs_idx)
         if relevance:  # the point itself is relevant
@@ -353,7 +356,7 @@ class ARED:
             elif merge_size == 0:
                 pass  # nothing to do
             else:
-                # Extract live points from both clusters
+                # Extract live points from both_a_and_r_queries clusters
                 keep_pts = np.array([
                     self.l_buf.get_pt_data_abs(i)
                     for i in keep_cl.l_pt_idxs[:-merge_size]  # old points only
@@ -436,15 +439,6 @@ class ARED:
 
     def query(self, abs_data_index):
         (label, relevance) = self.oracle.answer_query(abs_data_index)
-        # query is "correct" if we a) discovered a new class, or b) are querying a relevant class
-        if label not in self.subspace_partition.set_of_known_labels:
-            new_class_flag = True
-        else:
-            new_class_flag = False
-        relevance_flag = relevance
-        if new_class_flag or relevance_flag:
-            self.num_correct_queries += 1
-        self.num_queries += 1
 
         return (label, relevance)
 
@@ -464,7 +458,7 @@ class ARED:
     def add_l_pt_to_existing_cl(self, abs_idx, data_point, cluster_key):
         # Done (by Ro)
         # run when we add a new labeled data point to a known cluster
-        # this adds to both l_buf and appropriate cluster in subspace partition
+        # this adds to both_a_and_r_queries l_buf and appropriate cluster in subspace partition
         # it also performs subspace partition maintenance if necessary
 
         if 1 in self.verbose_flags:
@@ -506,8 +500,21 @@ class ARED:
         comp_cl_is_relevant = (rel_cl_data is not None)
 
         if comp_cl_is_relevant or is_anomalous:
+            # ----- mutually exclusive counting -----
+            if is_anomalous and comp_cl_is_relevant:
+                self.both_a_and_r_queries += 1  # both_a_and_r_queries reasons fired
+            elif is_anomalous:
+                self.anom_only_queries += 1
+            else:  # comp_cl_is_relevant only
+                self.rel_only_queries += 1
+            self.num_queries += 1
+
             # Query!
             new_pt_label, new_pt_relevant = self.query(data_point_abs_idx)
+
+            # query is "correct" if we a) discovered a new class, or b) are querying a relevant class
+            if label not in self.subspace_partition.set_of_known_labels or new_pt_relevant:
+                self.num_correct_queries += 1
 
             label_is_same = (new_pt_label == comp_cluster_label)
             if label_is_same:  # if not a new label

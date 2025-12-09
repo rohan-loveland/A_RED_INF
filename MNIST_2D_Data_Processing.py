@@ -46,7 +46,7 @@ def create_skewed_mnist(X, y, sparsity_levels, seed):
 def load_and_skew_mnist(sparsity_levels, seed, save_path="mnist_full.pkl"):
     """
     Loads the replicated MNIST dataset (10x duplicated) from a pickle file,
-    creates a skewed subset using create_skewed_mnist, and returns both the skewed
+    creates a skewed subset using create_skewed_mnist, and returns both_a_and_r_queries the skewed
     and full replicated datasets.
 
     Args:
