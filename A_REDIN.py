@@ -161,7 +161,7 @@ class Cluster:
 
 class ARED:
 
-    def __init__(self, oracle, kappa, l_buf_size, K_COMP_PTS, QS_VAR, NGHBHOOD_MERGE, SINGLETON_MERGE,VERBOSE_FLAGS):
+    def __init__(self, oracle, kappa, l_buf_size, K_COMP_PTS, QS_VAR, DATA_AUG_VAR, NGHBHOOD_MERGE, SINGLETON_MERGE, VERBOSE_FLAGS):
         self.kappa = kappa
         self.K_COMP_PTS = K_COMP_PTS
         self.l_buf = FiniteBuffer(l_buf_size, .8, 2)
@@ -177,39 +177,11 @@ class ARED:
         # Note: this is equivalent to abs_idx + 1
         # VARIATION CONTROL FLAGS
         self.QS_VAR = QS_VAR # {0: diameter, 1: Ave Single Link Dist in Cluster
+        self.DATA_AUG_VAR = DATA_AUG_VAR # {0: no augmentation, 1: x4 data rotation.}
         self.NGHBHOOD_MERGE = NGHBHOOD_MERGE
         self.SINGLETON_MERGE = SINGLETON_MERGE
         self.verbose_flags = VERBOSE_FLAGS
         self.conf_matrix = np.zeros((oracle.num_classes, oracle.num_classes), dtype=int)
-
-
-
-    def process_first_point(self, data_point):
-        # START QUERY
-        self.num_pts_streamed += 1
-        data_point_abs_idx = self.num_pts_streamed - 1
-        self.num_queries += 1
-        self.anom_only_queries += 1
-
-        label, relevance = self.query(data_point_abs_idx)
-        if relevance:  # the point itself is relevant
-            self.cumulative_relevant_seen += 1
-        # END QUERY
-
-        # UPDATE CLUSTER Dictionary
-        # Create new cluster
-        cluster_key = self.subspace_partition.create_new_cluster(label, relevance, [data_point_abs_idx], [], self.QS_VAR)
-        self.l_buf.insert_pt(data_point, cluster_key, label, relevance, data_point_abs_idx)
-        # no maintenance required because this is the first point (so buffer's not full)
-        # UPDATE CLUSTER LIST
-
-        if 1 in self.verbose_flags:
-            print("new cluster:", 0, [0])
-
-
-        # update confusion matrix
-        int_label = self.oracle.int_str_label_bidict[label]
-        self.conf_matrix[int_label,int_label] += 1
 
     def small_cluster_merge(self):
         """
@@ -484,6 +456,33 @@ class ARED:
 
         # do maintenance by adding pt to l_buf, forgetting from subspace_partition if necessary
         self.update_structs_w_new_pt(data_point_idx, data_point, this_cluster_key_num, new_cluster_label, new_cluster_relevance)
+
+    def process_first_point(self, data_point):
+        # START QUERY
+        self.num_pts_streamed += 1
+        data_point_abs_idx = self.num_pts_streamed - 1
+        self.num_queries += 1
+        self.anom_only_queries += 1
+
+        label, relevance = self.query(data_point_abs_idx)
+        if relevance:  # the point itself is relevant
+            self.cumulative_relevant_seen += 1
+        # END QUERY
+
+        # UPDATE CLUSTER Dictionary
+        # Create new cluster
+        cluster_key = self.subspace_partition.create_new_cluster(label, relevance, [data_point_abs_idx], [], self.QS_VAR)
+        self.l_buf.insert_pt(data_point, cluster_key, label, relevance, data_point_abs_idx)
+        # no maintenance required because this is the first point (so buffer's not full)
+        # UPDATE CLUSTER LIST
+
+        if 1 in self.verbose_flags:
+            print("new cluster:", 0, [0])
+
+
+        # update confusion matrix
+        int_label = self.oracle.int_str_label_bidict[label]
+        self.conf_matrix[int_label,int_label] += 1
 
     def process_point(self, data_point):
         self.num_pts_streamed += 1
