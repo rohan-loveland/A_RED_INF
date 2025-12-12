@@ -275,9 +275,11 @@ def run_dinov2_autoencoder_preprocessing(
     best_val_loss = float("inf")
     no_improve = 0
     for epoch in range(1, EPOCHS + 1):
+        # ----- Training -----
         model_ae.train()
         train_loss = 0.0
         for batch in train_loader:
+            batch = batch.to(device)
             optimizer.zero_grad()
             z, x_rec = model_ae(batch)
             loss = criterion(x_rec, batch)
@@ -286,10 +288,12 @@ def run_dinov2_autoencoder_preprocessing(
             train_loss += loss.item() * batch.size(0)
         train_loss /= len(train_loader.dataset)
 
+        # ----- Validation -----
         model_ae.eval()
         val_loss = 0.0
         with torch.no_grad():
             for batch in val_loader:
+                batch = batch.to(device)
                 z, x_rec = model_ae(batch)
                 loss = criterion(x_rec, batch)
                 val_loss += loss.item() * batch.size(0)
