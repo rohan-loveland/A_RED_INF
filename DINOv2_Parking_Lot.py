@@ -26,7 +26,7 @@ matplotlib.use("TkAgg")  # Or "Qt5Agg" if you prefer and have Qt installed
 import matplotlib.pyplot as plt
 
 # -------------------------- Config --------------------------
-N_REL_CLASSES = 6
+# N_REL_CLASSES = 6
 RANDOM_SEED_OFFSET = 25
 VERBOSE_FLAGS = [0]
 

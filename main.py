@@ -38,12 +38,15 @@ N_REL_CLASSES: Specified number of relevant classes
 # N_REL_CLASSES = 8
 
 DATA_SOURCE = "PARKING_LOT_DINO"
-N_REL_CLASSES = 8
+N_REL_CLASSES = 4
 
 '''
 KAPPA: Paranoia Parameter
 '''
-KAPPA = 1.0
+# KAPPA = 1 # NICE
+# KAPPA = 0.75 # No DAGMM
+# KAPPA = 2 # DAGMM
+KAPPA = 1.0 # DINO
 
 
 '''
@@ -106,6 +109,11 @@ GRAPH_BATCH_SIZE: number of points in batch for stats purposes.
 GRAPH_BATCH_SIZE = 250
 
 '''
+DATA_AUG_VAR: number of points in batch for stats purposes.
+'''
+DATA_AUG_VAR = False
+
+'''
 VERBOSE_FLAGS: Array of control flags to make ARED loud or quiet
 |- Array, containing verbose flags for different types of messages
 |- Example: VERBOSE_FLAGS = [0, 1, 2]
@@ -159,7 +167,7 @@ if __name__ == '__main__':
         # Initialize Data Stream, Oracle and ARED ===================================
         data_stream = Data_Stream(X_skewed, y_w_rel)
         oracle = Oracle(X_skewed, y_w_rel)
-        ared = ARED(oracle, KAPPA, DATA_WINDOW_SIZE, K_COMP_PTS, QS_VAR, NGHBHOOD_MERGE, SINGLETON_MERGE, VERBOSE_FLAGS)
+        ared = ARED(oracle, KAPPA, DATA_WINDOW_SIZE, K_COMP_PTS, QS_VAR, DATA_AUG_VAR, NGHBHOOD_MERGE, SINGLETON_MERGE, VERBOSE_FLAGS)
         start_time, times, num_correct_queries, num_queries, num_clusters, num_labels, pt_dists, num_pts_searched_list, conf_matrices, \
             cumulative_relevants = set_up_stats(ared)
         buffer_fill_percents = []
