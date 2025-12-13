@@ -31,14 +31,14 @@ N_REL_CLASSES: Specified number of relevant classes
 # DATA_SOURCE = "NICE"
 # N_REL_CLASSES = 4
 
-# DATA_SOURCE = "PARKING_LOT"
-# N_REL_CLASSES = 7
+DATA_SOURCE = "PARKING_LOT"
+N_REL_CLASSES = 7
 
 # DATA_SOURCE = "PARKING_LOT_DAGMM"
 # N_REL_CLASSES = 8
 
-DATA_SOURCE = "PARKING_LOT_DINO"
-N_REL_CLASSES = 4
+#DATA_SOURCE = "PARKING_LOT_DINO"
+#N_REL_CLASSES = 4
 
 '''
 KAPPA: Paranoia Parameter
@@ -55,6 +55,13 @@ QS_VAR: Query Strategy Variants
 |- 1: Approx. Ave Single Linkage Average 
 '''
 QS_VAR = 1
+
+'''
+DATA_AUG_VAR: Auto data augmentation varients
+|- 0, (0,): No data augmentation, empty shape
+|- 1, (n, n): x4 90 degree rotation with unflattened shape. Data must be a square matrix 
+'''
+DATA_AUG_VAR = (1, (128,128))
 
 '''
 K_COMP_PTS: Number of points to compare to when looking for relevance
@@ -94,7 +101,7 @@ window_size: size of the data_window window saved by ARED
 |- int: larger window size means it remembers more data
 |- WARNING: value must be larger than 0
 '''
-DATA_WINDOW_SIZE = 10000 # ultimately needs to be driven by anomaly ratio
+DATA_WINDOW_SIZE = 40000 # ultimately needs to be driven by anomaly ratio
 
 '''
 NUM_POINTS_TO_PROCESS: Number of points in dataset to process
@@ -107,11 +114,6 @@ NUM_POINTS_TO_PROCESS = 10000#-1
 GRAPH_BATCH_SIZE: number of points in batch for stats purposes.
 '''
 GRAPH_BATCH_SIZE = 250
-
-'''
-DATA_AUG_VAR: number of points in batch for stats purposes.
-'''
-DATA_AUG_VAR = False
 
 '''
 VERBOSE_FLAGS: Array of control flags to make ARED loud or quiet
@@ -167,7 +169,7 @@ if __name__ == '__main__':
         # Initialize Data Stream, Oracle and ARED ===================================
         data_stream = Data_Stream(X_skewed, y_w_rel)
         oracle = Oracle(X_skewed, y_w_rel)
-        ared = ARED(oracle, KAPPA, DATA_WINDOW_SIZE, K_COMP_PTS, QS_VAR, DATA_AUG_VAR, NGHBHOOD_MERGE, SINGLETON_MERGE, VERBOSE_FLAGS)
+        ared = ARED(oracle, KAPPA, DATA_WINDOW_SIZE, K_COMP_PTS, QS_VAR, NGHBHOOD_MERGE, SINGLETON_MERGE, VERBOSE_FLAGS)
         start_time, times, num_correct_queries, num_queries, num_clusters, num_labels, pt_dists, num_pts_searched_list, conf_matrices, \
             cumulative_relevants = set_up_stats(ared)
         buffer_fill_percents = []

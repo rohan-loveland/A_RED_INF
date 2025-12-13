@@ -164,7 +164,7 @@ class ARED:
     def __init__(self, oracle, kappa, l_buf_size, K_COMP_PTS, QS_VAR, DATA_AUG_VAR, NGHBHOOD_MERGE, SINGLETON_MERGE, VERBOSE_FLAGS):
         self.kappa = kappa
         self.K_COMP_PTS = K_COMP_PTS
-        self.l_buf = FiniteBuffer(l_buf_size, .8, 2)
+        self.l_buf = FiniteBuffer(l_buf_size, .8, 2, DATA_AUG_VAR)
         self.subspace_partition = Subspace_Partition(self.l_buf)
         self.oracle = oracle
         self.num_correct_queries = 0

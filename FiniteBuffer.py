@@ -25,7 +25,7 @@ class BallTreeWithIndexes(BallTree):
         self.length = max_index - min_index
 
 class FiniteBuffer:
-    def __init__(self, buffer_size: int, ball_tree_ratio: float = 0.8, num_ball_trees: int = 2):
+    def __init__(self, buffer_size: int, ball_tree_ratio: float = 0.8, num_ball_trees: int = 2, DATA_AUG_VAR = (0, (0,))):
         self.data_circular_buffer = Circular_Buffer(buffer_size)
         self.label_circular_buffer = Circular_Buffer(buffer_size)
         self.relevance_circular_buffer = Circular_Buffer(buffer_size)
@@ -45,6 +45,12 @@ class FiniteBuffer:
         self.min_internal_abs_idx = 0
 
         self.build_up_period = True
+
+        # --- Data augmentation flag ---
+        self.DATA_AUG_VAR = DATA_AUG_VAR
+
+        if DATA_AUG_VAR[0] == 1:
+            assert self.buffer_size % 4 == 0, "If using data augmentation 1 buffer size should be divisible by 4"
 
         # --- threading-related attributes ---
         self._tree_build_lock = threading.Lock()
@@ -66,6 +72,27 @@ class FiniteBuffer:
         self.cluster_key_circular_buffer.append(cluster_key)
         self.true_abs_idx_circular_buffer.append(true_abs_idx)
         self.max_internal_abs_idx += 1
+
+        # if data augmentation method 1 (x4 data samples with 90 degree rotations)
+        if self.DATA_AUG_VAR[0] == 1:
+            shape = self.DATA_AUG_VAR[1]
+
+            img = X.reshape(shape)
+
+            # Rotate 90°, 180°, 270°
+            for k in range(1, 4):
+                rot_img = np.rot90(img, k=k)
+                rot_flat = rot_img.reshape(-1)
+
+                self.data_circular_buffer.append(rot_flat)
+                self.label_circular_buffer.append(label)
+                self.relevance_circular_buffer.append(relevance)
+                self.cluster_key_circular_buffer.append(cluster_key)
+                self.true_abs_idx_circular_buffer.append(true_abs_idx)
+                self.max_internal_abs_idx += 1
+
+                if self.data_circular_buffer.is_full():
+                    self.min_internal_abs_idx += 1
 
         if len(self.ball_trees) != 0 and self.ball_trees[0].min_index < self.min_internal_abs_idx:
             self.ball_trees.pop(0)
