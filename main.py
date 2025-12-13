@@ -101,7 +101,7 @@ window_size: size of the data_window window saved by ARED
 |- int: larger window size means it remembers more data
 |- WARNING: value must be larger than 0
 '''
-DATA_WINDOW_SIZE = 40000 # ultimately needs to be driven by anomaly ratio
+DATA_WINDOW_SIZE = 10000 # ultimately needs to be driven by anomaly ratio
 
 '''
 NUM_POINTS_TO_PROCESS: Number of points in dataset to process
@@ -169,7 +169,7 @@ if __name__ == '__main__':
         # Initialize Data Stream, Oracle and ARED ===================================
         data_stream = Data_Stream(X_skewed, y_w_rel)
         oracle = Oracle(X_skewed, y_w_rel)
-        ared = ARED(oracle, KAPPA, DATA_WINDOW_SIZE, K_COMP_PTS, QS_VAR, NGHBHOOD_MERGE, SINGLETON_MERGE, VERBOSE_FLAGS)
+        ared = ARED(oracle, KAPPA, DATA_WINDOW_SIZE, K_COMP_PTS, QS_VAR, DATA_AUG_VAR, NGHBHOOD_MERGE, SINGLETON_MERGE, VERBOSE_FLAGS)
         start_time, times, num_correct_queries, num_queries, num_clusters, num_labels, pt_dists, num_pts_searched_list, conf_matrices, \
             cumulative_relevants = set_up_stats(ared)
         buffer_fill_percents = []

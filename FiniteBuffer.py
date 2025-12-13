@@ -260,15 +260,24 @@ class FiniteBuffer:
 
         return closest_pts, num_pts_searched
 
+    # currently unused, maybe remove
     def get_pt_data(self, internal_abs_idx):
         if self.min_internal_abs_idx <= internal_abs_idx < self.max_internal_abs_idx:
             return self.data_circular_buffer.get(internal_abs_idx - self.min_internal_abs_idx)
 
         return None
 
+    # returns every datapoint with the abs index.
     def get_pt_data_abs(self, true_abs_idx):
         internal_abs_idx = self.true_abs_idx_circular_buffer.get_array().index(true_abs_idx)
-        return self.data_circular_buffer.get(internal_abs_idx)
+        size_of_buff = len(self.true_abs_idx_circular_buffer)
+
+        data_points = []
+        while internal_abs_idx < size_of_buff and true_abs_idx == self.true_abs_idx_circular_buffer.get(internal_abs_idx):
+            data_points.append(self.data_circular_buffer.get(internal_abs_idx))
+            internal_abs_idx += 1
+
+        return data_points if len(data_points) > 0 else None
 
     def _build_new_tree(self):
         """
