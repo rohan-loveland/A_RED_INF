@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import gridspec
 
 def calculate_single_rel_recall(confusion_matrix,rel_classes,ared):
     """
@@ -70,14 +71,16 @@ def calculate_precision_recall_all_classes(confusion_matrix):
 
 def calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes, ared,
                                     num_correct_queries, num_queries,
-                                    plot_flag, GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS):
+                                    plot_flag, GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS,
+                                    anom_only_queries, rel_only_queries, both_a_and_r_queries, cumulative_relevants):
     """
-    Final fixed version:
-    - bar_width defined in the right place
-    - x-axis from actual batches
-    - Legend below plot
-    - No clipping
+    Final version: Combined multi-panel figure (a,b,c) with Query Breakdown integrated
+    All plots in one PDF, vector graphics, paper-ready
     """
+
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from matplotlib import gridspec
 
     # Convert to numpy for easy diff
     conf_array = np.array(conf_matrices)
@@ -85,7 +88,7 @@ def calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes,
     num_quer = np.array(num_queries)
 
     # ------------------------------------------------------------------
-    # Per-batch metrics
+    # Per-batch metrics for panels (a) and (b)
     # ------------------------------------------------------------------
     query_precision_list = []
     query_rate_list = []
@@ -112,7 +115,6 @@ def calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes,
     # Subsequent batches
     for b in range(1, len(conf_matrices)):
         batch_cm = conf_array[b] - conf_array[b-1]
-
         queries_b = num_quer[b] - num_quer[b-1]
         correct_b = num_correct[b] - num_correct[b-1]
 
@@ -139,83 +141,132 @@ def calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes,
     precision_ratio_list = precision_ratio_list[:num_batches]
     recall_ratio_list = recall_ratio_list[:num_batches]
 
-    # ------------------------------------------------------------------
-    # Define bar_width here (available for plotting)
-    # ------------------------------------------------------------------
     bar_width = GRAPH_BATCH_SIZE * 0.7
 
-    # --------------------- Plot 1: Query Precision + Ratio ---------------------
-    fig, ax1 = plt.subplots(figsize=(11, 7), dpi=300)  # Taller figure for safety
+    if plot_flag:
+        import matplotlib.pyplot as plt
+        from matplotlib import gridspec
 
-    ax1.set_xlabel("Processed Points", fontsize=12)
-    ax1.set_ylabel("Precision", color='black', fontsize=12)
+        # --------------------------------------------------------------
+        # FIGURE 1: Panels (a) and (b) side-by-side
+        # --------------------------------------------------------------
+        fig1, (ax_a, ax_b) = plt.subplots(1, 2, figsize=(14, 6), dpi=300)
 
-    ax1.plot(batch_num_pts, query_precision_list, 'o-', color='tab:blue',
-             linewidth=2.5, markersize=6, label="Query Precision")
-    ax1.plot(batch_num_pts, rel_rate_list, 'd--', color='tab:orange',
-             linewidth=2.2, markersize=6, label="Random Precision (Rel. Rate)")
-    ax1.set_ylim(0, 1.05)
-    ax1.tick_params(axis='y', labelcolor='black')
-    ax1.grid(True, alpha=0.3, axis='y')
+        # Panel (a): Query Precision + Ratio
+        ax_a.plot(batch_num_pts, query_precision_list, 'o-', color='tab:blue',
+                  linewidth=3, markersize=8, label="Query Precision")
+        ax_a.plot(batch_num_pts, rel_rate_list, 'd--', color='tab:orange',
+                  linewidth=2.5, markersize=7, label="Random Precision (Rel. Rate)")
+        ax_a.set_xlabel("Processed Points", fontsize=14)
+        ax_a.set_ylabel("Precision", fontsize=14)
+        ax_a.set_ylim(0, 1.05)
+        ax_a.grid(True, alpha=0.3, axis='y')
+        ax_a.tick_params(axis='both', labelsize=12)
 
-    ax2 = ax1.twinx()
-    ax2.bar(batch_num_pts, precision_ratio_list, width=bar_width,
-            color='tab:purple', alpha=0.55, edgecolor='tab:purple', linewidth=1.2,
-            label="Precision Ratio (Query / Random)")
-    ax2.set_ylabel("Precision Ratio", color='tab:purple', fontsize=11)
-    ax2.tick_params(axis='y', labelcolor='tab:purple')
-    max_ratio = max(precision_ratio_list) if precision_ratio_list else 1
-    ax2.set_ylim(0, max_ratio * 1.25)
+        ax_a2 = ax_a.twinx()
+        ax_a2.bar(batch_num_pts, precision_ratio_list, width=bar_width,
+                  color='tab:purple', alpha=0.6, edgecolor='tab:purple', linewidth=1.5,
+                  label="Precision Ratio")
+        ax_a2.set_ylabel("Precision Ratio", color='tab:purple', fontsize=12)
+        ax_a2.tick_params(axis='y', labelcolor='tab:purple', labelsize=12)
+        max_ratio_a = max(precision_ratio_list) if precision_ratio_list else 1
+        ax_a2.set_ylim(0, max_ratio_a * 1.25)
 
-    lines1, labels1 = ax1.get_legend_handles_labels()
-    lines2, labels2 = ax2.get_legend_handles_labels()
-    fig.legend(lines1 + lines2, labels1 + labels2,
-               loc='lower center', bbox_to_anchor=(0.5, 0.05),  # Tighter position
-               ncol=3, fontsize=11, frameon=True, fancybox=False, edgecolor='black')
+        ax_a.set_title("(a) A/RED Query Precision & Improvement Ratio", fontsize=14, pad=15)
 
-    plt.title("A/RED Query Precision & Improvement Ratio", fontsize=13, pad=20)
+        # Panel (b): Relevant Recall + Ratio
+        ax_b.plot(batch_num_pts, single_rel_recall_list, 's-', color='tab:cyan',
+                  linewidth=3, markersize=9, label="Relevant Recall")
+        ax_b.plot(batch_num_pts, query_rate_list, '^-', color='tab:red',
+                  linewidth=2.5, markersize=7, label="Random Recall (Query Rate)")
+        ax_b.set_xlabel("Processed Points", fontsize=14)
+        ax_b.set_ylabel("Recall", fontsize=14)
+        ax_b.set_ylim(0, 1.05)
+        ax_b.grid(True, alpha=0.3, axis='y')
+        ax_b.tick_params(axis='both', labelsize=12)
 
-    # Adjusted margins for compact layout
-    plt.subplots_adjust(left=0.11, right=0.85, top=0.94, bottom=0.18)
+        ax_b2 = ax_b.twinx()
+        ax_b2.bar(batch_num_pts, recall_ratio_list, width=bar_width,
+                  color='tab:green', alpha=0.6, edgecolor='tab:green', linewidth=1.5,
+                  label="Recall Ratio")
+        ax_b2.set_ylabel("Recall Ratio", color='tab:green', fontsize=12)
+        ax_b2.tick_params(axis='y', labelcolor='tab:green', labelsize=12)
+        max_ratio_b = max(recall_ratio_list) if recall_ratio_list else 1
+        ax_b2.set_ylim(0, max_ratio_b * 1.25)
 
-    plt.savefig('ared_query_precision_ratio.pdf', dpi=300, bbox_inches='tight', pad_inches=0.5)
-    plt.show()
-    # --------------------- Plot 2: Relevant Recall + Ratio ---------------------
-    fig, ax1 = plt.subplots(figsize=(11, 7), dpi=300)  # Taller
+        ax_b.set_title("(b) A/RED Relevant Recall & Improvement Ratio", fontsize=14, pad=15)
 
-    ax1.set_xlabel("Processed Points", fontsize=12)
-    ax1.set_ylabel("Recall", color='black', fontsize=12)
+        # Shared legend below Figure 1
+        handles1, labels1 = [], []
+        for ax in [ax_a, ax_a2, ax_b, ax_b2]:
+            h, l = ax.get_legend_handles_labels()
+            handles1.extend(h)
+            labels1.extend(l)
+        fig1.legend(handles1, labels1, loc='lower center', bbox_to_anchor=(0.5, -0.08),
+                    ncol=3, fontsize=12, frameon=True, edgecolor='black')
 
-    ax1.plot(batch_num_pts, single_rel_recall_list, 's-', color='tab:cyan',
-             linewidth=2.5, markersize=7, label="Relevant Recall")
-    ax1.plot(batch_num_pts, query_rate_list, '^-', color='tab:red',
-             linewidth=2.2, markersize=6, label="Random Recall (Query Rate)")
-    ax1.set_ylim(0, 1.05)
-    ax1.tick_params(axis='y', labelcolor='black')
-    ax1.grid(True, alpha=0.3, axis='y')
+        fig1.subplots_adjust(left=0.08, right=0.92, top=0.92, bottom=0.22, wspace=0.4)
+        fig1.savefig('./Figures/ared_precision_recall_figures.pdf', dpi=300, bbox_inches='tight', pad_inches=0.5)
+        plt.show()
 
-    ax2 = ax1.twinx()
-    ax2.bar(batch_num_pts, recall_ratio_list, width=bar_width,
-            color='tab:green', alpha=0.55, edgecolor='tab:green', linewidth=1.2,
-            label="Recall Ratio (Recall / Query Rate)")
-    ax2.set_ylabel("Recall Ratio", color='tab:green', fontsize=11)
-    ax2.tick_params(axis='y', labelcolor='tab:green')
-    max_ratio = max(recall_ratio_list) if recall_ratio_list else 1
-    ax2.set_ylim(0, max_ratio * 1.25)
+        # --------------------------------------------------------------
+        # FIGURE 2: Panel (c) — Query Breakdown & Relevant Points
+        # --------------------------------------------------------------
+        fig2 = plt.figure(figsize=(12, 8), dpi=300)
 
-    lines1, labels1 = ax1.get_legend_handles_labels()
-    lines2, labels2 = ax2.get_legend_handles_labels()
-    fig.legend(lines1 + lines2, labels1 + labels2,
-               loc='lower center', bbox_to_anchor=(0.5, 0.05),
-               ncol=3, fontsize=11, frameon=True, fancybox=False, edgecolor='black')
+        ax_c = fig2.add_subplot(111)
 
-    plt.title("A/RED Relevant Recall & Improvement Ratio", fontsize=13, pad=20)
+        num_batches_c = len(num_queries)
+        batch_points_c = np.arange(GRAPH_BATCH_SIZE, GRAPH_BATCH_SIZE * num_batches_c + 1, GRAPH_BATCH_SIZE)
 
-    # Adjusted margins for compact layout
-    plt.subplots_adjust(left=0.11, right=0.85, top=0.94, bottom=0.18)
+        anom_only_c = np.diff(anom_only_queries, prepend=0)[:num_batches_c]
+        rel_only_c = np.diff(rel_only_queries, prepend=0)[:num_batches_c]
+        both_c = np.diff(both_a_and_r_queries, prepend=0)[:num_batches_c]
+        total_c = np.diff(num_queries, prepend=0)[:num_batches_c]
+        relevant_per_batch = np.diff(cumulative_relevants, prepend=0)[:num_batches_c]
 
-    plt.savefig('ared_relevant_recall_ratio.pdf', dpi=300, bbox_inches='tight', pad_inches=0.5)
-    plt.show()
+        query_bar_width = GRAPH_BATCH_SIZE * 0.8
+        rel_bar_width = GRAPH_BATCH_SIZE * 0.3
+        offset = GRAPH_BATCH_SIZE * 0.15
+
+        # Stacked query bars
+        ax_c.bar(batch_points_c, anom_only_c, width=query_bar_width,
+                 label='Anomalous Only Queries', color='#E74C3C', edgecolor='black', linewidth=1.2, alpha=0.95)
+        ax_c.bar(batch_points_c, rel_only_c, bottom=anom_only_c,
+                 width=query_bar_width, label='Relevant Only Queries', color='#3498DB', edgecolor='black',
+                 linewidth=1.2, alpha=0.95)
+        ax_c.bar(batch_points_c, both_c, bottom=anom_only_c + rel_only_c,
+                 width=query_bar_width, label='Both Triggers Queries', color='#9B59B6', edgecolor='black',
+                 linewidth=1.2, alpha=0.95)
+
+        # Interleaved relevant points bars
+        ax_c.bar(batch_points_c + offset, relevant_per_batch, width=rel_bar_width,
+                 label='Relevant Points / Batch', color='tab:green', edgecolor='black', linewidth=1.5, alpha=0.85)
+
+        # Total queries line
+        ax_c.plot(batch_points_c, total_c, 'k-o', markersize=9, linewidth=3.5,
+                  label='Total Queries', markerfacecolor='white', markeredgewidth=2.2)
+
+        ax_c.set_xlabel('Processed Points', fontsize=16)
+        ax_c.set_ylabel('Count per Batch', fontsize=16)
+        ax_c.tick_params(axis='both', labelsize=14)
+        ax_c.grid(True, axis='y', alpha=0.4, linestyle='--', linewidth=1.2)
+
+        max_val = max(np.maximum(total_c, relevant_per_batch)) if len(total_c) > 0 else 1
+        for x, total in zip(batch_points_c, total_c):
+            if total > 0:
+                ax_c.text(x, total + max_val * 0.03, str(int(total)),
+                          ha='center', va='bottom', fontsize=13, fontweight='bold', color='black')
+
+        ax_c.set_title("A/RED Query Breakdown & Relevant Points Over Time", fontsize=18, pad=25)
+
+        # Legend below Figure 2
+        ax_c.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
+                    ncol=3, fontsize=14, frameon=True, edgecolor='black')
+
+        fig2.subplots_adjust(left=0.10, right=0.95, top=0.90, bottom=0.25)
+        fig2.savefig('./Figures/ared_query_breakdown.pdf', dpi=300, bbox_inches='tight', pad_inches=0.8)
+        plt.show()
     # ------------------------------------------------------------------
     # Return values
     # ------------------------------------------------------------------

@@ -27,14 +27,12 @@ N_REL_CLASSES: Specified number of relevant classes
 # DATA_SOURCE = "NICE"
 # N_REL_CLASSES = 4
 
-DATA_SOURCE = "PARKING_LOT"
-N_REL_CLASSES = 7
+# DATA_SOURCE = "PARKING_LOT"
+# N_REL_CLASSES = 8
 
 # DATA_SOURCE = "PARKING_LOT_DAGMM"
 # N_REL_CLASSES = 8
 
-#DATA_SOURCE = "PARKING_LOT_DINO"
-#N_REL_CLASSES = 4
 DATA_SOURCE = "PARKING_LOT_DINO"
 N_REL_CLASSES = 8
 
@@ -56,11 +54,11 @@ QS_VAR: Query Strategy Variants
 QS_VAR = 1
 
 '''
-DATA_AUG_VAR: Auto data augmentation varients
+DATA_AUG_VAR: Auto data augmentation variants
 |- 0, (0,): No data augmentation, empty shape
 |- 1, (n, n): x4 90 degree rotation with unflattened shape. Data must be a square matrix 
 '''
-DATA_AUG_VAR = (1, (128,128))
+DATA_AUG_VAR = (0, (128,128))
 
 '''
 K_COMP_PTS: Number of points to compare to when looking for relevance
@@ -68,7 +66,7 @@ K_COMP_PTS: Number of points to compare to when looking for relevance
 |- 2 or more: k ARED
 @WARNING: must be 1 or greater
 '''
-K_COMP_PTS = 5
+K_COMP_PTS = 2
 
 '''
 NGHBHOOD_MERGE: Neighborhood Merge Variants
@@ -107,12 +105,12 @@ NUM_POINTS_TO_PROCESS: Number of points in dataset to process
 |- -1: process all the data
 |-  0 to inf: process up to that number if data is available
 '''
-NUM_POINTS_TO_PROCESS = 25000#-1
+NUM_POINTS_TO_PROCESS = -1
 
 '''
 GRAPH_BATCH_SIZE: number of points in batch for stats purposes.
 '''
-GRAPH_BATCH_SIZE = 250
+GRAPH_BATCH_SIZE = 100
 
 '''
 VERBOSE_FLAGS: Array of control flags to make ARED loud or quiet
@@ -258,129 +256,15 @@ if __name__ == '__main__':
         #     print(ared.conf_matrix)
 
         if MAKE_GRAPHS:
-            (single_rel_recall_list, query_precision_list, rel_individual_recalls, query_rate, precision_ratio_list,
-             recall_ratio_list) = \
-                calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes, ared, num_correct_queries,
-                                                num_queries, MAKE_GRAPHS, GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS)
-
-            # --------------------------------------------------------------
-            # PLOT: Query Breakdown Over Time as Stacked Bar Chart (Paper-ready, no clipping)
-            # --------------------------------------------------------------
-
-            if MAKE_GRAPHS:
-                import matplotlib.pyplot as plt
-                import numpy as np
-
-                # Use ACTUAL number of batches collected
-                num_batches = len(num_queries)
-                batch_points = np.arange(GRAPH_BATCH_SIZE, GRAPH_BATCH_SIZE * num_batches + 1, GRAPH_BATCH_SIZE)
-
-                # Per-batch counts (full resolution)
-                anom_only_batch = np.diff(anom_only_queries, prepend=0)[:num_batches]
-                rel_only_batch = np.diff(rel_only_queries, prepend=0)[:num_batches]
-                both_batch = np.diff(both_a_and_r_queries, prepend=0)[:num_batches]
-                total_queries_batch = np.diff(num_queries, prepend=0)[:num_batches]
-
-                bar_width = GRAPH_BATCH_SIZE * 0.8
-
-                # Taller and wider figure to prevent clipping
-                plt.figure(figsize=(12, 9), dpi=300)
-
-                # Stacked bars
-                p1 = plt.bar(batch_points, anom_only_batch, width=bar_width,
-                             label='Anomalous Only', color='#E74C3C', edgecolor='black', linewidth=1.2, alpha=0.95)
-                p2 = plt.bar(batch_points, rel_only_batch, bottom=anom_only_batch,
-                             width=bar_width, label='Relevant Only', color='#3498DB', edgecolor='black', linewidth=1.2,
-                             alpha=0.95)
-                p3 = plt.bar(batch_points, both_batch, bottom=anom_only_batch + rel_only_batch,
-                             width=bar_width, label='Both Triggers', color='#9B59B6', edgecolor='black', linewidth=1.2,
-                             alpha=0.95)
-
-                # Total queries line
-                plt.plot(batch_points, total_queries_batch, 'k-o', markersize=9, linewidth=3.5,
-                         label='Total Queries', markerfacecolor='white', markeredgewidth=2.2)
-
-                # Styling with larger fonts
-                plt.title('A/RED Query Breakdown Over Time', fontsize=20, pad=30, fontweight='bold')
-                plt.xlabel('Processed Points', fontsize=16)
-                plt.ylabel('Number of Queries per Batch', fontsize=16)
-                plt.tick_params(axis='both', labelsize=14)
-                plt.grid(True, axis='y', alpha=0.4, linestyle='--', linewidth=1.2)
-
-                # Larger text labels on top (with dynamic offset for tall bars)
-                max_total = max(total_queries_batch) if len(total_queries_batch) > 0 else 1
-                for x, total in zip(batch_points, total_queries_batch):
-                    if total > 0:
-                        offset = max_total * 0.03  # Slightly higher for visibility
-                        plt.text(x, total + offset, str(int(total)),
-                                 ha='center', va='bottom', fontsize=13, fontweight='bold', color='black')
-
-                # Legend below plot — pushed lower and wider
-                plt.legend(fontsize=15, loc='upper center', bbox_to_anchor=(0.5, -0.1),
-                           ncol=4, frameon=True, fancybox=False, edgecolor='black')
-
-                # Generous manual margins to include everything
-                plt.subplots_adjust(left=0.10, right=0.95, top=0.90, bottom=0.28)
-
-                # Save with tight bbox — this ensures the PNG includes the full legend and no clipping
-                plt.savefig('ared_query_breakdown_stacked.pdf', dpi=300, bbox_inches='tight', pad_inches=0.8)
-
-                plt.show()
-            # try:
-            #     # --- Plot #1: Number of clusters ---
-            #     batch_num_pts = list(range(GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS + 1, GRAPH_BATCH_SIZE))
-            #     plt.figure(figsize=(10, 5))
-            #     plt.plot(batch_num_pts, num_clusters, 'b-o', label="Number of clusters")
-            #     plt.grid(True)
-            #     plt.xlabel("Processed points")
-            #     plt.ylabel("Count")
-            #     plt.legend()
-            #     plt.title("Cluster Evolution")
-            #
-            #     # --- Plot #2: Time per batch + Buffer fill % ---
-            #     if len(times) > 1 and len(buffer_fill_percents) == len(np.diff(times)):
-            #         plt.figure(figsize=(10, 6))
-            #
-            #         batch_indices = list(range(1, len(times)))
-            #
-            #         time_per_batch = np.diff(times)
-            #
-            #         ax1 = plt.gca()
-            #         col = 'tab:red'
-            #         ax1.set_xlabel("Batch #")
-            #         ax1.set_ylabel("Time per batch (sec)", color=col)
-            #         ax1.plot(batch_indices, time_per_batch, 'o-', color=col, label="Time per batch")
-            #         ax1.tick_params(axis='y', labelcolor=col)
-            #         ax1.grid(True, alpha=0.3)
-            #
-            #         ax2 = ax1.twinx()
-            #         col = 'tab:green'
-            #         ax2.set_ylabel("Buffer fill %", color=col)
-            #         ax2.plot(batch_indices, buffer_fill_percents, 's--', color=col, label="Buffer fill %")
-            #         ax2.tick_params(axis='y', labelcolor=col)
-            #
-            #         plt.title("Performance per Batch")
-            #         ax1.legend(loc="upper left")
-            #         ax2.legend(loc="upper right")
-            #
-            # except Exception as e:
-            #     print("Plot error:", e)
-
+            calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes, ared,
+                                            num_correct_queries, num_queries,
+                                            MAKE_GRAPHS, GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS,
+                                            anom_only_queries, rel_only_queries, both_a_and_r_queries,
+                                            cumulative_relevants)
 
         current_time = time.time()
         time_elapsed = current_time - start_time
         print(f"Run took {time_elapsed:.2f} seconds")
         print("ARED COMPLETE")
-        #
-        # batch_times = np.diff(np.array(times))
-        # batch_queries = np.diff(np.array(num_queries))
-        # plt.figure()
-        # plt.plot(batch_times/np.max(batch_times))
-        # plt.plot(np.array(batch_queries)/max(batch_queries))
-        # plt.plot(np.array(num_clusters)/max(num_clusters))
-        # plt.plot(np.array(num_labels))
-        # # plt.plot(np.array(precision)/1.0)
-        # plt.legend(["time per batch", "num queries per batch", "num_clusters,num_labels"])
-        # plt.figure()
 
         plt.show()
