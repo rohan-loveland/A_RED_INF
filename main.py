@@ -27,12 +27,14 @@ N_REL_CLASSES: Specified number of relevant classes
 # DATA_SOURCE = "NICE"
 # N_REL_CLASSES = 4
 
-# DATA_SOURCE = "PARKING_LOT"
-# N_REL_CLASSES = 7
+DATA_SOURCE = "PARKING_LOT"
+N_REL_CLASSES = 7
 
 # DATA_SOURCE = "PARKING_LOT_DAGMM"
 # N_REL_CLASSES = 8
 
+#DATA_SOURCE = "PARKING_LOT_DINO"
+#N_REL_CLASSES = 4
 DATA_SOURCE = "PARKING_LOT_DINO"
 N_REL_CLASSES = 8
 
@@ -52,6 +54,13 @@ QS_VAR: Query Strategy Variants
 |- 1: Approx. Ave Single Linkage Average 
 '''
 QS_VAR = 1
+
+'''
+DATA_AUG_VAR: Auto data augmentation varients
+|- 0, (0,): No data augmentation, empty shape
+|- 1, (n, n): x4 90 degree rotation with unflattened shape. Data must be a square matrix 
+'''
+DATA_AUG_VAR = (1, (128,128))
 
 '''
 K_COMP_PTS: Number of points to compare to when looking for relevance
@@ -104,11 +113,6 @@ NUM_POINTS_TO_PROCESS = 25000#-1
 GRAPH_BATCH_SIZE: number of points in batch for stats purposes.
 '''
 GRAPH_BATCH_SIZE = 250
-
-'''
-DATA_AUG_VAR: number of points in batch for stats purposes.
-'''
-DATA_AUG_VAR = False
 
 '''
 VERBOSE_FLAGS: Array of control flags to make ARED loud or quiet

@@ -91,22 +91,42 @@ class Cluster:
 
     def update_diameter_single(self, l_buf):
         latest_idx = self.l_pt_idxs[-1]
-        latest_pt = l_buf.get_pt_data_abs(latest_idx)
-        max_dist = 0
+        latest_pts = l_buf.get_pt_data_abs(latest_idx)
+        # If no points at the latest index, nothing to do
+        if latest_pts is None or len(latest_pts) == 0:
+            return
+        max_dist = 0.0
+        # Loop over all previous indices
         for idx in self.l_pt_idxs[:-1]:
-            dist = np.linalg.norm(l_buf.get_pt_data_abs(idx) - latest_pt)
-            if dist > max_dist:
-                max_dist = dist
+            prev_pts = l_buf.get_pt_data_abs(idx)
+            if prev_pts is None:
+                continue
+            # Compare every latest point with every previous point at this index
+            for latest_pt in latest_pts:
+                for prev_pt in prev_pts:
+                    dist = np.linalg.norm(latest_pt - prev_pt)
+                    if dist > max_dist:
+                        max_dist = dist
+        # Update comp_distance if the new maximum distance is larger
         if max_dist > self.comp_distance:
             self.comp_distance = max_dist
 
     def update_diameter_all(self, l_buf):
-        max_dist = 0
-        for i in range(len(self.l_pt_idxs)):
-            p1 = l_buf.get_pt_data_abs(self.l_pt_idxs[i])
-            for j in range(i + 1, len(self.l_pt_idxs)):
-                p2 = l_buf.get_pt_data_abs(self.l_pt_idxs[j])
-                dist = np.linalg.norm(p1 - p2)
+        max_dist = 0.0
+        # Get all points from all indices in the cluster
+        all_points = []
+        for idx in self.l_pt_idxs:
+            pts = l_buf.get_pt_data_abs(idx)
+            if pts is not None:
+                all_points.extend(pts)
+        # If fewer than 2 points, diameter is 0
+        if len(all_points) < 2:
+            self.comp_distance = 0.0
+            return
+        # Simple double loop over all individual points
+        for i in range(len(all_points)):
+            for j in range(i + 1, len(all_points)):
+                dist = np.linalg.norm(all_points[i] - all_points[j])
                 if dist > max_dist:
                     max_dist = dist
         self.comp_distance = max_dist
@@ -116,23 +136,63 @@ class Cluster:
             self.comp_distance = 0.0
             return
         latest_idx = self.l_pt_idxs[-1]
-        latest_pt = l_buf.get_pt_data_abs(latest_idx)
-        min_dist = np.inf
+        latest_pts = l_buf.get_pt_data_abs(latest_idx)
+        # If no new points, nothing to update
+        if latest_pts is None or len(latest_pts) == 0:
+            print("PANIC: Problem with cluster storage")
+            return
+        # Collect all existing points (from all previous indices)
+        existing_pts = []
         for idx in self.l_pt_idxs[:-1]:
-            dist = np.linalg.norm(l_buf.get_pt_data_abs(idx) - latest_pt)
-            if dist < min_dist:
-                min_dist = dist
-        n = len(self.l_pt_idxs)
+            pts = l_buf.get_pt_data_abs(idx)
+            if pts is not None:
+                existing_pts.extend(pts)
+        # If no existing points (shouldn't happen due to len check, but safe)
+        if not existing_pts:
+            self.comp_distance = 0.0
+            print("PANIC: PANIC problem with cluster storage")
+            return
+        # Find the minimum distance from ANY latest point to ANY existing point
+        min_dist = np.inf
+        for latest_pt in latest_pts:
+            for existing_pt in existing_pts:
+                dist = np.linalg.norm(latest_pt - existing_pt)
+                if dist < min_dist:
+                    min_dist = dist
+        # If all distances are infinite or zero points (edge case)
+        if min_dist == np.inf:
+            min_dist = 0.0
+        # Incremental update of the average
+        n = len(self.l_pt_idxs)  # Total number of indices (not individual points)
         self.comp_distance = (self.comp_distance * (n - 1) + min_dist) / n
 
     def update_ave_nn_dist_all(self, l_buf):
         if len(self.l_pt_idxs) < 2:
             self.comp_distance = 0.0
             return
-        data = np.array([l_buf.get_pt_data_abs(i) for i in self.l_pt_idxs])
-        nn = NearestNeighbors(n_neighbors=2).fit(data)
-        distances, _ = nn.kneighbors(data)
-        self.comp_distance = np.mean(distances[:, 1])
+        # Collect all individual points from all indices
+        all_points = []
+        for idx in self.l_pt_idxs:
+            pts = l_buf.get_pt_data_abs(idx)
+            if pts is not None:
+                all_points.extend(pts)
+        num_points = len(all_points)
+        if num_points < 2:
+            self.comp_distance = 0.0
+            return
+        # Compute distance from each point to every other point, find nearest for each
+        total_nn_dist = 0.0
+        for i in range(num_points):
+            min_dist = np.inf
+            for j in range(num_points):
+                if i == j:
+                    continue
+                dist = np.linalg.norm(all_points[i] - all_points[j])
+                if dist < min_dist:
+                    min_dist = dist
+            total_nn_dist += min_dist
+        # Average of the nearest-neighbor distances
+        self.comp_distance = total_nn_dist / num_points
 
     # AI !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     # ------------------------------------------------------------------
@@ -140,22 +200,59 @@ class Cluster:
     # ------------------------------------------------------------------
     def _diameter_of_union(self, l_buf, other_idxs):
         """Return the exact diameter of *self + other_idxs* without modifying self."""
-        pts = [l_buf.get_pt_data_abs(i) for i in self.l_pt_idxs + other_idxs]
+        # Collect all individual points from self's indices and the other indices
+        all_points = []
+        # Points from self
+        for i in self.l_pt_idxs:
+            pts = l_buf.get_pt_data_abs(i)
+            if pts is not None:
+                all_points.extend(pts)
+        # Points from other_idxs
+        for i in other_idxs:
+            pts = l_buf.get_pt_data_abs(i)
+            if pts is not None:
+                all_points.extend(pts)
+        # If fewer than 2 points, diameter is 0
+        if len(all_points) < 2:
+            return 0.0
         max_d = 0.0
-        for a in range(len(pts)):
-            for b in range(a + 1, len(pts)):
-                d = np.linalg.norm(pts[a] - pts[b])
-                if d > max_d: max_d = d
+        for a in range(len(all_points)):
+            for b in range(a + 1, len(all_points)):
+                d = np.linalg.norm(all_points[a] - all_points[b])
+                if d > max_d:
+                    max_d = d
         return max_d
 
     def _avg_nn_of_union(self, l_buf, other_idxs):
-        """Return the exact avg-NN distance of *self + other_idxs*."""
-        pts = np.vstack([l_buf.get_pt_data_abs(i) for i in self.l_pt_idxs + other_idxs])
-        if pts.shape[0] < 2:
+        """Return the exact avg-NN distance of *self + other_idxs* without modifying self."""
+        # Collect all individual points from self's indices and the other indices
+        all_points = []
+        # Points from self
+        for i in self.l_pt_idxs:
+            pts = l_buf.get_pt_data_abs(i)
+            if pts is not None:
+                all_points.extend(pts)
+        # Points from other_idxs
+        for i in other_idxs:
+            pts = l_buf.get_pt_data_abs(i)
+            if pts is not None:
+                all_points.extend(pts)
+        num_points = len(all_points)
+        if num_points < 2:
             return 0.0
-        nn = NearestNeighbors(n_neighbors=2).fit(pts)
-        distances, _ = nn.kneighbors(pts)
-        return np.mean(distances[:, 1])
+        # Compute the nearest-neighbor distance for each point (brute force)
+        total_nn_dist = 0.0
+        for i in range(num_points):
+            min_dist = np.inf
+            for j in range(num_points):
+                if i == j:
+                    continue
+                dist = np.linalg.norm(all_points[i] - all_points[j])
+                if dist < min_dist:
+                    min_dist = dist
+            total_nn_dist += min_dist
+        # Return the average of all nearest-neighbor distances
+        return total_nn_dist / num_points
 
 """# AREDIN"""
 
@@ -164,7 +261,7 @@ class ARED:
     def __init__(self, oracle, kappa, l_buf_size, K_COMP_PTS, QS_VAR, DATA_AUG_VAR, NGHBHOOD_MERGE, SINGLETON_MERGE, VERBOSE_FLAGS):
         self.kappa = kappa
         self.K_COMP_PTS = K_COMP_PTS
-        self.l_buf = FiniteBuffer(l_buf_size, .8, 2)
+        self.l_buf = FiniteBuffer(l_buf_size, .8, 2, DATA_AUG_VAR)
         self.subspace_partition = Subspace_Partition(self.l_buf)
         self.oracle = oracle
         self.num_correct_queries = 0
@@ -217,8 +314,11 @@ class ARED:
         centroids = {}
         for key in small_keys:
             cl = self.subspace_partition.cluster_dict[key]
-            live_pts = [self.l_buf.get_pt_data_abs(i) for i in cl.l_pt_idxs
-                        if self.l_buf.get_pt_data_abs(i) is not None]
+            live_pts = []
+            for i in cl.l_pt_idxs:
+                pts = self.l_buf.get_pt_data_abs(i)
+                if pts is not None:
+                    live_pts.extend(pts)
             if not live_pts:
                 # the whole cluster has been forgotten → just delete it
                 del self.subspace_partition.cluster_dict[key]
@@ -232,8 +332,11 @@ class ARED:
         for key, cl in self.subspace_partition.cluster_dict.items():
             if key in small_keys:
                 continue
-            live_pts = [self.l_buf.get_pt_data_abs(i) for i in cl.l_pt_idxs
-                        if self.l_buf.get_pt_data_abs(i) is not None]
+            live_pts = []
+            for i in cl.l_pt_idxs:
+                pts = self.l_buf.get_pt_data_abs(i)
+                if pts is not None:
+                    live_pts.extend(pts)
             if live_pts:
                 candidate_centroids[key] = np.mean(live_pts, axis=0)
 
@@ -308,8 +411,21 @@ class ARED:
         if self.QS_VAR == 0:  # Diameter
             # Existing diameter code (already fast enough)
             max_cross = 0.0
-            keep_pts = [self.l_buf.get_pt_data_abs(i) for i in keep_cl.l_pt_idxs[-merge_size:]]  # only new ones
-            merge_pts = [self.l_buf.get_pt_data_abs(i) for i in merge_cl.l_pt_idxs]
+            # Collect only the new points from keep_cl (last merge_size points)
+            keep_pts = []
+            for i in keep_cl.l_pt_idxs[-merge_size:]:
+                pts = self.l_buf.get_pt_data_abs(i)
+                if pts is not None:
+                    keep_pts.extend(pts)
+
+            # Collect all points from merge_cl
+            merge_pts = []
+            for i in merge_cl.l_pt_idxs:
+                pts = self.l_buf.get_pt_data_abs(i)
+                if pts is not None:
+                    merge_pts.extend(pts)
+
+            # NOTE: Maybe vectorized this calculation?
             for k_pt in keep_pts:
                 if k_pt is None: continue
                 for m_pt in merge_pts:
@@ -329,16 +445,23 @@ class ARED:
                 pass  # nothing to do
             else:
                 # Extract live points from both_a_and_r_queries clusters
-                keep_pts = np.array([
-                    self.l_buf.get_pt_data_abs(i)
-                    for i in keep_cl.l_pt_idxs[:-merge_size]  # old points only
-                    if self.l_buf.get_pt_data_abs(i) is not None
-                ])
-                merge_pts = np.array([
-                    self.l_buf.get_pt_data_abs(i)
-                    for i in merge_cl.l_pt_idxs
-                    if self.l_buf.get_pt_data_abs(i) is not None
-                ])
+                # Collect all points from the kept old indices
+                keep_pts_list = []
+                for i in keep_cl.l_pt_idxs[:-merge_size]:  # old points only
+                    pts = self.l_buf.get_pt_data_abs(i)
+                    if pts is not None:
+                        keep_pts_list.extend(pts)
+
+                keep_pts = np.array(keep_pts_list)
+
+                # Collect all points from the merge cluster indices
+                merge_pts_list = []
+                for i in merge_cl.l_pt_idxs:
+                    pts = self.l_buf.get_pt_data_abs(i)
+                    if pts is not None:
+                        merge_pts_list.extend(pts)
+
+                merge_pts = np.array(merge_pts_list)
 
                 if len(merge_pts) == 0:
                     pass
