@@ -10,15 +10,11 @@ and ...
 
 N_REL_CLASSES: Specified number of relevant classes
 |- This is the number of classes (starting from sparsest) that are to be considered relevant
-|- MNIST settings:
-|=== High Relevant Class Representation (HRCR): 8 relevant classes ~25% of data as relevant
-|=== Low Relevant Class Representation (LRCR): 4 relevant classes ~1.4% of data as relevant`
-|- EMNIST settings:
-|=== HRCR 40 relevant classes ~25% of data as relevant
-|=== LRCR: 3 relevant classes ~1% of data as relevant`
-|- NICE settings:
-|=== Low relevance: 4 relevant classes ~1.4% of data as relevant`
+|- MNIST settings: 4 relevant classes ~1.4% of data as relevant
+|- EMNIST settings: 3 relevant classes ~1% of data as relevant
+|- NICE settings: 4 relevant classes ~1.4% of data as relevant
 '''
+
 # DATA_SOURCE = "MNIST" # NOTE: currently multiplied by 10x to get ~130,000 samples
 # N_REL_CLASSES = 4
 
@@ -26,7 +22,7 @@ N_REL_CLASSES: Specified number of relevant classes
 # N_REL_CLASSES = 3
 
 # DATA_SOURCE = "EMNIST"
-# N_REL_CLASSES = 3
+# N_REL_CLASSES = 10
 
 # DATA_SOURCE = "NICE"
 # N_REL_CLASSES = 4
@@ -38,15 +34,16 @@ N_REL_CLASSES: Specified number of relevant classes
 # N_REL_CLASSES = 8
 
 DATA_SOURCE = "PARKING_LOT_DINO"
-N_REL_CLASSES = 4
+N_REL_CLASSES = 8
 
 '''
 KAPPA: Paranoia Parameter
 '''
 # KAPPA = 1 # NICE
+# KAPPA = 0.75 # MNIST
 # KAPPA = 0.75 # No DAGMM
 # KAPPA = 2 # DAGMM
-KAPPA = 1.0 # DINO
+KAPPA = 0.5 # DINO
 
 
 '''
@@ -101,7 +98,7 @@ NUM_POINTS_TO_PROCESS: Number of points in dataset to process
 |- -1: process all the data
 |-  0 to inf: process up to that number if data is available
 '''
-NUM_POINTS_TO_PROCESS = 10000#-1
+NUM_POINTS_TO_PROCESS = 25000#-1
 
 '''
 GRAPH_BATCH_SIZE: number of points in batch for stats purposes.
@@ -257,73 +254,74 @@ if __name__ == '__main__':
         #     print(ared.conf_matrix)
 
         if MAKE_GRAPHS:
-            single_rel_recall_list, query_precision_list, rel_individual_recalls, query_rate, rel_rate_list = \
+            (single_rel_recall_list, query_precision_list, rel_individual_recalls, query_rate, precision_ratio_list,
+             recall_ratio_list) = \
                 calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes, ared, num_correct_queries,
                                                 num_queries, MAKE_GRAPHS, GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS)
 
             # --------------------------------------------------------------
-            # PLOT: Query Breakdown Over Time as Stacked Bar Chart
+            # PLOT: Query Breakdown Over Time as Stacked Bar Chart (Paper-ready, no clipping)
             # --------------------------------------------------------------
 
             if MAKE_GRAPHS:
                 import matplotlib.pyplot as plt
                 import numpy as np
 
-                # X-axis: processed points at the end of each batch
-                batch_points = np.arange(GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS + 1, GRAPH_BATCH_SIZE)
+                # Use ACTUAL number of batches collected
+                num_batches = len(num_queries)
+                batch_points = np.arange(GRAPH_BATCH_SIZE, GRAPH_BATCH_SIZE * num_batches + 1, GRAPH_BATCH_SIZE)
 
-                # Per-batch counts
-                anom_only_batch = np.diff(anom_only_queries, prepend=0)
-                rel_only_batch = np.diff(rel_only_queries, prepend=0)
-                both_batch = np.diff(both_a_and_r_queries, prepend=0)
+                # Per-batch counts (full resolution)
+                anom_only_batch = np.diff(anom_only_queries, prepend=0)[:num_batches]
+                rel_only_batch = np.diff(rel_only_queries, prepend=0)[:num_batches]
+                both_batch = np.diff(both_a_and_r_queries, prepend=0)[:num_batches]
+                total_queries_batch = np.diff(num_queries, prepend=0)[:num_batches]
 
-                # Optional: reduce number of bars if too many (e.g. show every 4th batch)
-                step = 4  # change to 1 to show every batch
-                indices = np.arange(0, len(batch_points), step)
-                batch_points = batch_points[indices]
-                anom_only_batch = anom_only_batch[indices]
-                rel_only_batch = rel_only_batch[indices]
-                both_batch = both_batch[indices]
+                bar_width = GRAPH_BATCH_SIZE * 0.8
 
-                # Set up the bar positions
-                bar_width = GRAPH_BATCH_SIZE * step * 0.8  # visual width, adjust as needed
-                x_pos = batch_points
-
-                plt.figure(figsize=(14, 8))
+                # Taller and wider figure to prevent clipping
+                plt.figure(figsize=(12, 9), dpi=300)
 
                 # Stacked bars
-                p1 = plt.bar(x_pos, anom_only_batch, width=bar_width,
-                             label='Anomalous Only', color='#E74C3C', edgecolor='white', alpha=0.9)
-                p2 = plt.bar(x_pos, rel_only_batch, bottom=anom_only_batch,
-                             width=bar_width, label='Relevant Only', color='#3498DB', edgecolor='white', alpha=0.9)
-                p3 = plt.bar(x_pos, both_batch, bottom=anom_only_batch + rel_only_batch,
-                             width=bar_width, label='Both Triggers', color='#9B59B6', edgecolor='white', alpha=0.9)
+                p1 = plt.bar(batch_points, anom_only_batch, width=bar_width,
+                             label='Anomalous Only', color='#E74C3C', edgecolor='black', linewidth=1.2, alpha=0.95)
+                p2 = plt.bar(batch_points, rel_only_batch, bottom=anom_only_batch,
+                             width=bar_width, label='Relevant Only', color='#3498DB', edgecolor='black', linewidth=1.2,
+                             alpha=0.95)
+                p3 = plt.bar(batch_points, both_batch, bottom=anom_only_batch + rel_only_batch,
+                             width=bar_width, label='Both Triggers', color='#9B59B6', edgecolor='black', linewidth=1.2,
+                             alpha=0.95)
 
-                # Optional: overlay total queries as a line
-                total_queries_batch = np.diff(num_queries, prepend=0)[indices]
-                plt.plot(x_pos, total_queries_batch, 'k-o', markersize=4, linewidth=2.5,
-                         label='Total Queries', alpha=0.9, markerfacecolor='white', markeredgewidth=1.5)
+                # Total queries line
+                plt.plot(batch_points, total_queries_batch, 'k-o', markersize=9, linewidth=3.5,
+                         label='Total Queries', markerfacecolor='white', markeredgewidth=2.2)
 
-                # Labels & styling
-                plt.title('A/RED Query Breakdown Over Time (Stacked Bar Chart)', fontsize=18, pad=20)
-                plt.xlabel('Processed Points', fontsize=14)
-                plt.ylabel('Number of Queries per Batch', fontsize=14)
-                plt.legend(fontsize=12, loc='upper left')
-                plt.grid(True, axis='y', alpha=0.3, linestyle='--')
+                # Styling with larger fonts
+                plt.title('A/RED Query Breakdown Over Time', fontsize=20, pad=30, fontweight='bold')
+                plt.xlabel('Processed Points', fontsize=16)
+                plt.ylabel('Number of Queries per Batch', fontsize=16)
+                plt.tick_params(axis='both', labelsize=14)
+                plt.grid(True, axis='y', alpha=0.4, linestyle='--', linewidth=1.2)
 
-                # Optional: add text labels on top of bars (total per batch)
-                for i, (x, total) in enumerate(zip(x_pos, total_queries_batch)):
+                # Larger text labels on top (with dynamic offset for tall bars)
+                max_total = max(total_queries_batch) if len(total_queries_batch) > 0 else 1
+                for x, total in zip(batch_points, total_queries_batch):
                     if total > 0:
-                        plt.text(x, total + 0.5, str(int(total)), ha='center', va='bottom',
-                                 fontsize=9, fontweight='bold', color='black')
+                        offset = max_total * 0.03  # Slightly higher for visibility
+                        plt.text(x, total + offset, str(int(total)),
+                                 ha='center', va='bottom', fontsize=13, fontweight='bold', color='black')
 
-                plt.tight_layout()
+                # Legend below plot — pushed lower and wider
+                plt.legend(fontsize=15, loc='upper center', bbox_to_anchor=(0.5, -0.1),
+                           ncol=4, frameon=True, fancybox=False, edgecolor='black')
+
+                # Generous manual margins to include everything
+                plt.subplots_adjust(left=0.10, right=0.95, top=0.90, bottom=0.28)
+
+                # Save with tight bbox — this ensures the PNG includes the full legend and no clipping
+                plt.savefig('ared_query_breakdown_stacked.pdf', dpi=300, bbox_inches='tight', pad_inches=0.8)
+
                 plt.show()
-
-                # Save if you want
-                # plt.savefig('ared_query_breakdown_bars.png', dpi=300, bbox_inches='tight')
-
-            plt.show()
             # try:
             #     # --- Plot #1: Number of clusters ---
             #     batch_num_pts = list(range(GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS + 1, GRAPH_BATCH_SIZE))
