@@ -13,9 +13,15 @@ N_REL_CLASSES: Specified number of relevant classes
 |- MNIST settings: 4 relevant classes ~1.4% of data as relevant
 |- EMNIST settings: 3 relevant classes ~1% of data as relevant
 |- NICE settings: 4 relevant classes ~1.4% of data as relevant
+
+and ...
+
+KAPPA: Paranoia Parameter
+
 '''
 
 # DATA_SOURCE = "MNIST" # NOTE: currently multiplied by 10x to get ~130,000 samples
+# KAPPA = 0.75 # MNIST
 # N_REL_CLASSES = 4
 
 # DATA_SOURCE = "MNIST_2D"
@@ -25,26 +31,17 @@ N_REL_CLASSES: Specified number of relevant classes
 # N_REL_CLASSES = 10
 
 # DATA_SOURCE = "NICE"
+# KAPPA = 1 # NICE
 # N_REL_CLASSES = 4
 
-# DATA_SOURCE = "PARKING_LOT"
-# N_REL_CLASSES = 8
 
+# DATA_SOURCE = "PARKING_LOT_BASE"
+# KAPPA = 0.75# PL - Base
 # DATA_SOURCE = "PARKING_LOT_DAGMM"
-# N_REL_CLASSES = 8
-
+# KAPPA = 7 # PL - DAGMM
 DATA_SOURCE = "PARKING_LOT_DINO"
-N_REL_CLASSES = 8
-
-'''
-KAPPA: Paranoia Parameter
-'''
-# KAPPA = 1 # NICE
-# KAPPA = 0.75 # MNIST
-# KAPPA = 0.75 # No DAGMM
-# KAPPA = 2 # DAGMM
-KAPPA = 0.5 # DINO
-
+KAPPA = 0.5# PL - DINO
+N_REL_CLASSES = 5
 
 '''
 QS_VAR: Query Strategy Variants
@@ -267,4 +264,60 @@ if __name__ == '__main__':
         print(f"Run took {time_elapsed:.2f} seconds")
         print("ARED COMPLETE")
 
-        plt.show()
+        current_time = time.time()
+        time_elapsed = current_time - start_time
+        print(f"Run took {time_elapsed:.2f} seconds")
+        print("ARED COMPLETE")
+
+        # ------------------------------------------------------------------
+        # FINAL PERFORMANCE SUMMARY (Precision, Recall, F1 + Relevance %)
+        # ------------------------------------------------------------------
+        print("\n" + "=" * 80)
+        print("FINAL PERFORMANCE SUMMARY")
+        print("=" * 80)
+
+        total_points_processed = (NUM_POINTS_TO_PROCESS if NUM_POINTS_TO_PROCESS > 0 else len(X_skewed))
+        total_relevants_seen = cumulative_relevants[-1] if cumulative_relevants else 0
+        relevance_percentage_seen = (total_relevants_seen / total_points_processed * 100
+                                     if total_points_processed > 0 else 0.0)
+
+        # Overall Query Precision
+        total_queries_final = num_queries[-1] if num_queries else 0
+        total_correct_final = num_correct_queries[-1] if num_correct_queries else 0
+        overall_query_precision = (total_correct_final / total_queries_final
+                                   if total_queries_final > 0 else 0.0)
+
+        # Overall Relevant Recall + discovered classes
+        final_conf_matrix = conf_matrices[-1] if conf_matrices else np.zeros((oracle.num_classes, oracle.num_classes))
+        final_recall, _ = calculate_single_rel_recall(final_conf_matrix, rel_classes, ared)
+
+        # F1-score
+        if overall_query_precision + final_recall > 0:
+            overall_f1 = 2 * (overall_query_precision * final_recall) / (overall_query_precision + final_recall)
+        else:
+            overall_f1 = 0.0
+
+        # Discovered relevant classes
+        discovered_rel_classes = []
+        for rel_class_str in rel_classes:
+            i = ared.oracle.int_str_label_bidict[rel_class_str]
+            if final_conf_matrix[i, i] > 0:
+                discovered_rel_classes.append(rel_class_str)
+
+        num_discovered = len(discovered_rel_classes)
+        num_target = len(rel_classes)
+
+        print(f"DATA_SOURCE {DATA_SOURCE},KAPPA = {KAPPA:0.2f},N_REL_CLASSES = {N_REL_CLASSES}")
+        print(f"Total points processed           : {total_points_processed}")
+        print(f"Total relevant points seen       : {total_relevants_seen}")
+        print(f"Relevant points percentage       : {relevance_percentage_seen:.3f}%")
+        print(f"Target relevant classes          : {num_target} → {rel_classes}")
+        print(f"Discovered relevant classes      : {num_discovered}/{num_target} → {discovered_rel_classes}")
+        print(f"Total queries made               : {total_queries_final}")
+        print(f"Total correct queries            : {total_correct_final}")
+        print("")
+        print(
+            f"Overall Query Precision          : {overall_query_precision:.4f} ({overall_query_precision * 100:.2f}%)")
+        print(f"Overall Relevant Recall          : {final_recall:.4f} ({final_recall * 100:.2f}%)")
+        print(f"Overall F1-Score                 : {overall_f1:.4f} ({overall_f1 * 100:.2f}%)")
+        print("=" * 80)
