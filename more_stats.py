@@ -150,7 +150,7 @@ def calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes,
         # --------------------------------------------------------------
         # FIGURE 1: Panels (a) and (b) side-by-side
         # --------------------------------------------------------------
-        fig1, (ax_a, ax_b) = plt.subplots(1, 2, figsize=(14, 6), dpi=300)
+        fig1, (ax_a, ax_b) = plt.subplots(1, 2, figsize=(10.50, 4.50))
 
         # Panel (a): Query Precision + Ratio
         ax_a.plot(batch_num_pts, query_precision_list, 'o-', color='tab:blue',
@@ -212,7 +212,7 @@ def calc_rel_recall_query_precision(sparsity_levels, conf_matrices, rel_classes,
         # --------------------------------------------------------------
         # FIGURE 2: Panel (c) — Query Breakdown & Relevant Points
         # --------------------------------------------------------------
-        fig2 = plt.figure(figsize=(12, 8), dpi=300)
+        fig2 = plt.figure(figsize=(9.00, 6.00))
 
         ax_c = fig2.add_subplot(111)
 

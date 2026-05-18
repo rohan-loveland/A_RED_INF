@@ -20,9 +20,13 @@ class Data_Stream:
 
   def shuffle_data(self, seed=None):
       self.stream_counter = 0
+
       combined = list(zip(self.X, self.y))
+
       rng = random.Random(seed)
       rng.shuffle(combined)
-      self.X, self.y = zip(*combined)
-      self.X = list(self.X)
-      self.y = list(self.y)
+
+      if combined:
+          self.X, self.y = map(list, zip(*combined))
+      else:
+          self.X, self.y = [], []

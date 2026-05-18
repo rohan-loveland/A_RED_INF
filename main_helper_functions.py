@@ -4,6 +4,10 @@ from MNIST_2D_Data_Processing import *
 from EMNIST_Data_Processing import *
 from NICE_Data_Processing import *
 from Parking_Lot_Data_Processing import *
+from MVtechAD_Data_Processing import *
+from DINOv2_MVtechAD_Processing import *
+from DINOv2_VisA import *
+from VisA_Data_Processing import visa_setup_for_main
 # from Parking_Lot_DAGMM_Data_Processing import *
 from dagmm_parking_lot import compute_dagmm_features_parking_lot
 from DINOv2_Data_Processing import parking_lot_dino_preprocessed
@@ -29,6 +33,32 @@ def get_data(data_source, N_REL_CLASSES, VERBOSE_FLAGS, seed):
         )
     elif data_source == "PARKING_LOT_DINO":
         X, y_w_rel, sparsity_levels, rel_classes = parking_lot_dino_preprocessed(
+            N_REL_CLASSES,
+            VERBOSE_FLAGS,
+            seed
+        )
+    elif data_source == "MVtechAD":
+        X, y_w_rel, sparsity_levels, rel_classes = mvtechad_setup_for_main(
+            N_REL_CLASSES,
+            VERBOSE_FLAGS,
+            seed
+        )
+    elif data_source == "MVtechAD_DINO":
+        X, y_w_rel, sparsity_levels, rel_classes = mvtechad_dino_ae_setup_for_main(
+            N_REL_CLASSES,
+            VERBOSE_FLAGS,
+            seed
+        )
+
+    elif data_source == "VisA":
+        X, y_w_rel, sparsity_levels, rel_classes = visa_setup_for_main(
+            N_REL_CLASSES,
+            VERBOSE_FLAGS,
+            seed
+        )
+
+    elif data_source == "VisA_DINO":
+        X, y_w_rel, sparsity_levels, rel_classes = visa_dino_ae_setup_for_main(
             N_REL_CLASSES,
             VERBOSE_FLAGS,
             seed

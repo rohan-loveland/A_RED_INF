@@ -5,6 +5,11 @@ DATA_SOURCE: Dataset to run ARED on
 |- EMNIST: EMNIST dataset
 |- PARKING_LOT
 |- PARKING_LOT_DAGMM
+|- PARKING_LOT_DINO
+|- MVtechAD
+|- MVtechAD_DINO
+|- VisA
+|- VisA_DINO
 
 and ...
 
@@ -13,6 +18,13 @@ N_REL_CLASSES: Specified number of relevant classes
 |- MNIST settings: 4 relevant classes ~1.4% of data as relevant
 |- EMNIST settings: 3 relevant classes ~1% of data as relevant
 |- NICE settings: 4 relevant classes ~1.4% of data as relevant
+|- PARKING_LOT
+|- PARKING_LOT_DAGMM
+|- PARKING_LOT_DINO
+|- MVtechAD
+|- MVtechAD_DINO
+|- VisA
+|- VisA_DINO
 
 and ...
 
@@ -39,9 +51,26 @@ KAPPA: Paranoia Parameter
 # KAPPA = 0.75# PL - Base
 # DATA_SOURCE = "PARKING_LOT_DAGMM"
 # KAPPA = 7 # PL - DAGMM
-DATA_SOURCE = "PARKING_LOT_DINO"
-KAPPA = 0.5# PL - DINO
-N_REL_CLASSES = 5
+
+# DATA_SOURCE = "PARKING_LOT_DINO"
+# KAPPA = 0.5# PL - DINO
+# N_REL_CLASSES = 5
+
+# DATA_SOURCE = "MVtechAD"
+# KAPPA = 1
+# N_REL_CLASSES = 6 # unused
+
+DATA_SOURCE = "MVtechAD_DINO"
+KAPPA = 1
+N_REL_CLASSES = 6 # unused
+
+# DATA_SOURCE = "VisA"
+# KAPPA = 1
+# N_REL_CLASSES = 6 # unused
+#
+# DATA_SOURCE = "VisA_DINO"
+# KAPPA = 1
+# N_REL_CLASSES = 6 # unused
 
 '''
 QS_VAR: Query Strategy Variants
@@ -55,7 +84,7 @@ DATA_AUG_VAR: Auto data augmentation variants
 |- 0, (0,): No data augmentation, empty shape
 |- 1, (n, n): x4 90 degree rotation with unflattened shape. Data must be a square matrix 
 '''
-DATA_AUG_VAR = (0, (128,128))
+DATA_AUG_VAR = (0, (256,256))
 
 '''
 K_COMP_PTS: Number of points to compare to when looking for relevance
@@ -95,7 +124,7 @@ window_size: size of the data_window window saved by ARED
 |- int: larger window size means it remembers more data
 |- WARNING: value must be larger than 0
 '''
-DATA_WINDOW_SIZE = 10000 # ultimately needs to be driven by anomaly ratio
+DATA_WINDOW_SIZE = 1000 # ultimately needs to be driven by anomaly ratio
 
 '''
 NUM_POINTS_TO_PROCESS: Number of points in dataset to process
@@ -162,6 +191,7 @@ if __name__ == '__main__':
 
         # Initialize Data Stream, Oracle and ARED ===================================
         data_stream = Data_Stream(X_skewed, y_w_rel)
+        #data_stream.shuffle_data()
         oracle = Oracle(X_skewed, y_w_rel)
         ared = ARED(oracle, KAPPA, DATA_WINDOW_SIZE, K_COMP_PTS, QS_VAR, DATA_AUG_VAR, NGHBHOOD_MERGE, SINGLETON_MERGE, VERBOSE_FLAGS)
         start_time, times, num_correct_queries, num_queries, num_clusters, num_labels, pt_dists, num_pts_searched_list, conf_matrices, \
