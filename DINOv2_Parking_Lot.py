@@ -57,12 +57,12 @@ print(f"Using device: {device}")
 # -------------------------- Load Resized Data --------------------------
 def load_resized_parking_lot(N_REL_CLASSES, VERBOSE_FLAGS, seed):
     # Where we expect the resized features + labels to live
-    features_path = "Parking_Lot_Data/resized_features_224.pkl"
-    labels_path   = "Parking_Lot_Data/labels.csv"
+    features_path = "Datasets/Parking_Lot_Data/resized_features_224.pkl"
+    labels_path   = "Datasets/Parking_Lot_Data/labels.csv"
 
     # If resized features are missing, try to create them from the original 128x128 features
     if not os.path.exists(features_path):
-        original_features_path = "Parking_Lot_Data/features.pkl"
+        original_features_path = "Datasets/Parking_Lot_Data/features.pkl"
 
         if os.path.exists(original_features_path):
             print(
@@ -464,6 +464,6 @@ def run_dinov2_autoencoder_preprocessing(
 if __name__ == "__main__":
     # When run directly: generate files and visualize
     run_dinov2_autoencoder_preprocessing(
-        out_dir="Parking_Lot_Data",
+        out_dir="Datasets/Parking_Lot_Data",
         do_viz=True,
     )

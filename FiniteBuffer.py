@@ -111,19 +111,19 @@ class FiniteBuffer:
         if build_ball_tree and not self._building_tree:
             self._building_tree = True
             threading.Thread(target=self._build_new_tree, daemon=True).start()
-
-        return forgotten_pt_info # (key, relevance, internal_abs_index, true_abs_idx)
+        return forgotten_pt_info # (key, relevance, index, internal_abs_index, true_abs_idx)
 
     '''
     returns the information about the oldest remembered streamed point
     '''
     def _forget_pt(self):
+        forgotten_pt_data = self.data_circular_buffer.get(0)
         forgotten_pt_cluster_key = self.cluster_key_circular_buffer.get(0)
         forgotten_pt_relevance = self.relevance_circular_buffer.get(0)
         forgotten_pt_index = self.min_internal_abs_idx
         forgotten_pt_true_abs_idx = self.true_abs_idx_circular_buffer.get(0)
 
-        return forgotten_pt_cluster_key, forgotten_pt_index, forgotten_pt_relevance, forgotten_pt_true_abs_idx
+        return forgotten_pt_cluster_key, forgotten_pt_relevance, forgotten_pt_index, forgotten_pt_true_abs_idx, forgotten_pt_data
 
     def find_closest_pts(self, X, k):
         closest_pts = []

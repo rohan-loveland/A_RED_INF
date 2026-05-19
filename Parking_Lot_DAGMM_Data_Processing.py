@@ -19,7 +19,7 @@ def parking_lot_dagmm_preprocessed(VERBOSE_FLAGS=None, seed=42):
 
     # Paths – adjust if needed
     # latent_path = "Parking_Lot_Data/preprocessed_X_latent_NREL8.pkl"
-    y_path      = "Parking_Lot_Data/y_w_rel_NREL8.pkl"
+    y_path      = "Datasets/Parking_Lot_Data/y_w_rel_NREL8.pkl"
     #
     # # Load data
     # with open(latent_path, "rb") as f:

@@ -11,7 +11,6 @@ from sklearn.neighbors import NearestNeighbors
 
 from main import QS_VAR
 
-
 """# Subspace Partition"""
 # NOTE: ARED_IN doesn't use o-pts at the moment, and ALL o_pt support has been removed
 # NOTE: all point data is referred to using absolute indexes including _all the points that have been streamed - _both
@@ -254,11 +253,33 @@ class Cluster:
         # Return the average of all nearest-neighbor distances
         return total_nn_dist / num_points
 
+    def __repr__(self):
+        return (
+            f"Cluster(id={self.cluster_id}, "
+            f"label={self.label!r}, "
+            f"relevance={self.relevance}, "
+            f"n_pts={len(self.l_pt_idxs)}, "
+            f"l_pt_idxs={self.l_pt_idxs}, "
+            f"comp_distance={self.comp_distance:.4f})"
+        )
+
+    def __str__(self):
+        lines = [
+            f"┌─ Cluster {self.cluster_id} ───────────────────────",
+            f"│  label        : {self.label}",
+            f"│  relevance    : {self.relevance}",
+            f"│  comp_distance: {self.comp_distance:.4f}",
+            f"│  n_pts        : {len(self.l_pt_idxs)}",
+            f"│  l_pt_idxs   : {self.l_pt_idxs}",
+            f"└────────────────────────────────────────",
+        ]
+        return "\n".join(lines)
+
 """# AREDIN"""
 
 class ARED:
 
-    def __init__(self, oracle, kappa, l_buf_size, K_COMP_PTS, QS_VAR, DATA_AUG_VAR, NGHBHOOD_MERGE, SINGLETON_MERGE, VERBOSE_FLAGS):
+    def __init__(self, oracle, kappa, l_buf_size, K_COMP_PTS, QS_VAR, DATA_AUG_VAR, NGHBHOOD_MERGE, SINGLETON_MERGE, SMART_FORGETTING_VAR, VERBOSE_FLAGS):
         self.kappa = kappa
         self.K_COMP_PTS = K_COMP_PTS
         self.l_buf = FiniteBuffer(l_buf_size, .8, 2, DATA_AUG_VAR)
@@ -270,13 +291,14 @@ class ARED:
         self.rel_only_queries = 0  # only relevant-near
         self.both_a_and_r_queries = 0  # triggered by both_a_and_r_queries
         self.num_pts_streamed = 0
+        self.abs_index = -1
         self.cumulative_relevant_seen = 0
-        # Note: this is equivalent to abs_idx + 1
         # VARIATION CONTROL FLAGS
         self.QS_VAR = QS_VAR # {0: diameter, 1: Ave Single Link Dist in Cluster
         self.DATA_AUG_VAR = DATA_AUG_VAR # {0: no augmentation, 1: x4 data rotation.}
         self.NGHBHOOD_MERGE = NGHBHOOD_MERGE
         self.SINGLETON_MERGE = SINGLETON_MERGE
+        self.SMART_FORGETTING_VAR = SMART_FORGETTING_VAR
         self.verbose_flags = VERBOSE_FLAGS
         self.conf_matrix = np.zeros((oracle.num_classes, oracle.num_classes), dtype=int)
 
@@ -535,20 +557,51 @@ class ARED:
     def query(self, abs_data_index):
         (label, relevance) = self.oracle.answer_query(abs_data_index)
 
-        return (label, relevance)
+        return label, relevance
 
     def update_structs_w_new_pt(self, abs_idx, data_point, cluster_key, label, relevance):
         # do maintenance by adding pt to l_buf, forgetting from subspace_partition if necessary
 
         # update l_buf to have the new point
-        #                      0    1          2                 3
-        # forgotten_pt_info = (key, relevance, internal_abs_idx, true_abs_idx)
+        #                      0    1          2                 3             4
+        # forgotten_pt_info = (key, relevance, internal_abs_idx, true_abs_idx, forgotten_point_data)
         forgotten_pt_info = self.l_buf.insert_pt(data_point, cluster_key, label, relevance, abs_idx)
-
         if forgotten_pt_info:
-            forgotten_pt_cluster_key = forgotten_pt_info[0]
-            forgotten_pt_abs_idx = forgotten_pt_info[3]
-            self.subspace_partition.remove_l_pt_from_partition(forgotten_pt_abs_idx, forgotten_pt_cluster_key)
+
+            # Forgetting no
+            if self.SMART_FORGETTING_VAR[0] == 0:
+                forgotten_pt_cluster_key = forgotten_pt_info[0]
+                forgotten_pt_abs_idx = forgotten_pt_info[3]
+                self.subspace_partition.remove_l_pt_from_partition(forgotten_pt_abs_idx, forgotten_pt_cluster_key)
+
+            # Dumbest smart forgetting
+            if self.SMART_FORGETTING_VAR[0] == 1:
+                maintenance_complete = False
+
+                # TODO: Make this loop safe from looping forever
+                while not maintenance_complete: # and counter != self.l_buf.buffer_size:
+
+                    forgotten_pt_cluster_key = forgotten_pt_info[0]
+                    forgotten_pt_abs_idx = forgotten_pt_info[3]
+                    cluster_relevance = forgotten_pt_info[1]
+                    if cluster_relevance: # if cluster is relevant do not forget it.
+                        cluster_key = forgotten_pt_cluster_key
+                        cluster = self.subspace_partition.cluster_dict[cluster_key]
+                        self.abs_index += 1
+                        abs_idx = self.abs_index
+                        cluster_label = cluster.label
+                        data_point = forgotten_pt_info[4]
+                        cluster.add_l_pt_no_comp_dist_update(abs_idx)
+                        self.subspace_partition.remove_l_pt_from_partition(forgotten_pt_abs_idx, forgotten_pt_cluster_key)
+                        forgotten_pt_info = self.l_buf.insert_pt(data_point, cluster_key, cluster_label, relevance, abs_idx)
+
+                    else:
+                        self.subspace_partition.remove_l_pt_from_partition(forgotten_pt_abs_idx, forgotten_pt_cluster_key)
+                        maintenance_complete = True
+
+            # Dumb smart forgetting
+            if self.SMART_FORGETTING_VAR[0] == 2:
+                pass
 
     def add_l_pt_to_existing_cl(self, abs_idx, data_point, cluster_key):
         # Done (by Ro)
@@ -583,11 +636,12 @@ class ARED:
     def process_first_point(self, data_point):
         # START QUERY
         self.num_pts_streamed += 1
-        data_point_abs_idx = self.num_pts_streamed - 1
+        self.abs_index += 1
+        data_point_abs_idx = self.abs_index
         self.num_queries += 1
         self.anom_only_queries += 1
 
-        label, relevance = self.query(data_point_abs_idx)
+        label, relevance = self.query(self.num_pts_streamed - 1)
         if relevance:  # the point itself is relevant
             self.cumulative_relevant_seen += 1
         # END QUERY
@@ -609,7 +663,8 @@ class ARED:
 
     def process_point(self, data_point):
         self.num_pts_streamed += 1
-        data_point_abs_idx = self.num_pts_streamed - 1
+        self.abs_index += 1
+        data_point_abs_idx = self.abs_index
 
         # START DETERMINE COMPARISON CLUSTER
         #  0              1                2         3      4     5          6
@@ -632,7 +687,7 @@ class ARED:
             self.num_queries += 1
 
             # Query!
-            new_pt_label, new_pt_relevant = self.query(data_point_abs_idx)
+            new_pt_label, new_pt_relevant = self.query(self.num_pts_streamed - 1)
 
             # query is "correct" if we a) discovered a new class, or b) are querying a relevant class
             if label not in self.subspace_partition.set_of_known_labels or new_pt_relevant:
@@ -662,12 +717,12 @@ class ARED:
         else:
             # update confusion matrix
             # this is o_pt case, so ARED doesn't actually know label, so we have to "peek" at it
-            actual_new_pt_label = self.oracle.y[data_point_abs_idx][0]
+            actual_new_pt_label = self.oracle.y[self.num_pts_streamed - 1][0]
             actual_new_pt_label_int = self.oracle.int_str_label_bidict[actual_new_pt_label]
             comp_cluster_label_int = self.oracle.int_str_label_bidict[comp_cluster_label]
             self.conf_matrix[actual_new_pt_label_int,comp_cluster_label_int] += 1
 
-        actual_new_pt_rel = self.oracle.y[data_point_abs_idx][1]
+        actual_new_pt_rel = self.oracle.y[self.num_pts_streamed - 1][1]
         if actual_new_pt_rel:  # the point itself is relevant
             self.cumulative_relevant_seen += 1
         # DEBUG ONLY -----------------------

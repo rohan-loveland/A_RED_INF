@@ -31,8 +31,8 @@ def parking_lot_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, seed):
     relevant_labels  : list of str  (the N rarest classes)
     """
     # === Load Dataset ===
-    features_path = "./Parking_Lot_Data/features.pkl"
-    labels_path   = "./Parking_Lot_Data/labels.csv"
+    features_path = "Datasets/Parking_Lot_Data/features.pkl"
+    labels_path   = "Datasets/Parking_Lot_Data/labels.csv"
 
     if not os.path.exists(features_path) or not os.path.exists(labels_path):
         raise FileNotFoundError("Parking lot data not found. Check ./Parking_Lot_Data/")

@@ -8,8 +8,8 @@ def parking_lot_dino_preprocessed(N_REL_CLASSES, VERBOSE_FLAGS=None, seed=42):
     if VERBOSE_FLAGS is None:
         VERBOSE_FLAGS = []
 
-    features_path = "Parking_Lot_Data/PARKING_LOT_DINO_latents_16d.npy"
-    labels_path   = "Parking_Lot_Data/labels.csv"
+    features_path = "Datasets/Parking_Lot_Data/PARKING_LOT_DINO_latents_16d.npy"
+    labels_path   = "Datasets/Parking_Lot_Data/labels.csv"
 
     # If files don't exist, generate them via DINOv2+AE
     if not (os.path.exists(features_path) and os.path.exists(labels_path)):
@@ -17,7 +17,7 @@ def parking_lot_dino_preprocessed(N_REL_CLASSES, VERBOSE_FLAGS=None, seed=42):
             "DINOv2 preprocessed files not found. "
             "Running DINOv2+Autoencoder preprocessing to generate them..."
         )
-        run_dinov2_autoencoder_preprocessing(out_dir="Parking_Lot_Data", do_viz=False)
+        run_dinov2_autoencoder_preprocessing(out_dir="Datasets/Parking_Lot_Data", do_viz=False)
 
     # Re-check after running the preprocessor
     if not os.path.exists(features_path):

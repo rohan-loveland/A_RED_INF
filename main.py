@@ -60,17 +60,17 @@ KAPPA: Paranoia Parameter
 # KAPPA = 1
 # N_REL_CLASSES = 6 # unused
 
-DATA_SOURCE = "MVtechAD_DINO"
-KAPPA = 1
-N_REL_CLASSES = 6 # unused
+# DATA_SOURCE = "MVtechAD_DINO"
+# KAPPA = 1
+# N_REL_CLASSES = 6 # unused
 
 # DATA_SOURCE = "VisA"
 # KAPPA = 1
 # N_REL_CLASSES = 6 # unused
-#
-# DATA_SOURCE = "VisA_DINO"
-# KAPPA = 1
-# N_REL_CLASSES = 6 # unused
+
+DATA_SOURCE = "VisA_DINO"
+KAPPA = 1
+N_REL_CLASSES = 6 # unused
 
 '''
 QS_VAR: Query Strategy Variants
@@ -118,6 +118,15 @@ SINGLETON_MERGE = True
 # NEW: threshold for “small” clusters that will be forcibly merged
 # ------------------------------------------------------------------
 SMALL_CLUSTER_THRESHOLD = 3      # clusters with < 3 points are merged
+
+'''
+Smart_Forgetting_Var (flag, threshold)
+|- 0: no smart forgetting logic
+|- 1: dumbest smart forgetting (never forget relevant points)
+|- 2: dumb smart forgetting (Do not forget a class if there is less than X percentage of the data)
+|--- Threshold
+'''
+SMART_FORGETTING_VAR = (0, 0.01)
 
 '''
 window_size: size of the data_window window saved by ARED
@@ -193,7 +202,7 @@ if __name__ == '__main__':
         data_stream = Data_Stream(X_skewed, y_w_rel)
         #data_stream.shuffle_data()
         oracle = Oracle(X_skewed, y_w_rel)
-        ared = ARED(oracle, KAPPA, DATA_WINDOW_SIZE, K_COMP_PTS, QS_VAR, DATA_AUG_VAR, NGHBHOOD_MERGE, SINGLETON_MERGE, VERBOSE_FLAGS)
+        ared = ARED(oracle, KAPPA, DATA_WINDOW_SIZE, K_COMP_PTS, QS_VAR, DATA_AUG_VAR, NGHBHOOD_MERGE, SINGLETON_MERGE, SMART_FORGETTING_VAR, VERBOSE_FLAGS)
         start_time, times, num_correct_queries, num_queries, num_clusters, num_labels, pt_dists, num_pts_searched_list, conf_matrices, \
             cumulative_relevants = set_up_stats(ared)
         buffer_fill_percents = []
@@ -351,3 +360,5 @@ if __name__ == '__main__':
         print(f"Overall Relevant Recall          : {final_recall:.4f} ({final_recall * 100:.2f}%)")
         print(f"Overall F1-Score                 : {overall_f1:.4f} ({overall_f1 * 100:.2f}%)")
         print("=" * 80)
+
+        print(oracle.int_str_label_bidict)
