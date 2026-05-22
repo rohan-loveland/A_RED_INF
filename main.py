@@ -39,8 +39,13 @@ KAPPA: Paranoia Parameter
 # DATA_SOURCE = "MNIST_2D"
 # N_REL_CLASSES = 3
 
-# DATA_SOURCE = "EMNIST"
+DATA_SOURCE = "EMNIST"
+N_REL_CLASSES = 10
+KAPPA = 0.1
+
+# DATA_SOURCE = "EMNIST_DINO"
 # N_REL_CLASSES = 10
+# KAPPA = 0.1
 
 # DATA_SOURCE = "NICE"
 # KAPPA = 1 # NICE
@@ -68,9 +73,9 @@ KAPPA: Paranoia Parameter
 # KAPPA = 1
 # N_REL_CLASSES = 6 # unused
 
-DATA_SOURCE = "VisA_DINO"
-KAPPA = 1
-N_REL_CLASSES = 6 # unused
+# DATA_SOURCE = "VisA_DINO"
+# KAPPA = 1
+# N_REL_CLASSES = 6 # unused
 
 '''
 QS_VAR: Query Strategy Variants
@@ -123,7 +128,9 @@ SMALL_CLUSTER_THRESHOLD = 3      # clusters with < 3 points are merged
 Smart_Forgetting_Var (flag, threshold)
 |- 0: no smart forgetting logic
 |- 1: dumbest smart forgetting (never forget relevant points)
-|- 2: dumb smart forgetting (Do not forget a class if there is less than X percentage of the data)
+|- 2: dumb smart forgetting (Do not forget a point if cluster it is in is less than X percentage of the data)
+|--- Threshold
+|- 3: dumb smart forgetting (Do not forget a point if class is in is less than X percentage of the data)
 |--- Threshold
 '''
 SMART_FORGETTING_VAR = (0, 0.01)
@@ -158,6 +165,7 @@ VERBOSE_FLAGS: Array of control flags to make ARED loud or quiet
 |- 3: Prints the l_buf cluster_id_array and abs_index_array and data windows assigned_cluster_id buffer
 |- 4: Prints the forgotten_abs_index and forgotten_point_cluster_id during subspace_partition_maintenance 
 |- 5: Prints information about cluster merging 
+|- 6: Prints information about points recycled due to smart forgetting
 '''
 VERBOSE_FLAGS = [0] #example setting [1, 2] for two verbose level control flags
 
@@ -166,7 +174,7 @@ MAKE_GRAPHS
 |- True: make graphs
 |- False: do not make graphs
 '''
-MAKE_GRAPHS = True
+MAKE_GRAPHS = False
 MAKE_EVO_GRAPHS = False
 
 '''

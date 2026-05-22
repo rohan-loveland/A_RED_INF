@@ -563,15 +563,15 @@ class ARED:
         # do maintenance by adding pt to l_buf, forgetting from subspace_partition if necessary
 
         # update l_buf to have the new point
-        #                      0    1          2                 3             4
-        # forgotten_pt_info = (key, relevance, internal_abs_idx, true_abs_idx, forgotten_point_data)
+        #                      0    1      2          3               4          5
+        # forgotten_pt_info = [key, label, relevance, internal_index, abs_index, data]
         forgotten_pt_info = self.l_buf.insert_pt(data_point, cluster_key, label, relevance, abs_idx)
         if forgotten_pt_info:
 
             # Forgetting no
             if self.SMART_FORGETTING_VAR[0] == 0:
                 forgotten_pt_cluster_key = forgotten_pt_info[0]
-                forgotten_pt_abs_idx = forgotten_pt_info[3]
+                forgotten_pt_abs_idx = forgotten_pt_info[4]
                 self.subspace_partition.remove_l_pt_from_partition(forgotten_pt_abs_idx, forgotten_pt_cluster_key)
 
             # Dumbest smart forgetting
@@ -582,18 +582,23 @@ class ARED:
                 while not maintenance_complete: # and counter != self.l_buf.buffer_size:
 
                     forgotten_pt_cluster_key = forgotten_pt_info[0]
-                    forgotten_pt_abs_idx = forgotten_pt_info[3]
-                    cluster_relevance = forgotten_pt_info[1]
+                    forgotten_pt_abs_idx = forgotten_pt_info[4]
+                    cluster_relevance = forgotten_pt_info[2]
                     if cluster_relevance: # if cluster is relevant do not forget it.
                         cluster_key = forgotten_pt_cluster_key
                         cluster = self.subspace_partition.cluster_dict[cluster_key]
                         self.abs_index += 1
                         abs_idx = self.abs_index
                         cluster_label = cluster.label
-                        data_point = forgotten_pt_info[4]
+                        data_point = forgotten_pt_info[5]
                         cluster.add_l_pt_no_comp_dist_update(abs_idx)
                         self.subspace_partition.remove_l_pt_from_partition(forgotten_pt_abs_idx, forgotten_pt_cluster_key)
+                        #                      0    1      2          3               4          5
+                        # forgotten_pt_info = [key, label, relevance, internal_index, abs_index, data]
                         forgotten_pt_info = self.l_buf.insert_pt(data_point, cluster_key, cluster_label, relevance, abs_idx)
+
+                        if 6 in self.verbose_flags:
+                            print(f"Point f{forgotten_pt_abs_idx} was not forgotten and was recycled as point f{abs_idx}")
 
                     else:
                         self.subspace_partition.remove_l_pt_from_partition(forgotten_pt_abs_idx, forgotten_pt_cluster_key)
@@ -601,7 +606,61 @@ class ARED:
 
             # Dumb smart forgetting
             if self.SMART_FORGETTING_VAR[0] == 2:
-                pass
+                maintenance_complete = False
+
+                # TODO: Make this loop safe from looping forever
+                while not maintenance_complete:  # and counter != self.l_buf.buffer_size:
+                    forgotten_pt_cluster_key = forgotten_pt_info[0]
+                    forgotten_pt_abs_idx = forgotten_pt_info[4]
+                    cluster_size = self.subspace_partition.cluster_dict[forgotten_pt_cluster_key].l_pt_idxs
+                    # If the size of a cluster is less than the percentage threshold of for smart forgetting
+                    if len(cluster_size) < self.l_buf.buffer_size * self.SMART_FORGETTING_VAR[1]:
+                        cluster_key = forgotten_pt_cluster_key
+                        cluster = self.subspace_partition.cluster_dict[cluster_key]
+                        self.abs_index += 1
+                        abs_idx = self.abs_index
+                        cluster_label = cluster.label
+                        data_point = forgotten_pt_info[5]
+                        cluster.add_l_pt_no_comp_dist_update(abs_idx)
+                        self.subspace_partition.remove_l_pt_from_partition(forgotten_pt_abs_idx, forgotten_pt_cluster_key)
+                        #                      0    1      2          3               4          5
+                        # forgotten_pt_info = [key, label, relevance, internal_index, abs_index, data]
+                        forgotten_pt_info = self.l_buf.insert_pt(data_point, cluster_key, cluster_label, relevance, abs_idx)
+
+                        if 6 in self.verbose_flags:
+                            print(f"Point f{forgotten_pt_abs_idx} was not forgotten and was recycled as point f{abs_idx}")
+                    else:
+                        self.subspace_partition.remove_l_pt_from_partition(forgotten_pt_abs_idx, forgotten_pt_cluster_key)
+                        maintenance_complete = True
+
+            # threshold based smart forgetting
+            if self.SMART_FORGETTING_VAR[0] == 3:
+                maintenance_complete = False
+
+                # TODO: Make this loop safe from looping forever
+                while not maintenance_complete:  # and counter != self.l_buf.buffer_size:
+                    forgotten_pt_cluster_key = forgotten_pt_info[0]
+                    forgotten_pt_abs_idx = forgotten_pt_info[4]
+                    class_count = self.l_buf.class_count_in_buffer[forgotten_pt_info[1]]
+                    # If the buffer has less than x percentage of a give class, do not forget it
+                    if class_count < self.l_buf.buffer_size * self.SMART_FORGETTING_VAR[1]:
+                        cluster_key = forgotten_pt_cluster_key
+                        cluster = self.subspace_partition.cluster_dict[cluster_key]
+                        self.abs_index += 1
+                        abs_idx = self.abs_index
+                        cluster_label = cluster.label
+                        data_point = forgotten_pt_info[5]
+                        cluster.add_l_pt_no_comp_dist_update(abs_idx)
+                        self.subspace_partition.remove_l_pt_from_partition(forgotten_pt_abs_idx, forgotten_pt_cluster_key)
+                        #                      0    1      2          3               4          5
+                        # forgotten_pt_info = [key, label, relevance, internal_index, abs_index, data]
+                        forgotten_pt_info = self.l_buf.insert_pt(data_point, cluster_key, cluster_label, relevance, abs_idx)
+
+                        if 6 in self.verbose_flags:
+                            print(f"Point f{forgotten_pt_abs_idx} was not forgotten and was recycled as point f{abs_idx}")
+                    else:
+                        self.subspace_partition.remove_l_pt_from_partition(forgotten_pt_abs_idx, forgotten_pt_cluster_key)
+                        maintenance_complete = True
 
     def add_l_pt_to_existing_cl(self, abs_idx, data_point, cluster_key):
         # Done (by Ro)

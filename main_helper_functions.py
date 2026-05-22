@@ -11,6 +11,7 @@ from VisA_Data_Processing import visa_setup_for_main
 # from Parking_Lot_DAGMM_Data_Processing import *
 from dagmm_parking_lot import compute_dagmm_features_parking_lot
 from DINOv2_Data_Processing import parking_lot_dino_preprocessed
+from DINOv2_EMNIST_Data_Processing import *
 
 def get_data(data_source, N_REL_CLASSES, VERBOSE_FLAGS, seed):
     if data_source == "MNIST":
@@ -18,7 +19,9 @@ def get_data(data_source, N_REL_CLASSES, VERBOSE_FLAGS, seed):
     elif data_source == "MNIST_2D":
         X, y_w_rel, sparsity_levels, rel_classes = MNIST_2D_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, seed)
     elif data_source == "EMNIST":
-        X, y_w_rel, sparsity_levels, rel_classes = EMNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS)
+        X, y_w_rel, sparsity_levels, rel_classes = EMNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, seed)
+    elif data_source == "EMNIST_DINO":
+        X, y_w_rel, sparsity_levels, rel_classes = EMNIST_dino_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, seed)
     elif data_source == "NICE":
         X, y_w_rel, sparsity_levels, rel_classes = generate_synthetic_dataset_with_relevance(N_REL_CLASSES, seed)
     elif data_source == "PARKING_LOT_BASE":

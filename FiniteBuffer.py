@@ -32,6 +32,8 @@ class FiniteBuffer:
         self.cluster_key_circular_buffer = Circular_Buffer(buffer_size)
         self.true_abs_idx_circular_buffer = Circular_Buffer(buffer_size)
 
+        self.class_count_in_buffer = {} # entries should be in the form {<Class name: string>: <count: int>}
+
         self.buffer_size = buffer_size
 
         self.num_ball_trees = num_ball_trees
@@ -61,10 +63,17 @@ class FiniteBuffer:
         forgotten_pt_info = None
         build_ball_tree = False
 
+        if label in self.class_count_in_buffer:
+            self.class_count_in_buffer[label] += 1
+        else:
+            self.class_count_in_buffer[label] = 1
+
         # Check if buffer is fulls
         if self.data_circular_buffer.is_full():
+            # forgotten point in form: [key, label, relevance, index, abs_index, data]
             forgotten_pt_info = self._forget_pt()
             self.min_internal_abs_idx += 1
+            self.class_count_in_buffer[forgotten_pt_info[1]] -= 1
 
         self.data_circular_buffer.append(X)
         self.label_circular_buffer.append(label)
@@ -122,8 +131,9 @@ class FiniteBuffer:
         forgotten_pt_relevance = self.relevance_circular_buffer.get(0)
         forgotten_pt_index = self.min_internal_abs_idx
         forgotten_pt_true_abs_idx = self.true_abs_idx_circular_buffer.get(0)
-
-        return forgotten_pt_cluster_key, forgotten_pt_relevance, forgotten_pt_index, forgotten_pt_true_abs_idx, forgotten_pt_data
+        forgotten_pt_label = self.label_circular_buffer.get(0)
+        # forgotten point in form: [key, label, relevance, index, abs_index, data]
+        return forgotten_pt_cluster_key, forgotten_pt_label, forgotten_pt_relevance, forgotten_pt_index, forgotten_pt_true_abs_idx, forgotten_pt_data
 
     def find_closest_pts(self, X, k):
         closest_pts = []
