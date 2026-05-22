@@ -39,13 +39,15 @@ KAPPA: Paranoia Parameter
 # DATA_SOURCE = "MNIST_2D"
 # N_REL_CLASSES = 3
 
-DATA_SOURCE = "EMNIST"
-N_REL_CLASSES = 10
-KAPPA = 0.1
-
-# DATA_SOURCE = "EMNIST_DINO"
+# DATA_SOURCE = "EMNIST"
 # N_REL_CLASSES = 10
 # KAPPA = 0.1
+# N_REL_CLASSES = 3
+
+DATA_SOURCE = "EMNIST_DINO"
+N_REL_CLASSES = 10
+KAPPA = 0.1
+N_REL_CLASSES = 3
 
 # DATA_SOURCE = "NICE"
 # KAPPA = 1 # NICE
@@ -140,7 +142,9 @@ window_size: size of the data_window window saved by ARED
 |- int: larger window size means it remembers more data
 |- WARNING: value must be larger than 0
 '''
-DATA_WINDOW_SIZE = 1000 # ultimately needs to be driven by anomaly ratio
+DATA_WINDOW_SIZE = 10000 # ultimately needs to be driven by anomaly ratio
+if DATA_AUG_VAR[0] == 1: # Since data augmentation stores each point 4 times, increase window by 4.
+    DATA_WINDOW_SIZE = DATA_WINDOW_SIZE * 4
 
 '''
 NUM_POINTS_TO_PROCESS: Number of points in dataset to process

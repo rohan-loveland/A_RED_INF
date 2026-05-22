@@ -25,7 +25,7 @@ def label_to_char(label):
     else:
         raise ValueError(f"Invalid EMNIST label index: {label_int}")
 
-def load_emnist(save_path="emnist.pkl"):
+def load_emnist(save_path="Datasets/EMNIST/emnist.pkl"):
     """
     Loads the EMNIST dataset from a pickle file.
 
@@ -67,7 +67,7 @@ def generate_is_relevant(label_list, relevant_set):
     return [label in relevant_set for label in label_list]
 
 
-def EMNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, save_path="emnist.pkl"):
+def EMNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, seed=42, save_path="Datasets/EMNIST/emnist.pkl"):
     """
     Sets up the EMNIST dataset for main processing, loading the full dataset and
     marking the least common classes as relevant.
@@ -115,6 +115,6 @@ def EMNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS, save_path="emnist.pkl"):
 if __name__ == "__main__":
     N_REL_CLASSES = 2
     VERBOSE_FLAGS = [0]
-    X, y_w_rel = EMNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS)
+    X, y_w_rel, least_common_classes, rel_classes = EMNIST_setup_for_main(N_REL_CLASSES, VERBOSE_FLAGS)
     print(f"EMNIST dataset shape: {X.shape}")
     print(f"Sample labels with relevance: {y_w_rel[:5]}")
