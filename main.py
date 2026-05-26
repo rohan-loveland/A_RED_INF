@@ -39,9 +39,9 @@ KAPPA: Paranoia Parameter
 # DATA_SOURCE = "MNIST_2D"
 # N_REL_CLASSES = 3
 
-DATA_SOURCE = "EMNIST"
-N_REL_CLASSES = 10
-KAPPA = 0.1
+# DATA_SOURCE = "EMNIST"
+# N_REL_CLASSES = 10
+# KAPPA = 0.1
 
 # DATA_SOURCE = "EMNIST_DINO"
 # N_REL_CLASSES = 10
@@ -73,9 +73,9 @@ KAPPA = 0.1
 # KAPPA = 1
 # N_REL_CLASSES = 6 # unused
 
-# DATA_SOURCE = "VisA_DINO"
-# KAPPA = 1
-# N_REL_CLASSES = 6 # unused
+DATA_SOURCE = "VisA_DINO"
+KAPPA = 1
+N_REL_CLASSES = 6 # unused
 
 '''
 QS_VAR: Query Strategy Variants
@@ -133,14 +133,14 @@ Smart_Forgetting_Var (flag, threshold)
 |- 3: dumb smart forgetting (Do not forget a point if class is in is less than X percentage of the data)
 |--- Threshold
 '''
-SMART_FORGETTING_VAR = (0, 0.01)
+SMART_FORGETTING_VAR = (3, 0.01)
 
 '''
 window_size: size of the data_window window saved by ARED
 |- int: larger window size means it remembers more data
 |- WARNING: value must be larger than 0
 '''
-DATA_WINDOW_SIZE = 10000 # ultimately needs to be driven by anomaly ratio
+DATA_WINDOW_SIZE = 1000 # ultimately needs to be driven by anomaly ratio
 if DATA_AUG_VAR[0] == 1: # Since data augmentation stores each point 4 times, increase window by 4.
     DATA_WINDOW_SIZE = DATA_WINDOW_SIZE * 4
 
@@ -369,6 +369,34 @@ if __name__ == '__main__':
             f"Overall Query Precision          : {overall_query_precision:.4f} ({overall_query_precision * 100:.2f}%)")
         print(f"Overall Relevant Recall          : {final_recall:.4f} ({final_recall * 100:.2f}%)")
         print(f"Overall F1-Score                 : {overall_f1:.4f} ({overall_f1 * 100:.2f}%)")
-        print("=" * 80)
 
-        print(oracle.int_str_label_bidict)
+        # --- Class & Total Accuracy ---
+        correct_class_counter = ared.correct_class_counter
+        y_w_rel_processed = y_w_rel[:total_points_processed]
+
+        total_correct_acc = sum(correct_class_counter.values())
+        total_queried_acc = sum(1 for label, _ in y_w_rel_processed if label in correct_class_counter)
+        total_accuracy = total_correct_acc / total_queried_acc if total_queried_acc > 0 else 0.0
+        print("")
+
+        print(f"Total Accuracy                   : {total_accuracy:.4f} ({total_accuracy * 100:.2f}%)")
+        print(f"Per-Class Accuracy:")
+        for cls in sorted(correct_class_counter.keys()):
+            correct = correct_class_counter[cls]
+            total = sum(1 for label, _ in y_w_rel_processed if label == cls)
+            acc = correct / total if total > 0 else 0.0
+            print(f"    Class {cls}: {correct}/{total} → {acc:.4f} ({acc * 100:.2f}%)")
+
+        print("")
+
+        forgotten_classes = ared.l_buf.forgotten_class_counter
+        if len(forgotten_classes.keys()) > 0:
+            print(f"Classes forgotten")
+            print("Class label: Count")
+        else:
+            print("No classes forgotten")
+        for key in forgotten_classes.keys():
+            print(f"\t{key}: {forgotten_classes[key]}")
+
+        print("=" * 80)
+        #print(oracle.int_str_label_bidict)

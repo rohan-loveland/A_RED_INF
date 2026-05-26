@@ -293,6 +293,9 @@ class ARED:
         self.num_pts_streamed = 0
         self.abs_index = -1
         self.cumulative_relevant_seen = 0
+
+        self.correct_class_counter = {}
+
         # VARIATION CONTROL FLAGS
         self.QS_VAR = QS_VAR # {0: diameter, 1: Ave Single Link Dist in Cluster
         self.DATA_AUG_VAR = DATA_AUG_VAR # {0: no augmentation, 1: x4 data rotation.}
@@ -731,6 +734,12 @@ class ARED:
         comp_cl_data, rel_cl_data, num_pts_searched, k_closest_pts = self.determine_comparison_cluster(data_point)
         comp_cluster_key, pt_internal_idx, distance, label, data, relevance, true_abs_idx = comp_cl_data
         comp_cluster_label = self.subspace_partition.cluster_dict[comp_cluster_key].label
+
+        true_label, _ = self.oracle.answer_query(self.num_pts_streamed - 1)
+        if comp_cluster_label == true_label:
+            if true_label not in self.correct_class_counter:
+                self.correct_class_counter[true_label] = 0
+            self.correct_class_counter[true_label] += 1
 
         is_anomalous = self.anomalous(data_point, comp_cluster_key, distance)
         comp_cl_is_relevant = (rel_cl_data is not None)
