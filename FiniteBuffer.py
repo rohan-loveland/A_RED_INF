@@ -33,6 +33,7 @@ class FiniteBuffer:
         self.true_abs_idx_circular_buffer = Circular_Buffer(buffer_size)
 
         self.class_count_in_buffer = {} # entries should be in the form {<Class name: string>: <count: int>}
+        self.forgotten_class_counter = {}
 
         self.buffer_size = buffer_size
 
@@ -74,6 +75,12 @@ class FiniteBuffer:
             forgotten_pt_info = self._forget_pt()
             self.min_internal_abs_idx += 1
             self.class_count_in_buffer[forgotten_pt_info[1]] -= 1
+
+            # Keep track of times a class was forgotten completely
+            if self.class_count_in_buffer[forgotten_pt_info[1]] == 0:
+                if forgotten_pt_info[1] not in self.forgotten_class_counter:
+                    self.forgotten_class_counter[forgotten_pt_info[1]] = 0
+                self.forgotten_class_counter[forgotten_pt_info[1]] += 1
 
         self.data_circular_buffer.append(X)
         self.label_circular_buffer.append(label)
