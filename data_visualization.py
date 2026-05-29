@@ -86,6 +86,56 @@ def plot_stacked_area(list1, list2, list3,legend_labels=['List 1', 'List 2', 'Li
     # Show the plot
     plt.show()
 
+
+def plot_clusters_and_queries_over_time(num_clusters, num_queries,
+                                        graph_batch_size=100,
+                                        title="A/RED: Clusters and Queries Over Time",
+                                        save_path=None):
+    """
+    Plot number of clusters and cumulative queries vs. number of points streamed.
+    Displays the plot interactively during runtime and optionally saves it.
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    x_points = np.arange(len(num_clusters)) * graph_batch_size
+
+    fig, ax1 = plt.subplots(figsize=(11, 6))
+
+    # Plot number of clusters (left axis)
+    color1 = 'tab:blue'
+    ax1.set_xlabel('Points Streamed', fontsize=12)
+    ax1.set_ylabel('Number of Clusters', color=color1, fontsize=12)
+    ax1.plot(x_points, num_clusters, color=color1, marker='o',
+             linewidth=2.5, markersize=4, label='Number of Clusters')
+    ax1.tick_params(axis='y', labelcolor=color1)
+    ax1.grid(True, alpha=0.3)
+
+    # Plot cumulative queries (right axis)
+    ax2 = ax1.twinx()
+    color2 = 'tab:red'
+    ax2.set_ylabel('Cumulative Queries', color=color2, fontsize=12)
+    ax2.plot(x_points, num_queries, color=color2, marker='s',
+             linewidth=2.5, markersize=4, label='Cumulative Queries')
+    ax2.tick_params(axis='y', labelcolor=color2)
+
+    plt.title(title, fontsize=14, pad=15)
+
+    # Combine legends
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
+
+    plt.tight_layout()
+
+    # Always show the plot during runtime
+    plt.show(block=True)  # non-blocking so the program can continue
+
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"Plot saved to: {save_path}")
+
+
 # Example usage
 if __name__ == "__main__":
     list1 = [1, 2, 3, 4, 5]

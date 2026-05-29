@@ -31,7 +31,7 @@ and ...
 KAPPA: Paranoia Parameter
 
 '''
-
+#
 # DATA_SOURCE = "MNIST" # NOTE: currently multiplied by 10x to get ~130,000 samples
 # KAPPA = 0.75 # MNIST
 # N_REL_CLASSES = 4
@@ -53,7 +53,7 @@ KAPPA: Paranoia Parameter
 
 
 # DATA_SOURCE = "PARKING_LOT_BASE"
-# KAPPA = 0.75# PL - Base
+# KAPPA = 0.75 # PL - Base
 # DATA_SOURCE = "PARKING_LOT_DAGMM"
 # KAPPA = 7 # PL - DAGMM
 
@@ -149,7 +149,7 @@ NUM_POINTS_TO_PROCESS: Number of points in dataset to process
 |- -1: process all the data
 |-  0 to inf: process up to that number if data is available
 '''
-NUM_POINTS_TO_PROCESS = -1
+NUM_POINTS_TO_PROCESS = 25000#-1
 
 '''
 GRAPH_BATCH_SIZE: number of points in batch for stats purposes.
@@ -307,6 +307,16 @@ if __name__ == '__main__':
                                             MAKE_GRAPHS, GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS,
                                             anom_only_queries, rel_only_queries, both_a_and_r_queries,
                                             cumulative_relevants)
+
+            from data_visualization import plot_clusters_and_queries_over_time
+
+            plot_clusters_and_queries_over_time(
+                num_clusters=num_clusters,
+                num_queries=num_queries,
+                graph_batch_size=GRAPH_BATCH_SIZE,
+                title=f"A/RED: Clusters & Queries - {DATA_SOURCE} (κ={KAPPA})",
+                save_path=f"clusters_queries_{DATA_SOURCE}_kappa{KAPPA}.png"
+            )
 
         current_time = time.time()
         time_elapsed = current_time - start_time
