@@ -178,52 +178,67 @@ def _shuffle_within_categories(X, y_w_rel, category_separator="_", seed=42):
 
 
 def mvtechad_setup_for_main(
-    N_REL_CLASSES,                              # unused: relevance is determined by anomaly labels
+    N_REL_CLASSES,
     VERBOSE_FLAGS,
-    seed,                                       # unused: no randomness needed during loading
-    mvtechad_root: str = "Datasets/MVtechAD",
+    seed,
+    mvtechad_root: str = None,                    # ← Set to None for auto-detection
     object_categories: list[str] | None = None,
     include_train: bool = True,
     img_size: tuple[int, int] = IMG_SIZE,
 ) -> tuple[np.ndarray, list[tuple[str, bool]], list[tuple[str, float]], list[str]]:
     """
-    Load the full (multi-category) MVtec AD dataset.
-
-    Parameters
-    ----------
-    N_REL_CLASSES      : unused (relevance is determined directly from anomaly folder labels)
-    VERBOSE_FLAGS      : list of flag ints; 0 in VERBOSE_FLAGS enables verbose output
-    seed               : unused (no randomness in loading)
-    mvtechad_root      : path to MVtechAD/ root directory
-    object_categories  : list of object names to include; None → use all known categories
-    include_train      : if True, include train/good/ normal samples as well
-    img_size           : (width, height) resize target
-
-    Returns
-    -------
-    X               : np.ndarray, shape (n_total_samples, flat_img_dim)
-    y_w_rel         : list of (label_str, is_relevant_bool)
-    sparsity_levels : list of (label, proportion) sorted by frequency (most → least common)
-    relevant_labels : list of label strings that are marked as relevant (anomalous)
+    Load the full MVtec AD dataset with automatic path detection for both Nate and Rohan.
+    Cache files are now stored in ~/.cache/mvtechad/ (cleaner, avoids Dropbox sync).
     """
     verbose = 0 in VERBOSE_FLAGS
 
-    # ── npz cache ────────────────────────────────────────────────────────────
-    # X saved as compressed .npz (float32 array); y_w_rel in a small sidecar pickle.
-    cache_X = os.path.join(mvtechad_root, "mvtechad_processed_X.npz")
-    cache_y = os.path.join(mvtechad_root, "mvtechad_processed_y.pkl")
+    # ── Smart Dataset Path Detection ───────────────────────────────────────
+    if mvtechad_root is None:
+        nate_path = "Datasets/MVtechAD"
+        rohan_path = os.path.expanduser("~/Dropbox/Research/Datasets/mvtec")
+
+        if os.path.isdir(nate_path):
+            mvtechad_root = nate_path
+            if verbose:
+                print(f"✅ Using Nate's path: {mvtechad_root}")
+        elif os.path.isdir(rohan_path):
+            mvtechad_root = rohan_path
+            if verbose:
+                print(f"✅ Using Rohan's path: {mvtechad_root}")
+        else:
+            raise FileNotFoundError(
+                "MVtec AD dataset not found in any default location.\n"
+                f"Checked:\n"
+                f"  • Nate:  {os.path.abspath(nate_path)}\n"
+                f"  • Rohan: {rohan_path}\n\n"
+                "Please pass the correct path manually:\n"
+                "mvtechad_setup_for_main(mvtechad_root='/your/path')"
+            )
+
+    # ── Cache Location (Improved) ──────────────────────────────────────────
+    cache_dir = os.path.expanduser("~/.cache/mvtechad")
+    os.makedirs(cache_dir, exist_ok=True)
+
+    cache_X = os.path.join(cache_dir, "mvtechad_processed_X.npz")
+    cache_y = os.path.join(cache_dir, "mvtechad_processed_y.pkl")
+
+    if verbose:
+        print(f"Cache directory: {cache_dir}")
+
+    # ── Load from cache if available ───────────────────────────────────────
     if os.path.exists(cache_X) and os.path.exists(cache_y):
         if verbose:
-            print(f"Loading MVtechAD dataset from cache: {cache_X} / {cache_y}")
+            print(f"Loading MVtechAD dataset from cache: {cache_X}")
         X = np.load(cache_X)["X"]
         with open(cache_y, "rb") as f:
             y_w_rel = pickle.load(f)
     else:
+        # ── Load from raw dataset ──────────────────────────────────────────
         if object_categories is None:
             object_categories = MVTECHAD_OBJECT_CATEGORIES
 
-        all_X:       list[np.ndarray]         = []
-        all_y_w_rel: list[tuple[str, bool]]   = []
+        all_X: list[np.ndarray] = []
+        all_y_w_rel: list[tuple[str, bool]] = []
 
         for obj in object_categories:
             if verbose:
@@ -241,39 +256,38 @@ def mvtechad_setup_for_main(
         y_w_rel = all_y_w_rel
 
         if verbose:
-            print(f"Saving MVtechAD dataset to cache: {cache_X} / {cache_y}")
+            print(f"Saving cache to: {cache_dir}")
         np.savez_compressed(cache_X, X=X)
         with open(cache_y, "wb") as f:
             pickle.dump(y_w_rel, f)
 
-    # ── shuffle within categories ──────────────────────────────────────────────
+    # ── Shuffle within categories ──────────────────────────────────────────
     X, y_w_rel = _shuffle_within_categories(X, y_w_rel, seed=42)
 
-    # ── sparsity_levels ──────────────────────────────────────────────────────
-    labels_only  = [lbl for lbl, _ in y_w_rel]
+    # ── Compute sparsity levels ────────────────────────────────────────────
+    labels_only = [lbl for lbl, _ in y_w_rel]
     label_counts = Counter(labels_only)
-    total        = len(labels_only)
+    total = len(labels_only)
     sparsity_levels = [(lbl, cnt / total) for lbl, cnt in label_counts.most_common()]
 
-    # ── relevant_labels ──────────────────────────────────────────────────────
+    # ── Relevant labels (anomalous ones) ───────────────────────────────────
     label_relevance: dict[str, bool] = {}
     for lbl, is_rel in y_w_rel:
         label_relevance[lbl] = label_relevance.get(lbl, False) or is_rel
     relevant_labels = sorted(lbl for lbl, rel in label_relevance.items() if rel)
 
+    # ── Final verbose summary ──────────────────────────────────────────────
     if verbose:
-        print(f"\nMVtechAD dataset loaded")
+        print(f"\nMVtechAD dataset loaded successfully from: {mvtechad_root}")
         print(f"  X shape        : {X.shape}")
         print(f"  Total samples  : {total}")
         print(f"  Total classes  : {len(label_counts)}")
-        print(f"  Relevant labels ({len(relevant_labels)}): {relevant_labels[:10]} …")
+        print(f"  Relevant labels: {len(relevant_labels)}")
         n_rel = sum(1 for _, r in y_w_rel if r)
         print(f"  Anomalous      : {n_rel} ({n_rel/total*100:.1f}%)")
         print(f"  Normal         : {total - n_rel} ({(total-n_rel)/total*100:.1f}%)")
 
     return X, y_w_rel, sparsity_levels, relevant_labels
-
-
 # ──────────────────────────────────────────────────────────────────────────────
 # Stand-alone demo
 # ──────────────────────────────────────────────────────────────────────────────

@@ -1,17 +1,8 @@
 #!/usr/bin/env python3
-# MVtechAD_DINO_AE_Data_Processing.py
+# DINOv2_MVtechAD_Processing.py
 #
-# Pipeline: DINOv2 feature extraction (768-D) -> simple autoencoder -> 16-D latents
-# Mirrors the VisA DINOv2+AE pipeline exactly.
-#
-# Cache files written to mvtechad_root/:
-#   mvtechad_dino_features.pkl   <- np.ndarray (N, 768), z-score normalized DINOv2 embeddings
-#   mvtechad_dino_ae_latents.pkl <- np.ndarray (N, 16),  autoencoder latents
-#   mvtechad_dino_ae_y.pkl       <- list of (label_str, is_relevant_bool)
-#
-# label_str   = "<defect_type>_<object>"  (anomalous, defect_type = folder name)
-#             = "normal_<object>"          (normal, from train/good or test/good)
-# is_relevant = True for anomalous samples, False for normal
+# Pipeline: DINOv2 feature extraction (768-D)
+# Simplified version - only DINOv2 embeddings (no autoencoder).
 
 import os
 import numpy as np
@@ -20,8 +11,6 @@ from collections import Counter
 from PIL import Image
 
 import torch
-import torch.nn as nn
-import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from transformers import AutoImageProcessor, AutoModel
 
@@ -30,7 +19,7 @@ warnings.filterwarnings("ignore")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Config  (mirrors VisA_DINO_AE_Data_Processing.py)
+# Config
 # ──────────────────────────────────────────────────────────────────────────────
 
 MVTECHAD_OBJECT_CATEGORIES = [
@@ -42,19 +31,10 @@ MVTECHAD_OBJECT_CATEGORIES = [
 MODEL_NAME     = "facebook/dinov2-base"
 DINO_IMG_SIZE  = (224, 224)
 BATCH_SIZE_VIT = 32
-BATCH_SIZE_AE  = 128
-
-LATENT_DIM  = 16
-ENC_HIDDEN  = [512, 256, 64]   # encoder hidden layers; decoder mirrors in reverse
-EPOCHS      = 200
-LR          = 1e-3
-VAL_SPLIT   = 0.1
-PATIENCE    = 15
-RANDOM_SEED = 42
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Dataset helper for DINOv2 extraction
+# Dataset helper
 # ──────────────────────────────────────────────────────────────────────────────
 
 class _MVtechImageDataset(Dataset):
@@ -66,7 +46,7 @@ class _MVtechImageDataset(Dataset):
         return len(self.img_paths)
 
     def __getitem__(self, idx):
-        img    = Image.open(self.img_paths[idx]).convert("RGB").resize(
+        img = Image.open(self.img_paths[idx]).convert("RGB").resize(
             DINO_IMG_SIZE, Image.LANCZOS
         )
         inputs = self.processor(images=img, return_tensors="pt")
@@ -78,10 +58,7 @@ class _MVtechImageDataset(Dataset):
 # ──────────────────────────────────────────────────────────────────────────────
 
 def _extract_dino_features(img_paths, device, verbose=False):
-    """
-    Pass all images through DINOv2 and return z-score-normalized CLS embeddings.
-    Returns np.ndarray shape (N, 768), float32.
-    """
+    """Extract z-score normalized DINOv2 CLS embeddings."""
     if verbose:
         print(f"Loading DINOv2 model: {MODEL_NAME}")
 
@@ -90,7 +67,7 @@ def _extract_dino_features(img_paths, device, verbose=False):
     model_vit.eval()
     model_vit.to(device)
 
-    dataset    = _MVtechImageDataset(img_paths, processor)
+    dataset = _MVtechImageDataset(img_paths, processor)
     dataloader = DataLoader(
         dataset,
         batch_size=BATCH_SIZE_VIT,
@@ -104,8 +81,8 @@ def _extract_dino_features(img_paths, device, verbose=False):
     with torch.no_grad():
         for i, batch in enumerate(dataloader, 1):
             pixel_values = batch["pixel_values"].to(device)
-            outputs      = model_vit(pixel_values)
-            cls_tokens   = outputs.last_hidden_state[:, 0, :]   # (B, 768)
+            outputs = model_vit(pixel_values)
+            cls_tokens = outputs.last_hidden_state[:, 0, :]   # (B, 768)
             features_list.append(cls_tokens.cpu().numpy())
             if verbose and (i % 10 == 0 or i == total):
                 print(f"  DINOv2 batch {i}/{total}")
@@ -119,155 +96,20 @@ def _extract_dino_features(img_paths, device, verbose=False):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Autoencoder
-# ──────────────────────────────────────────────────────────────────────────────
-
-class _SimpleAutoencoder(nn.Module):
-    def __init__(self, input_dim, latent_dim, enc_hidden, device):
-        super().__init__()
-        self._device = device
-
-        # Encoder: input_dim -> enc_hidden[0] -> ... -> latent_dim
-        enc_layers = []
-        prev = input_dim
-        for h in enc_hidden:
-            enc_layers += [nn.Linear(prev, h), nn.ReLU()]
-            prev = h
-        enc_layers.append(nn.Linear(prev, latent_dim))
-        self.encoder = nn.Sequential(*enc_layers)
-
-        # Decoder: latent_dim -> enc_hidden[-1] -> ... -> input_dim
-        dec_layers = []
-        prev = latent_dim
-        for h in reversed(enc_hidden):
-            dec_layers += [nn.Linear(prev, h), nn.ReLU()]
-            prev = h
-        dec_layers.append(nn.Linear(prev, input_dim))
-        self.decoder = nn.Sequential(*dec_layers)
-
-        self.to(device)
-
-    def forward(self, x):
-        x     = x.to(self._device)
-        z     = self.encoder(x)
-        x_rec = self.decoder(z)
-        return z, x_rec
-
-
-def _train_autoencoder(X, device, verbose=False):
-    """
-    Train the autoencoder on X (N, 768) and return 16-D latents (N, 16).
-    """
-    np.random.seed(RANDOM_SEED)
-    torch.manual_seed(RANDOM_SEED)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(RANDOM_SEED)
-
-    N         = X.shape[0]
-    indices   = np.random.RandomState(RANDOM_SEED).permutation(N)
-    train_idx = indices[int(N * VAL_SPLIT):]
-    val_idx   = indices[:int(N * VAL_SPLIT)]
-
-    X_train = torch.from_numpy(X[train_idx]).float()
-    X_val   = torch.from_numpy(X[val_idx]).float()
-
-    train_loader = DataLoader(X_train, batch_size=BATCH_SIZE_AE, shuffle=True)
-    val_loader   = DataLoader(X_val,   batch_size=BATCH_SIZE_AE, shuffle=False)
-
-    model     = _SimpleAutoencoder(X.shape[1], LATENT_DIM, ENC_HIDDEN, device)
-    optimizer = optim.Adam(model.parameters(), lr=LR)
-    criterion = nn.MSELoss()
-
-    if verbose:
-        print(f"\nTraining autoencoder  768 -> {LATENT_DIM}  "
-              f"(hidden: {ENC_HIDDEN}, max epochs: {EPOCHS}, patience: {PATIENCE})")
-
-    best_val_loss = float("inf")
-    no_improve    = 0
-
-    for epoch in range(1, EPOCHS + 1):
-        # train
-        model.train()
-        train_loss = 0.0
-        for batch in train_loader:
-            batch = batch.to(device)
-            optimizer.zero_grad()
-            _, x_rec = model(batch)
-            loss = criterion(x_rec, batch)
-            loss.backward()
-            optimizer.step()
-            train_loss += loss.item() * batch.size(0)
-        train_loss /= len(train_loader.dataset)
-
-        # validate
-        model.eval()
-        val_loss = 0.0
-        with torch.no_grad():
-            for batch in val_loader:
-                batch = batch.to(device)
-                _, x_rec = model(batch)
-                val_loss += criterion(x_rec, batch).item() * batch.size(0)
-        val_loss /= len(val_loader.dataset)
-
-        if verbose and (epoch <= 10 or epoch % 10 == 0):
-            print(f"  Epoch {epoch:4d}/{EPOCHS} | "
-                  f"Train: {train_loss:.6f} | Val: {val_loss:.6f}")
-
-        # early stopping
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            no_improve    = 0
-        else:
-            no_improve += 1
-        if no_improve >= PATIENCE:
-            if verbose:
-                print(f"  Early stopping at epoch {epoch}")
-            break
-
-    if verbose:
-        print("Autoencoder training complete.")
-
-    # extract latents for all N samples
-    model.eval()
-    with torch.no_grad():
-        X_tensor = torch.from_numpy(X).float().to(device)
-        z_all, _ = model(X_tensor)
-        z_all    = z_all.cpu().numpy()
-
-    return z_all.astype(np.float32)
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# MVtechAD image path + label collector
+# Image path + label collector
 # ──────────────────────────────────────────────────────────────────────────────
 
 def _collect_mvtechad_category(mvtechad_root, object_name, include_train=True):
-    """
-    Walk one MVtechAD object category and return image paths + labels.
-
-    Structure:
-      <object>/train/good/          -> normal samples (if include_train)
-      <object>/test/good/           -> normal samples
-      <object>/test/<defect_type>/  -> anomalous samples
-    """
+    """Walk one MVtechAD object category and return image paths + labels."""
     obj_dir = os.path.join(mvtechad_root, object_name)
     if not os.path.isdir(obj_dir):
-        seen_root = os.path.abspath(mvtechad_root) if os.path.isdir(mvtechad_root) else None
-        if seen_root:
-            seen_entries = sorted(os.listdir(seen_root))
-            seen_str = "\n  ".join(seen_entries) if seen_entries else "(empty)"
-        else:
-            cwd_entries = sorted(os.listdir("."))
-            seen_str = "\n  ".join(cwd_entries) if cwd_entries else "(empty)"
-            seen_root = f"{os.path.abspath('.')}  (mvtechad_root '{mvtechad_root}' not found, showing cwd)"
         raise FileNotFoundError(
-            f"Object directory not found: {os.path.abspath(obj_dir)}\n"
-            f"Expected MVtechAD structure: {mvtechad_root}/<object>/test/<label>/\n"
-            f"Contents of {seen_root}:\n  {seen_str}"
+            f"MVtechAD object directory not found: {obj_dir}\n"
+            f"Expected structure: {mvtechad_root}/<object>/test/<label>/"
         )
 
     img_paths = []
-    y_w_rel   = []
+    y_w_rel = []
 
     def _ingest(folder, label_str, is_anomaly):
         if not os.path.isdir(folder):
@@ -286,9 +128,7 @@ def _collect_mvtechad_category(mvtechad_root, object_name, include_train=True):
 
     # test/<label> folders
     test_dir = os.path.join(obj_dir, "test")
-    if not os.path.isdir(test_dir):
-        print(f"  [WARN] No test/ directory found for {object_name}, skipping.")
-    else:
+    if os.path.isdir(test_dir):
         for label_folder in sorted(os.listdir(test_dir)):
             label_path = os.path.join(test_dir, label_folder)
             if not os.path.isdir(label_path):
@@ -306,65 +146,63 @@ def _collect_mvtechad_category(mvtechad_root, object_name, include_train=True):
 # ──────────────────────────────────────────────────────────────────────────────
 
 def mvtechad_dino_ae_setup_for_main(
-    N_REL_CLASSES,                              # unused: relevance determined by anomaly labels
+    N_REL_CLASSES,
     VERBOSE_FLAGS,
-    seed,                                       # unused: fixed seeds used internally
-    mvtechad_root="Datasets/MVtechAD",
+    seed,
+    mvtechad_root: str = None,                    # ← Set to None for auto-detection
     object_categories=None,
     include_train=True,
 ):
     """
-    Load the MVtechAD dataset as 16-D autoencoder latents derived from DINOv2 embeddings.
-
-    Pipeline (run once, then cached):
-      1. Collect image paths + labels by walking test/<label>/ folders
-      2. Extract DINOv2 CLS token embeddings  -> (N, 768), z-score normalized
-         [cached to mvtechad_dino_features.pkl]
-      3. Train simple autoencoder 768->16      -> (N, 16) latents
-         [cached to mvtechad_dino_ae_latents.pkl + mvtechad_dino_ae_y.pkl]
-
-    Parameters
-    ----------
-    N_REL_CLASSES      : unused
-    VERBOSE_FLAGS      : list of flag ints; 0 in VERBOSE_FLAGS enables verbose output
-    seed               : unused (fixed seeds used internally)
-    mvtechad_root      : path to MVtechAD/ root directory
-    object_categories  : object names to include; None uses all known categories
-    include_train      : if True, also include train/good/ as normal samples
-
-    Returns
-    -------
-    X               : np.ndarray, shape (N, 16)
-    y_w_rel         : list of (label_str, is_relevant_bool)
-    sparsity_levels : list of (label, proportion) sorted most -> least common
-    relevant_labels : list of anomalous label strings
+    Load MVtechAD dataset using DINOv2 (768-D) embeddings with smart path detection.
     """
     verbose = 0 in VERBOSE_FLAGS
-    device  = "cuda" if torch.cuda.is_available() else "cpu"
+
+    # ── Smart Dataset Path Detection ───────────────────────────────────────
+    if mvtechad_root is None:
+        nate_path = "Datasets/MVtechAD"
+        rohan_path = os.path.expanduser("~/Dropbox/Research/Datasets/mvtec")
+
+        if os.path.isdir(nate_path):
+            mvtechad_root = nate_path
+            if verbose:
+                print(f"✅ Using Nate's path: {mvtechad_root}")
+        elif os.path.isdir(rohan_path):
+            mvtechad_root = rohan_path
+            if verbose:
+                print(f"✅ Using Rohan's path: {mvtechad_root}")
+        else:
+            raise FileNotFoundError(
+                "MVtec AD dataset not found in any default location.\n"
+                f"Checked:\n"
+                f"  • Nate:  {os.path.abspath(nate_path)}\n"
+                f"  • Rohan: {rohan_path}\n\n"
+                "Please pass the correct path manually:\n"
+                "mvtechad_dino_ae_setup_for_main(mvtechad_root='/your/path')"
+            )
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     if verbose:
         print(f"Using device: {device}")
 
-    cache_feat    = os.path.join(mvtechad_root, "mvtechad_dino_features.pkl")
-    cache_latents = os.path.join(mvtechad_root, "mvtechad_dino_ae_latents.pkl")
-    cache_y       = os.path.join(mvtechad_root, "mvtechad_dino_ae_y.pkl")
+    cache_feat = os.path.join(mvtechad_root, "mvtechad_dino_features.pkl")
+    cache_y    = os.path.join(mvtechad_root, "mvtechad_dino_y.pkl")
 
-    # ── load fully cached result if available ─────────────────────────────────
+    # Load from cache if available
     if os.path.exists(cache_feat) and os.path.exists(cache_y):
         if verbose:
-            print(f"Loading MVtechAD-DINO-AE latents from cache:\n"
-                  f"  {cache_feat}\n  {cache_y}")
+            print(f"Loading cached MVtechAD DINOv2 data from:\n  {cache_feat}")
         with open(cache_feat, "rb") as f:
             X = pickle.load(f)
         with open(cache_y, "rb") as f:
             y_w_rel = pickle.load(f)
-
     else:
         if object_categories is None:
             object_categories = MVTECHAD_OBJECT_CATEGORIES
 
-        # collect image paths + labels
+        # Collect images and labels
         all_img_paths = []
-        all_y_w_rel   = []
+        all_y_w_rel = []
         for obj in object_categories:
             if verbose:
                 print(f"Collecting MVtechAD category: {obj} ...")
@@ -375,58 +213,42 @@ def mvtechad_dino_ae_setup_for_main(
             all_y_w_rel.extend(y_cat)
 
         if verbose:
-            print(f"\nTotal images: {len(all_img_paths)}")
+            print(f"\nTotal images collected: {len(all_img_paths)}")
 
-        # DINOv2 extraction — reuse cache if the features step already ran
-        if os.path.exists(cache_feat):
-            if verbose:
-                print(f"Loading cached DINOv2 features: {cache_feat}")
-            with open(cache_feat, "rb") as f:
-                X_dino = pickle.load(f)
-        else:
-            if verbose:
-                print("Extracting DINOv2 features ...")
-            X_dino = _extract_dino_features(all_img_paths, device, verbose=verbose)
-            if verbose:
-                print(f"Saving DINOv2 features to cache: {cache_feat}")
-            with open(cache_feat, "wb") as f:
-                pickle.dump(X_dino, f)
-
+        # Extract DINOv2 features
         if verbose:
-            print(f"DINOv2 features shape: {X_dino.shape}")
+            print("Extracting DINOv2 features ...")
+        X = _extract_dino_features(all_img_paths, device, verbose=verbose)
 
-        # autoencoder -> 16-D latents
-        X       = X_dino  # _train_autoencoder(X_dino, device, verbose=verbose)
         y_w_rel = all_y_w_rel
 
+        # Save cache
         if verbose:
-            print(f"Saving latents to cache:\n  {cache_latents}\n  {cache_y}")
-        with open(cache_latents, "wb") as f:
+            print(f"Saving cache to:\n  {cache_feat}\n  {cache_y}")
+        with open(cache_feat, "wb") as f:
             pickle.dump(X, f)
         with open(cache_y, "wb") as f:
             pickle.dump(y_w_rel, f)
 
-    # ── sparsity_levels ───────────────────────────────────────────────────────
-    labels_only  = [lbl for lbl, _ in y_w_rel]
+    # Compute sparsity levels
+    labels_only = [lbl for lbl, _ in y_w_rel]
     label_counts = Counter(labels_only)
-    total        = len(labels_only)
+    total = len(labels_only)
     sparsity_levels = [(lbl, cnt / total) for lbl, cnt in label_counts.most_common()]
 
-    # ── relevant_labels ───────────────────────────────────────────────────────
+    # Relevant labels (anomalous ones)
     label_relevance = {}
     for lbl, is_rel in y_w_rel:
         label_relevance[lbl] = label_relevance.get(lbl, False) or is_rel
     relevant_labels = sorted(lbl for lbl, rel in label_relevance.items() if rel)
 
     if verbose:
-        print(f"\nMVtechAD-DINO-AE dataset ready")
-        print(f"  X shape        : {X.shape}")
-        print(f"  Total samples  : {total}")
-        print(f"  Total classes  : {len(label_counts)}")
-        n_rel = sum(1 for _, r in y_w_rel if r)
-        print(f"  Anomalous      : {n_rel} ({n_rel/total*100:.1f}%)")
-        print(f"  Normal         : {total - n_rel} ({(total-n_rel)/total*100:.1f}%)")
-        print(f"  Relevant labels ({len(relevant_labels)}): {relevant_labels[:10]} ...")
+        print(f"\nMVtechAD DINOv2 dataset ready")
+        print(f"  X shape       : {X.shape}")
+        print(f"  Total samples : {total}")
+        print(f"  Total classes : {len(label_counts)}")
+        n_anom = sum(1 for _, r in y_w_rel if r)
+        print(f"  Anomalous     : {n_anom} ({n_anom/total*100:.1f}%)")
 
     return X, y_w_rel, sparsity_levels, relevant_labels
 
@@ -435,22 +257,19 @@ def mvtechad_dino_ae_setup_for_main(
 # Stand-alone demo
 # ──────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    MVTECHAD_ROOT = "Datasets/MVtechAD"   # <- adjust to your local path
-
     X, y_w_rel, sparsity_levels, relevant_labels = mvtechad_dino_ae_setup_for_main(
         N_REL_CLASSES=None,
         VERBOSE_FLAGS=[0],
         seed=42,
-        mvtechad_root=MVTECHAD_ROOT,
     )
 
-    total     = len(y_w_rel)
+    total = len(y_w_rel)
     n_anomaly = sum(1 for _, r in y_w_rel if r)
 
     print("\n-- Summary --------------------------------------------------")
     print(f"X shape        : {X.shape}")
     print(f"Total samples  : {total}")
-    print(f"Anomaly rate   : {n_anomaly/total*100:.2f}%  ({n_anomaly} anomalous | {total - n_anomaly} normal)")
+    print(f"Anomaly rate   : {n_anomaly/total*100:.2f}%")
     print()
-    for lbl, prop in sparsity_levels:
+    for lbl, prop in sparsity_levels[:10]:
         print(f"  {lbl:<45} {prop*100:.2f}%")
