@@ -450,7 +450,7 @@ if __name__ == "__main__":
     print("\n-- Summary --------------------------------------------------")
     print(f"X shape        : {X.shape}")
     print(f"Total samples  : {total}")
-    print(f"Anomaly rate   : {n_anomaly/total*100:.2f}%  ({n_anomaly} anomalous / {total - n_anomaly} normal)")
+    print(f"Anomaly rate   : {n_anomaly/total*100:.2f}%  ({n_anomaly} anomalous | {total - n_anomaly} normal)")
     print()
     for lbl, prop in sparsity_levels:
         print(f"  {lbl:<45} {prop*100:.2f}%")

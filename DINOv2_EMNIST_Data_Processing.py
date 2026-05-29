@@ -185,7 +185,14 @@ def EMNIST_dino_setup_for_main(
         with open(cache_feat, "rb") as f:
             X = pickle.load(f)
         with open(cache_y, "rb") as f:
-            y_w_rel = pickle.load(f)
+            y_w_rel_cached = pickle.load(f)  # only used to recover label strings
+
+        # Recompute relevance from scratch so N_REL_CLASSES is always respected
+        y_chars = [lbl for lbl, _ in y_w_rel_cached]
+        class_counts = Counter(y_chars)
+        least_common = [cls for cls, _ in class_counts.most_common()[-N_REL_CLASSES:]]
+        relevant_set = set(least_common)
+        y_w_rel = [(ch, ch in relevant_set) for ch in y_chars]
 
     else:
         # -- Load raw EMNIST --------------------------------------------------

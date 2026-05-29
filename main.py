@@ -45,12 +45,11 @@ KAPPA: Paranoia Parameter
 
 # DATA_SOURCE = "EMNIST_DINO"
 # N_REL_CLASSES = 10
-# KAPPA = 0.1
+# KAPPA = 1
 
 # DATA_SOURCE = "NICE"
 # KAPPA = 1 # NICE
 # N_REL_CLASSES = 4
-
 
 # DATA_SOURCE = "PARKING_LOT_BASE"
 # KAPPA = 0.75# PL - Base
@@ -64,18 +63,18 @@ KAPPA: Paranoia Parameter
 # DATA_SOURCE = "MVtechAD"
 # KAPPA = 1
 # N_REL_CLASSES = 6 # unused
-
-# DATA_SOURCE = "MVtechAD_DINO"
-# KAPPA = 1
-# N_REL_CLASSES = 6 # unused
+#
+DATA_SOURCE = "MVtechAD_DINO"
+KAPPA = 2
+N_REL_CLASSES = 6 # unused
 
 # DATA_SOURCE = "VisA"
 # KAPPA = 1
 # N_REL_CLASSES = 6 # unused
 
-DATA_SOURCE = "VisA_DINO"
-KAPPA = 1
-N_REL_CLASSES = 6 # unused
+# DATA_SOURCE = "VisA_DINO"
+# KAPPA = 1
+# N_REL_CLASSES = 6 # unused
 
 '''
 QS_VAR: Query Strategy Variants
@@ -176,8 +175,9 @@ MAKE_GRAPHS
 |- True: make graphs
 |- False: do not make graphs
 '''
-MAKE_GRAPHS = False
+MAKE_GRAPHS = True
 MAKE_EVO_GRAPHS = False
+MAKE_GRAPHS_ACCURACY = True
 
 '''
 RANDOM_SEED_OFFSET
@@ -219,6 +219,7 @@ if __name__ == '__main__':
         anom_only_queries = []  # only anomalous (not near a relevant cluster)
         rel_only_queries = []  # only relevant-near (not anomalous)
         both_a_and_r_queries = []  # triggered by both_a_and_r_queries conditions at once
+        relevant_class_accuracy_snapshots = []  # list of dicts: {class_label: running_acc} per batch
 
         if MAKE_EVO_GRAPHS:
             evo_plotter = ClusterEvolutionPlotter()
@@ -256,6 +257,8 @@ if __name__ == '__main__':
                 conf_matrices.append(ared.conf_matrix.copy())
                 fill_pct = ared.l_buf.data_circular_buffer.count / ared.l_buf.data_circular_buffer.size * 100
                 buffer_fill_percents.append(fill_pct)
+
+
                 cumulative_relevants.append(ared.cumulative_relevant_seen)
                 anom_only_queries.append(ared.anom_only_queries)
                 rel_only_queries.append(ared.rel_only_queries)
@@ -277,6 +280,16 @@ if __name__ == '__main__':
 
                 if MAKE_EVO_GRAPHS:
                     evo_plotter.plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label")
+
+                if MAKE_GRAPHS_ACCURACY:
+                    rel_acc_snapshot = {}
+                    current_cm = ared.conf_matrix
+                    for rel_class_str in rel_classes:
+                        ci = ared.oracle.int_str_label_bidict[rel_class_str]
+                        tp = current_cm[ci, ci]
+                        total = np.sum(current_cm[ci, :])
+                        rel_acc_snapshot[rel_class_str] = tp / total if total > 0 else 0.0
+                    relevant_class_accuracy_snapshots.append(rel_acc_snapshot)
 
                 if SINGLETON_MERGE:
                     ared.SMALL_CLUSTER_THRESHOLD = SMALL_CLUSTER_THRESHOLD  # expose the constant
@@ -307,6 +320,13 @@ if __name__ == '__main__':
                                             MAKE_GRAPHS, GRAPH_BATCH_SIZE, NUM_POINTS_TO_PROCESS,
                                             anom_only_queries, rel_only_queries, both_a_and_r_queries,
                                             cumulative_relevants)
+
+        if MAKE_GRAPHS_ACCURACY:
+            plot_relevant_class_running_accuracy(
+                relevant_class_accuracy_snapshots,
+                rel_classes,
+                GRAPH_BATCH_SIZE
+            )
 
         current_time = time.time()
         time_elapsed = current_time - start_time
