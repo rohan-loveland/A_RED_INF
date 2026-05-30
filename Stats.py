@@ -226,7 +226,7 @@ class Stats:
             print("No precision-recall data to plot.")
             return
 
-        # Sort by kappa for consistent plotting
+        # Sort by kappa for consistent plotting           Stats()
         sorted_data = sorted(self.kappa_precision_recall, key=lambda x: x[0])
         kappas = [x[0] for x in sorted_data]
         precisions = [x[1] for x in sorted_data]
