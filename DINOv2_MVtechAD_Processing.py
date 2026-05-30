@@ -1,8 +1,18 @@
 #!/usr/bin/env python3
 # DINOv2_MVtechAD_Processing.py
 #
-# Pipeline: DINOv2 feature extraction (768-D)
-# Simplified version - only DINOv2 embeddings (no autoencoder).
+# Cache files written to mvtechad_root/:
+#   mvtechad_dino_features.pkl   <- np.ndarray (N, 768), z-score normalized DINOv2 embeddings
+#   mvtechad_dino_ae_latents.pkl <- np.ndarray (N, 16),  autoencoder latents
+#   mvtechad_dino_ae_y.pkl       <- list of (label_str, is_relevant_bool)
+#
+# label_str   = "<defect_type>_<object>"  (anomalous, defect_type = folder name)
+#             = "normal_<object>"          (normal, from train/good or test/good)
+# is_relevant = True for anomalous samples, False for normal
+#
+# Data ordering:
+#   - Training samples (train/good) are kept ordered by category
+#   - Test samples (all test/<label>/ folders) are globally shuffled across categories
 
 import os
 import numpy as np
@@ -11,6 +21,8 @@ from collections import Counter
 from PIL import Image
 
 import torch
+import torch.nn as nn
+import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from transformers import AutoImageProcessor, AutoModel
 
@@ -146,7 +158,7 @@ def _collect_mvtechad_category(mvtechad_root, object_name, include_train=True):
 # ──────────────────────────────────────────────────────────────────────────────
 
 def mvtechad_dino_ae_setup_for_main(
-    N_REL_CLASSES,
+    N_REL_CLASSES,                              # unused: relevance determined by anomaly labels
     VERBOSE_FLAGS,
     seed,
     mvtechad_root: str = None,                    # ← Set to None for auto-detection
@@ -154,6 +166,38 @@ def mvtechad_dino_ae_setup_for_main(
     include_train=True,
 ):
     """
+    Load the MVtechAD dataset as DINOv2 embeddings (768-D, z-score normalised).
+
+    Data ordering:
+      - Training samples (train/good/) are kept in category order
+        (bottle -> cable -> ... -> zipper), so ARED sees all normals
+        for each category before moving on.
+      - Test samples (test/<label>/) from ALL categories are pooled and
+        globally shuffled before being appended, so ARED cannot exploit
+        any category ordering in the test phase.
+
+    Pipeline (run once, then cached):
+      1. Collect image paths + labels, split into train/test pools.
+      2. Shuffle the test pool with a fixed seed.
+      3. Concatenate: ordered train block  +  shuffled test block.
+      4. Extract DINOv2 CLS token embeddings -> (N, 768), z-score normalised.
+         [cached to mvtechad_dino_features.pkl + mvtechad_dino_ae_y.pkl]
+
+    Parameters
+    ----------
+    N_REL_CLASSES      : unused
+    VERBOSE_FLAGS      : list of flag ints; 0 in VERBOSE_FLAGS enables verbose output
+    seed               : unused (fixed seeds used internally)
+    mvtechad_root      : path to MVtechAD/ root directory
+    object_categories  : object names to include; None uses all known categories
+    include_train      : if True, also include train/good/ as normal samples
+
+    Returns
+    -------
+    X               : np.ndarray, shape (N, 768)
+    y_w_rel         : list of (label_str, is_relevant_bool)
+    sparsity_levels : list of (label, proportion) sorted most -> least common
+    relevant_labels : list of anomalous label strings
     Load MVtechAD dataset using DINOv2 (768-D) embeddings with smart path detection.
     """
     verbose = 0 in VERBOSE_FLAGS
@@ -200,29 +244,102 @@ def mvtechad_dino_ae_setup_for_main(
         if object_categories is None:
             object_categories = MVTECHAD_OBJECT_CATEGORIES
 
-        # Collect images and labels
-        all_img_paths = []
-        all_y_w_rel = []
+        # ── collect train and test separately ─────────────────────────────────
+        # Train block: train/good/ for each category, kept in category order.
+        # Test block:  all test/<label>/ images across all categories, to be shuffled.
+        train_img_paths, train_y = [], []
+        test_img_paths,  test_y  = [], []
+
         for obj in object_categories:
             if verbose:
                 print(f"Collecting MVtechAD category: {obj} ...")
-            paths, y_cat = _collect_mvtechad_category(
-                mvtechad_root, obj, include_train=include_train
-            )
-            all_img_paths.extend(paths)
-            all_y_w_rel.extend(y_cat)
+
+            obj_dir = os.path.join(mvtechad_root, obj)
+            if not os.path.isdir(obj_dir):
+                seen_root = os.path.abspath(mvtechad_root) if os.path.isdir(mvtechad_root) else None
+                if seen_root:
+                    seen_entries = sorted(os.listdir(seen_root))
+                    seen_str = "\n  ".join(seen_entries) if seen_entries else "(empty)"
+                else:
+                    cwd_entries = sorted(os.listdir("."))
+                    seen_str = "\n  ".join(cwd_entries) if cwd_entries else "(empty)"
+                    seen_root = (f"{os.path.abspath('.')}  "
+                                 f"(mvtechad_root '{mvtechad_root}' not found, showing cwd)")
+                raise FileNotFoundError(
+                    f"Object directory not found: {os.path.abspath(obj_dir)}\n"
+                    f"Expected MVtechAD structure: {mvtechad_root}/<object>/test/<label>/\n"
+                    f"Contents of {seen_root}:\n  {seen_str}"
+                )
+
+            # --- train/good -> normal, ordered within category ---
+            if include_train:
+                train_folder = os.path.join(obj_dir, "train", "good")
+                if os.path.isdir(train_folder):
+                    for fname in sorted(os.listdir(train_folder)):
+                        if not fname.lower().endswith(
+                            (".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff")
+                        ):
+                            continue
+                        train_img_paths.append(os.path.join(train_folder, fname))
+                        train_y.append((f"normal_{obj}", False))
+
+            # --- test/<label>/ -> goes into the test pool (shuffled later) ---
+            test_dir = os.path.join(obj_dir, "test")
+            if not os.path.isdir(test_dir):
+                print(f"  [WARN] No test/ directory found for {obj}, skipping.")
+                continue
+            for label_folder in sorted(os.listdir(test_dir)):
+                label_path = os.path.join(test_dir, label_folder)
+                if not os.path.isdir(label_path):
+                    continue
+                is_normal = label_folder.lower() == "good"
+                label_str = (f"normal_{obj}" if is_normal
+                             else f"{label_folder}_{obj}")
+                for fname in sorted(os.listdir(label_path)):
+                    if not fname.lower().endswith(
+                        (".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff")
+                    ):
+                        continue
+                    test_img_paths.append(os.path.join(label_path, fname))
+                    test_y.append((label_str, not is_normal))
+
+        # ── globally shuffle the test pool ────────────────────────────────────
+        rng          = np.random.RandomState(seed)
+        test_indices = rng.permutation(len(test_img_paths))
+        test_img_paths = [test_img_paths[i] for i in test_indices]
+        test_y         = [test_y[i]         for i in test_indices]
 
         if verbose:
-            print(f"\nTotal images collected: {len(all_img_paths)}")
+            print(f"\nTrain block : {len(train_img_paths)} images (ordered by category)")
+            print(f"Test block  : {len(test_img_paths)} images (globally shuffled)")
 
-        # Extract DINOv2 features
+        # ── concatenate: ordered train  +  shuffled test ──────────────────────
+        all_img_paths = train_img_paths + test_img_paths
+        all_y_w_rel   = train_y         + test_y
+
         if verbose:
-            print("Extracting DINOv2 features ...")
-        X = _extract_dino_features(all_img_paths, device, verbose=verbose)
+            print(f"Total images: {len(all_img_paths)}")
+
+        # ── DINOv2 extraction ─────────────────────────────────────────────────
+        if os.path.exists(cache_feat):
+            if verbose:
+                print(f"Loading cached DINOv2 features: {cache_feat}")
+            with open(cache_feat, "rb") as f:
+                X = pickle.load(f)
+        else:
+            if verbose:
+                print("Extracting DINOv2 features ...")
+            X = _extract_dino_features(all_img_paths, device, verbose=verbose)
+            if verbose:
+                print(f"Saving DINOv2 features to cache: {cache_feat}")
+            with open(cache_feat, "wb") as f:
+                pickle.dump(X, f)
+
+        if verbose:
+            print(f"DINOv2 features shape: {X.shape}")
 
         y_w_rel = all_y_w_rel
 
-        # Save cache
         if verbose:
             print(f"Saving cache to:\n  {cache_feat}\n  {cache_y}")
         with open(cache_feat, "wb") as f:
@@ -243,12 +360,14 @@ def mvtechad_dino_ae_setup_for_main(
     relevant_labels = sorted(lbl for lbl, rel in label_relevance.items() if rel)
 
     if verbose:
-        print(f"\nMVtechAD DINOv2 dataset ready")
-        print(f"  X shape       : {X.shape}")
-        print(f"  Total samples : {total}")
-        print(f"  Total classes : {len(label_counts)}")
-        n_anom = sum(1 for _, r in y_w_rel if r)
-        print(f"  Anomalous     : {n_anom} ({n_anom/total*100:.1f}%)")
+        print(f"\nMVtechAD-DINO dataset ready")
+        print(f"  X shape        : {X.shape}")
+        print(f"  Total samples  : {total}")
+        print(f"  Total classes  : {len(label_counts)}")
+        n_rel = sum(1 for _, r in y_w_rel if r)
+        print(f"  Anomalous      : {n_rel} ({n_rel/total*100:.1f}%)")
+        print(f"  Normal         : {total - n_rel} ({(total-n_rel)/total*100:.1f}%)")
+        print(f"  Relevant labels ({len(relevant_labels)}): {relevant_labels[:10]} ...")
 
     return X, y_w_rel, sparsity_levels, relevant_labels
 

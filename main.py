@@ -149,7 +149,7 @@ NUM_POINTS_TO_PROCESS: Number of points in dataset to process
 |- -1: process all the data
 |-  0 to inf: process up to that number if data is available
 '''
-NUM_POINTS_TO_PROCESS = 25000#-1
+NUM_POINTS_TO_PROCESS = -1
 
 '''
 GRAPH_BATCH_SIZE: number of points in batch for stats purposes.
@@ -178,6 +178,7 @@ MAKE_GRAPHS
 '''
 MAKE_GRAPHS = True
 MAKE_EVO_GRAPHS = False
+MAKE_GRAPHS_ACCURACY = True
 
 '''
 RANDOM_SEED_OFFSET
@@ -219,6 +220,7 @@ if __name__ == '__main__':
         anom_only_queries = []  # only anomalous (not near a relevant cluster)
         rel_only_queries = []  # only relevant-near (not anomalous)
         both_a_and_r_queries = []  # triggered by both_a_and_r_queries conditions at once
+        relevant_class_accuracy_snapshots = []  # list of dicts: {class_label: running_acc} per batch
 
         if MAKE_EVO_GRAPHS:
             evo_plotter = ClusterEvolutionPlotter()
@@ -256,6 +258,8 @@ if __name__ == '__main__':
                 conf_matrices.append(ared.conf_matrix.copy())
                 fill_pct = ared.l_buf.data_circular_buffer.count / ared.l_buf.data_circular_buffer.size * 100
                 buffer_fill_percents.append(fill_pct)
+
+
                 cumulative_relevants.append(ared.cumulative_relevant_seen)
                 anom_only_queries.append(ared.anom_only_queries)
                 rel_only_queries.append(ared.rel_only_queries)
@@ -277,6 +281,16 @@ if __name__ == '__main__':
 
                 if MAKE_EVO_GRAPHS:
                     evo_plotter.plot_clusters_colored_by_label(ared, X_skewed, y_w_rel, title="Cluster Visualization by Label")
+
+                if MAKE_GRAPHS_ACCURACY:
+                    rel_acc_snapshot = {}
+                    current_cm = ared.conf_matrix
+                    for rel_class_str in rel_classes:
+                        ci = ared.oracle.int_str_label_bidict[rel_class_str]
+                        tp = current_cm[ci, ci]
+                        total = np.sum(current_cm[ci, :])
+                        rel_acc_snapshot[rel_class_str] = tp / total if total > 0 else 0.0
+                    relevant_class_accuracy_snapshots.append(rel_acc_snapshot)
 
                 if SINGLETON_MERGE:
                     ared.SMALL_CLUSTER_THRESHOLD = SMALL_CLUSTER_THRESHOLD  # expose the constant
@@ -308,14 +322,21 @@ if __name__ == '__main__':
                                             anom_only_queries, rel_only_queries, both_a_and_r_queries,
                                             cumulative_relevants)
 
-            from data_visualization import plot_clusters_and_queries_over_time
+        from data_visualization import plot_clusters_and_queries_over_time
 
-            plot_clusters_and_queries_over_time(
-                num_clusters=num_clusters,
-                num_queries=num_queries,
-                graph_batch_size=GRAPH_BATCH_SIZE,
-                title=f"A/RED: Clusters & Queries - {DATA_SOURCE} (κ={KAPPA})",
-                save_path=f"clusters_queries_{DATA_SOURCE}_kappa{KAPPA}.png"
+        plot_clusters_and_queries_over_time(
+            num_clusters=num_clusters,
+            num_queries=num_queries,
+            graph_batch_size=GRAPH_BATCH_SIZE,
+            title=f"A/RED: Clusters & Queries - {DATA_SOURCE} (κ={KAPPA})",
+            save_path=f"clusters_queries_{DATA_SOURCE}_kappa{KAPPA}.png"
+        )
+
+        if MAKE_GRAPHS_ACCURACY:
+            plot_relevant_class_running_accuracy(
+                relevant_class_accuracy_snapshots,
+                rel_classes,
+                GRAPH_BATCH_SIZE
             )
 
         current_time = time.time()
