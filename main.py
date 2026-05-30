@@ -43,9 +43,9 @@ KAPPA: Paranoia Parameter
 # N_REL_CLASSES = 10
 # KAPPA = 0.1
 
-# DATA_SOURCE = "EMNIST_DINO"
-# N_REL_CLASSES = 10
-# KAPPA = 0.1
+DATA_SOURCE = "EMNIST_DINO"
+N_REL_CLASSES = 10
+KAPPA = 0.1
 
 # DATA_SOURCE = "NICE"
 # KAPPA = 1 # NICE
@@ -65,9 +65,9 @@ KAPPA: Paranoia Parameter
 # KAPPA = 1
 # N_REL_CLASSES = 6 # unused
 
-DATA_SOURCE = "MVtechAD_DINO"
-KAPPA = 1
-N_REL_CLASSES = 6 # unused
+# DATA_SOURCE = "MVtechAD_DINO"
+# KAPPA = 1
+# # N_REL_CLASSES = 6 # unused
 
 # DATA_SOURCE = "VisA"
 # KAPPA = 1
@@ -108,7 +108,7 @@ NGHBHOOD_MERGE: Neighborhood Merge Variants
 |- False: No neighborhood merge
 |- True: Neighborhood merge
 '''
-NGHBHOOD_MERGE = True
+NGHBHOOD_MERGE = False
 
 '''
 SINGLETON_MERGE: Neighborhood Merge Variants
@@ -117,7 +117,7 @@ SINGLETON_MERGE: Neighborhood Merge Variants
 |- False: No singleton merge
 |- True: singleton merge
 '''
-SINGLETON_MERGE = True
+SINGLETON_MERGE = False
 
 # ------------------------------------------------------------------
 # NEW: threshold for “small” clusters that will be forcibly merged
