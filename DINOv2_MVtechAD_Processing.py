@@ -10,9 +10,16 @@
 #             = "normal_<object>"          (normal, from train/good or test/good)
 # is_relevant = True for anomalous samples, False for normal
 #
-# Data ordering:
-#   - Training samples (train/good) are kept ordered by category
-#   - Test samples (all test/<label>/ folders) are globally shuffled across categories
+# Data ordering — controlled by INTERLEAVED_CATEGORIES flag:
+#
+#   INTERLEAVED_CATEGORIES = False  (new default):
+#     - Training samples (train/good) kept ordered by category
+#     - Test samples (all test/<label>/ folders) globally shuffled across categories
+#     - Mirrors realistic deployment: train on normals first, then encounter defects
+#
+#   INTERLEAVED_CATEGORIES = True  (old behaviour):
+#     - All samples collected category by category (train/good then test/*)
+#     - No global shuffle; categories are fully interleaved in order
 
 import os
 import numpy as np
@@ -43,6 +50,14 @@ MVTECHAD_OBJECT_CATEGORIES = [
 MODEL_NAME     = "facebook/dinov2-base"
 DINO_IMG_SIZE  = (224, 224)
 BATCH_SIZE_VIT = 32
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Data ordering flag
+#
+#   False -> new ordering: ordered train block + globally shuffled test block
+#   True  -> old ordering: category-by-category (train/good then test/*), no global shuffle
+# ──────────────────────────────────────────────────────────────────────────────
+INTERLEAVED_CATEGORIES = True
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -108,7 +123,7 @@ def _extract_dino_features(img_paths, device, verbose=False):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Image path + label collector
+# Image path + label collector (used by old/interleaved ordering only)
 # ──────────────────────────────────────────────────────────────────────────────
 
 def _collect_mvtechad_category(mvtechad_root, object_name, include_train=True):
@@ -129,16 +144,13 @@ def _collect_mvtechad_category(mvtechad_root, object_name, include_train=True):
         for fname in sorted(os.listdir(folder)):
             if not fname.lower().endswith((".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff")):
                 continue
-            full = os.path.join(folder, fname)
-            img_paths.append(full)
+            img_paths.append(os.path.join(folder, fname))
             y_w_rel.append((label_str, is_anomaly))
 
-    # train/good -> normal
     if include_train:
         _ingest(os.path.join(obj_dir, "train", "good"),
                 f"normal_{object_name}", is_anomaly=False)
 
-    # test/<label> folders
     test_dir = os.path.join(obj_dir, "test")
     if os.path.isdir(test_dir):
         for label_folder in sorted(os.listdir(test_dir)):
@@ -161,34 +173,33 @@ def mvtechad_dino_ae_setup_for_main(
     N_REL_CLASSES,                              # unused: relevance determined by anomaly labels
     VERBOSE_FLAGS,
     seed,
-    mvtechad_root: str = None,                    # ← Set to None for auto-detection
+    mvtechad_root: str = None,
     object_categories=None,
     include_train=True,
 ):
     """
     Load the MVtechAD dataset as DINOv2 embeddings (768-D, z-score normalised).
 
-    Data ordering:
-      - Training samples (train/good/) are kept in category order
-        (bottle -> cable -> ... -> zipper), so ARED sees all normals
-        for each category before moving on.
-      - Test samples (test/<label>/) from ALL categories are pooled and
-        globally shuffled before being appended, so ARED cannot exploit
-        any category ordering in the test phase.
+    Data ordering is controlled by the module-level INTERLEAVED_CATEGORIES flag:
 
-    Pipeline (run once, then cached):
-      1. Collect image paths + labels, split into train/test pools.
-      2. Shuffle the test pool with a fixed seed.
-      3. Concatenate: ordered train block  +  shuffled test block.
-      4. Extract DINOv2 CLS token embeddings -> (N, 768), z-score normalised.
-         [cached to mvtechad_dino_features.pkl + mvtechad_dino_ae_y.pkl]
+      INTERLEAVED_CATEGORIES = False  (new default, recommended):
+        Training samples (train/good/) kept in category order so ARED sees all
+        normals for each category before moving on. Test samples from ALL
+        categories are pooled and globally shuffled before being appended.
+
+      INTERLEAVED_CATEGORIES = True  (old behaviour):
+        All samples collected category by category (train/good then test/*) with
+        no global shuffle — original behaviour from the first paper.
+
+    The cache filename includes the ordering mode so switching the flag
+    automatically regenerates the cache rather than loading stale data.
 
     Parameters
     ----------
     N_REL_CLASSES      : unused
     VERBOSE_FLAGS      : list of flag ints; 0 in VERBOSE_FLAGS enables verbose output
-    seed               : unused (fixed seeds used internally)
-    mvtechad_root      : path to MVtechAD/ root directory
+    seed               : RNG seed for test-pool shuffle (new ordering only)
+    mvtechad_root      : path to MVtechAD/ root; None triggers auto-detection
     object_categories  : object names to include; None uses all known categories
     include_train      : if True, also include train/good/ as normal samples
 
@@ -198,13 +209,12 @@ def mvtechad_dino_ae_setup_for_main(
     y_w_rel         : list of (label_str, is_relevant_bool)
     sparsity_levels : list of (label, proportion) sorted most -> least common
     relevant_labels : list of anomalous label strings
-    Load MVtechAD dataset using DINOv2 (768-D) embeddings with smart path detection.
     """
     verbose = 0 in VERBOSE_FLAGS
 
-    # ── Smart Dataset Path Detection ───────────────────────────────────────
+    # ── Smart Dataset Path Detection ──────────────────────────────────────────
     if mvtechad_root is None:
-        nate_path = "Datasets/MVtechAD"
+        nate_path  = "Datasets/MVtechAD"
         rohan_path = os.path.expanduser("~/Dropbox/Research/Datasets/mvtec")
 
         if os.path.isdir(nate_path):
@@ -222,17 +232,21 @@ def mvtechad_dino_ae_setup_for_main(
                 f"  • Nate:  {os.path.abspath(nate_path)}\n"
                 f"  • Rohan: {rohan_path}\n\n"
                 "Please pass the correct path manually:\n"
-                "mvtechad_dino_ae_setup_for_main(mvtechad_root='/your/path')"
+                "  mvtechad_dino_ae_setup_for_main(mvtechad_root='/your/path')"
             )
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     if verbose:
         print(f"Using device: {device}")
+        mode_str = "interleaved (old)" if INTERLEAVED_CATEGORIES else "train-then-shuffled-test (new)"
+        print(f"Data ordering mode: {mode_str}  [INTERLEAVED_CATEGORIES={INTERLEAVED_CATEGORIES}]")
 
-    cache_feat = os.path.join(mvtechad_root, "mvtechad_dino_features.pkl")
-    cache_y    = os.path.join(mvtechad_root, "mvtechad_dino_y.pkl")
+    # Cache filenames encode the ordering mode so flipping the flag forces a rebuild
+    mode_tag   = "interleaved" if INTERLEAVED_CATEGORIES else "split_shuffle"
+    cache_feat = os.path.join(mvtechad_root, f"mvtechad_dino_features_{mode_tag}.pkl")
+    cache_y    = os.path.join(mvtechad_root, f"mvtechad_dino_y_{mode_tag}.pkl")
 
-    # Load from cache if available
+    # ── Load from cache if available ──────────────────────────────────────────
     if os.path.exists(cache_feat) and os.path.exists(cache_y):
         if verbose:
             print(f"Loading cached MVtechAD DINOv2 data from:\n  {cache_feat}")
@@ -240,120 +254,127 @@ def mvtechad_dino_ae_setup_for_main(
             X = pickle.load(f)
         with open(cache_y, "rb") as f:
             y_w_rel = pickle.load(f)
+
     else:
         if object_categories is None:
             object_categories = MVTECHAD_OBJECT_CATEGORIES
 
-        # ── collect train and test separately ─────────────────────────────────
-        # Train block: train/good/ for each category, kept in category order.
-        # Test block:  all test/<label>/ images across all categories, to be shuffled.
-        train_img_paths, train_y = [], []
-        test_img_paths,  test_y  = [], []
-
-        for obj in object_categories:
+        if INTERLEAVED_CATEGORIES:
+            # ── OLD ordering: category-by-category, no global shuffle ─────────
             if verbose:
-                print(f"Collecting MVtechAD category: {obj} ...")
-
-            obj_dir = os.path.join(mvtechad_root, obj)
-            if not os.path.isdir(obj_dir):
-                seen_root = os.path.abspath(mvtechad_root) if os.path.isdir(mvtechad_root) else None
-                if seen_root:
-                    seen_entries = sorted(os.listdir(seen_root))
-                    seen_str = "\n  ".join(seen_entries) if seen_entries else "(empty)"
-                else:
-                    cwd_entries = sorted(os.listdir("."))
-                    seen_str = "\n  ".join(cwd_entries) if cwd_entries else "(empty)"
-                    seen_root = (f"{os.path.abspath('.')}  "
-                                 f"(mvtechad_root '{mvtechad_root}' not found, showing cwd)")
-                raise FileNotFoundError(
-                    f"Object directory not found: {os.path.abspath(obj_dir)}\n"
-                    f"Expected MVtechAD structure: {mvtechad_root}/<object>/test/<label>/\n"
-                    f"Contents of {seen_root}:\n  {seen_str}"
+                print("Collecting data in interleaved category order (old behaviour) ...")
+            all_img_paths = []
+            all_y_w_rel   = []
+            for obj in object_categories:
+                if verbose:
+                    print(f"  Collecting category: {obj} ...")
+                paths, y_cat = _collect_mvtechad_category(
+                    mvtechad_root, obj, include_train=include_train
                 )
+                all_img_paths.extend(paths)
+                all_y_w_rel.extend(y_cat)
+            if verbose:
+                print(f"Total images: {len(all_img_paths)}")
 
-            # --- train/good -> normal, ordered within category ---
-            if include_train:
-                train_folder = os.path.join(obj_dir, "train", "good")
-                if os.path.isdir(train_folder):
-                    for fname in sorted(os.listdir(train_folder)):
+        else:
+            # ── NEW ordering: ordered train block + globally shuffled test ────
+            if verbose:
+                print("Collecting data with ordered train block + shuffled test block (new behaviour) ...")
+            train_img_paths, train_y = [], []
+            test_img_paths,  test_y  = [], []
+
+            for obj in object_categories:
+                if verbose:
+                    print(f"  Collecting category: {obj} ...")
+
+                obj_dir = os.path.join(mvtechad_root, obj)
+                if not os.path.isdir(obj_dir):
+                    seen_root = os.path.abspath(mvtechad_root) if os.path.isdir(mvtechad_root) else None
+                    if seen_root:
+                        seen_entries = sorted(os.listdir(seen_root))
+                        seen_str = "\n  ".join(seen_entries) if seen_entries else "(empty)"
+                    else:
+                        cwd_entries = sorted(os.listdir("."))
+                        seen_str    = "\n  ".join(cwd_entries) if cwd_entries else "(empty)"
+                        seen_root   = (f"{os.path.abspath('.')}  "
+                                       f"(mvtechad_root '{mvtechad_root}' not found, showing cwd)")
+                    raise FileNotFoundError(
+                        f"Object directory not found: {os.path.abspath(obj_dir)}\n"
+                        f"Expected MVtechAD structure: {mvtechad_root}/<object>/test/<label>/\n"
+                        f"Contents of {seen_root}:\n  {seen_str}"
+                    )
+
+                # train/good -> ordered train block
+                if include_train:
+                    train_folder = os.path.join(obj_dir, "train", "good")
+                    if os.path.isdir(train_folder):
+                        for fname in sorted(os.listdir(train_folder)):
+                            if not fname.lower().endswith(
+                                (".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff")
+                            ):
+                                continue
+                            train_img_paths.append(os.path.join(train_folder, fname))
+                            train_y.append((f"normal_{obj}", False))
+
+                # test/<label>/ -> test pool (shuffled below)
+                test_dir = os.path.join(obj_dir, "test")
+                if not os.path.isdir(test_dir):
+                    print(f"  [WARN] No test/ directory found for {obj}, skipping.")
+                    continue
+                for label_folder in sorted(os.listdir(test_dir)):
+                    label_path = os.path.join(test_dir, label_folder)
+                    if not os.path.isdir(label_path):
+                        continue
+                    is_normal = label_folder.lower() == "good"
+                    label_str = (f"normal_{obj}" if is_normal
+                                 else f"{label_folder}_{obj}")
+                    for fname in sorted(os.listdir(label_path)):
                         if not fname.lower().endswith(
                             (".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff")
                         ):
                             continue
-                        train_img_paths.append(os.path.join(train_folder, fname))
-                        train_y.append((f"normal_{obj}", False))
+                        test_img_paths.append(os.path.join(label_path, fname))
+                        test_y.append((label_str, not is_normal))
 
-            # --- test/<label>/ -> goes into the test pool (shuffled later) ---
-            test_dir = os.path.join(obj_dir, "test")
-            if not os.path.isdir(test_dir):
-                print(f"  [WARN] No test/ directory found for {obj}, skipping.")
-                continue
-            for label_folder in sorted(os.listdir(test_dir)):
-                label_path = os.path.join(test_dir, label_folder)
-                if not os.path.isdir(label_path):
-                    continue
-                is_normal = label_folder.lower() == "good"
-                label_str = (f"normal_{obj}" if is_normal
-                             else f"{label_folder}_{obj}")
-                for fname in sorted(os.listdir(label_path)):
-                    if not fname.lower().endswith(
-                        (".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff")
-                    ):
-                        continue
-                    test_img_paths.append(os.path.join(label_path, fname))
-                    test_y.append((label_str, not is_normal))
+            # globally shuffle the test pool
+            rng          = np.random.RandomState(seed)
+            test_indices = rng.permutation(len(test_img_paths))
+            test_img_paths = [test_img_paths[i] for i in test_indices]
+            test_y         = [test_y[i]         for i in test_indices]
 
-        # ── globally shuffle the test pool ────────────────────────────────────
-        rng          = np.random.RandomState(seed)
-        test_indices = rng.permutation(len(test_img_paths))
-        test_img_paths = [test_img_paths[i] for i in test_indices]
-        test_y         = [test_y[i]         for i in test_indices]
+            if verbose:
+                print(f"\nTrain block : {len(train_img_paths)} images (ordered by category)")
+                print(f"Test block  : {len(test_img_paths)} images (globally shuffled)")
 
-        if verbose:
-            print(f"\nTrain block : {len(train_img_paths)} images (ordered by category)")
-            print(f"Test block  : {len(test_img_paths)} images (globally shuffled)")
+            all_img_paths = train_img_paths + test_img_paths
+            all_y_w_rel   = train_y         + test_y
 
-        # ── concatenate: ordered train  +  shuffled test ──────────────────────
-        all_img_paths = train_img_paths + test_img_paths
-        all_y_w_rel   = train_y         + test_y
-
-        if verbose:
-            print(f"Total images: {len(all_img_paths)}")
+            if verbose:
+                print(f"Total images: {len(all_img_paths)}")
 
         # ── DINOv2 extraction ─────────────────────────────────────────────────
-        if os.path.exists(cache_feat):
-            if verbose:
-                print(f"Loading cached DINOv2 features: {cache_feat}")
-            with open(cache_feat, "rb") as f:
-                X = pickle.load(f)
-        else:
-            if verbose:
-                print("Extracting DINOv2 features ...")
-            X = _extract_dino_features(all_img_paths, device, verbose=verbose)
-            if verbose:
-                print(f"Saving DINOv2 features to cache: {cache_feat}")
-            with open(cache_feat, "wb") as f:
-                pickle.dump(X, f)
+        if verbose:
+            print("Extracting DINOv2 features ...")
+        X = _extract_dino_features(all_img_paths, device, verbose=verbose)
 
         if verbose:
             print(f"DINOv2 features shape: {X.shape}")
+            print(f"Saving cache to:\n  {cache_feat}\n  {cache_y}")
 
         y_w_rel = all_y_w_rel
 
-        if verbose:
-            print(f"Saving cache to:\n  {cache_feat}\n  {cache_y}")
         with open(cache_feat, "wb") as f:
             pickle.dump(X, f)
         with open(cache_y, "wb") as f:
             pickle.dump(y_w_rel, f)
 
-    # Compute sparsity levels
-    labels_only = [lbl for lbl, _ in y_w_rel]
+    # ── Sparsity levels ───────────────────────────────────────────────────────
+    labels_only  = [lbl for lbl, _ in y_w_rel]
     label_counts = Counter(labels_only)
-    total = len(labels_only)
+    total        = len(labels_only)
     sparsity_levels = [(lbl, cnt / total) for lbl, cnt in label_counts.most_common()]
 
-    # Relevant labels (anomalous ones)
+    # ── Relevant labels ───────────────────────────────────────────────────────
     label_relevance = {}
     for lbl, is_rel in y_w_rel:
         label_relevance[lbl] = label_relevance.get(lbl, False) or is_rel
@@ -382,7 +403,7 @@ if __name__ == "__main__":
         seed=42,
     )
 
-    total = len(y_w_rel)
+    total     = len(y_w_rel)
     n_anomaly = sum(1 for _, r in y_w_rel if r)
 
     print("\n-- Summary --------------------------------------------------")

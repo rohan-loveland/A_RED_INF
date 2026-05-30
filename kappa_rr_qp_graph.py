@@ -39,7 +39,7 @@ GRAPH_BATCH_SIZE    = 100
 VERBOSE_FLAGS       = []          # silent during sweep
 RANDOM_SEED_OFFSET  = 25
 
-KAPPA_LIST = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5]
+KAPPA_LIST = [0.25, 0.5, 0.625, 0.75, 0.825, 1.0, 1.125, 1.5]
 
 
 # ---------------------------------------------------------------
@@ -145,13 +145,24 @@ def plot_pr_curve(kappas, precisions, recalls, discovered_counts,
     ax.scatter(recalls, precisions, color=color, s=60, zorder=4)
 
     # --- boxed labels (kappa value above each point) ---
-    for kappa, r, p, disc in zip(kappas, recalls, precisions, discovered_counts):
+    # --- boxed labels (kappa value above each point) ---
+    used_positions = []
+    point_offsets = []
+    for r, p in zip(recalls, precisions):
+        offset = (0, 14)
+        for ur, up, uo in used_positions:
+            if abs(r - ur) < 0.05 and abs(p - up) < 0.05:
+                offset = (0, 28) if uo == (0, 14) else (0, 14)
+        used_positions.append((r, p, offset))
+        point_offsets.append(offset)
+
+    for kappa, r, p, disc, offset in zip(kappas, recalls, precisions, discovered_counts, point_offsets):
         ax.annotate(
-            str(kappa),
+            f"κ={kappa}\n{disc}/{num_target}",
             xy=(r, p),
-            xytext=(0, 14),
+            xytext=offset,
             textcoords='offset points',
-            fontsize=9,
+            fontsize=8,
             fontweight='bold',
             ha='center', va='bottom',
             bbox=dict(boxstyle='square,pad=0.3', facecolor='white',
