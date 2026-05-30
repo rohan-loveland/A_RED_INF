@@ -304,7 +304,7 @@ def mvtechad_dino_ae_setup_for_main(
                     test_y.append((label_str, not is_normal))
 
         # ── globally shuffle the test pool ────────────────────────────────────
-        rng          = np.random.RandomState(RANDOM_SEED)
+        rng          = np.random.RandomState(seed)
         test_indices = rng.permutation(len(test_img_paths))
         test_img_paths = [test_img_paths[i] for i in test_indices]
         test_y         = [test_y[i]         for i in test_indices]
@@ -341,8 +341,8 @@ def mvtechad_dino_ae_setup_for_main(
         y_w_rel = all_y_w_rel
 
         if verbose:
-            print(f"Saving labels to cache: {cache_y}")
-        with open(cache_latents, "wb") as f:
+            print(f"Saving cache to:\n  {cache_feat}\n  {cache_y}")
+        with open(cache_feat, "wb") as f:
             pickle.dump(X, f)
         with open(cache_y, "wb") as f:
             pickle.dump(y_w_rel, f)
